@@ -1,9 +1,11 @@
-import { Minus, Square, X } from 'lucide-react'
+import { Minus, Square, X, Sun, Moon } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 
 export default function TitleBar(): React.JSX.Element {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const sessions = useSessionStore((s) => s.sessions)
+  const theme = useSessionStore((s) => s.theme)
+  const toggleTheme = useSessionStore((s) => s.toggleTheme)
   const activeSession = sessions.find((s) => s.id === activeSessionId)
 
   return (
@@ -33,6 +35,15 @@ export default function TitleBar(): React.JSX.Element {
         className="flex items-center gap-1"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
+        <button
+          onClick={toggleTheme}
+          className="p-1.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+          style={{ color: 'var(--text-muted)' }}
+          title="Toggle theme (Ctrl+T)"
+        >
+          {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+        </button>
+        <div className="w-px h-3 mx-0.5" style={{ backgroundColor: 'var(--bg-raised)' }} />
         <button
           onClick={() => window.cccAPI.window.minimize()}
           className="p-1.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"

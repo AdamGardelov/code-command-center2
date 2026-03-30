@@ -14,6 +14,8 @@ export interface SessionCreate {
 
 export type ViewMode = 'single' | 'grid'
 
+export type Theme = 'dark' | 'light'
+
 export interface GridItem {
   i: string
   x: number

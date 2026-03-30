@@ -26,6 +26,12 @@ export function useKeyboard(): void {
         return
       }
 
+      if (mod && e.key === 't') {
+        e.preventDefault()
+        useSessionStore.getState().toggleTheme()
+        return
+      }
+
       if (mod && e.key === 'b') {
         e.preventDefault()
         useSessionStore.getState().toggleSidebar()

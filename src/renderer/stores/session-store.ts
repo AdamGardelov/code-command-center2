@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, GridItem } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, GridItem, Theme } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -8,6 +8,7 @@ interface SessionStore {
   sidebarOpen: boolean
   gridLayout: GridItem[]
   modalOpen: boolean
+  theme: Theme
 
   createSession: (opts: SessionCreate) => void
   removeSession: (id: string) => void
@@ -15,6 +16,7 @@ interface SessionStore {
   setViewMode: (mode: ViewMode) => void
   toggleSidebar: () => void
   toggleModal: () => void
+  toggleTheme: () => void
   updateGridLayout: (layout: GridItem[]) => void
   nextSession: () => void
   prevSession: () => void
@@ -79,6 +81,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   sidebarOpen: true,
   gridLayout: generateGridLayout(mockSessions),
   modalOpen: false,
+  theme: 'dark',
 
   createSession: (opts) => {
     const session: Session = {
@@ -118,6 +121,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleModal: () => set((state) => ({ modalOpen: !state.modalOpen })),
+  toggleTheme: () => set((state) => {
+    const next = state.theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.setAttribute('data-theme', next)
+    return { theme: next }
+  }),
   updateGridLayout: (layout) => set({ gridLayout: layout }),
 
   nextSession: () => {

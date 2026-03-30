@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { WidthProvider } from 'react-grid-layout'
 import ReactGridLayout from 'react-grid-layout'
 import type { Layout } from 'react-grid-layout'
@@ -19,6 +19,20 @@ export default function GridView(): React.JSX.Element {
   const updateGridLayout = useSessionStore((s) => s.updateGridLayout)
 
   const cols = sessions.length <= 2 ? sessions.length || 1 : sessions.length <= 4 ? 2 : 3
+
+  const [containerHeight, setContainerHeight] = useState(400)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerHeight(entry.contentRect.height)
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const handleLayoutChange = useCallback(
     (layout: Layout[]) => {
@@ -44,7 +58,7 @@ export default function GridView(): React.JSX.Element {
   )
 
   const rowHeight = Math.floor(
-    ((containerRef.current?.clientHeight ?? 400) / Math.ceil(sessions.length / cols)) - 12
+    (containerHeight / Math.ceil(sessions.length / cols)) - 12
   )
 
   return (

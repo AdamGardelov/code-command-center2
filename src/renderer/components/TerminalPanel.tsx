@@ -40,7 +40,7 @@ export default function TerminalPanel({ session, showHeader = false }: TerminalP
   return (
     <div
       className="flex flex-col h-full rounded-md overflow-hidden"
-      style={{ backgroundColor: '#0d0d14' }}
+      style={{ backgroundColor: 'var(--bg-terminal)' }}
     >
       {showHeader && (
         <div
