@@ -100,7 +100,7 @@ export default function Layout(): React.JSX.Element {
         )}
 
         {/* Main area */}
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex overflow-hidden" style={{ backgroundColor: 'var(--bg-terminal)' }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : viewMode === 'single' && activeSession ? (
