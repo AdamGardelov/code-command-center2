@@ -42,6 +42,16 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
         {session.name}
       </span>
 
+      {/* Remote host badge */}
+      {session.remoteHost && (
+        <span
+          className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+          style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}
+        >
+          {session.remoteHost}
+        </span>
+      )}
+
       {/* Status (AI sessions only) */}
       {session.type !== 'shell' && (
         <div className="flex items-center gap-1.5">

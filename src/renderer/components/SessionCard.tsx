@@ -78,6 +78,12 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
           >
             {session.name}
           </span>
+          {session.remoteHost && (
+            <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"
+              style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
+              {session.remoteHost}
+            </span>
+          )}
           {showStatus(session) && (
             <span
               className={`w-[6px] h-[6px] rounded-full flex-shrink-0 ${pulseStatuses.has(session.status) ? 'status-pulse' : ''}`}
