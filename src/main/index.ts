@@ -11,13 +11,18 @@ import { StateDetector } from './state-detector'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerConfigIpc } from './ipc/config'
+import { registerHostIpc } from './ipc/host'
 import { ConfigService } from './config-service'
+import { SshService } from './ssh-service'
 
 const configService = new ConfigService()
 configService.load()
 
+const sshService = new SshService()
+
 const sessionManager = new SessionManager()
 sessionManager.setConfigService(configService)
+sessionManager.setSshService(sshService)
 const ptyManager = new PtyManager()
 const stateDetector = new StateDetector()
 
@@ -41,6 +46,12 @@ function createWindow(): void {
 
   ptyManager.setWindow(mainWindow)
   stateDetector.setWindow(mainWindow)
+  sshService.setWindow(mainWindow)
+
+  const remoteHosts = configService.get().remoteHosts ?? []
+  if (remoteHosts.length > 0) {
+    sshService.startMonitoring(remoteHosts)
+  }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -81,6 +92,7 @@ ptyManager.setStatusChangeHandler((sessionId, status) => {
 registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
 registerConfigIpc(configService)
+registerHostIpc(sshService)
 
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()
@@ -99,6 +111,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  sshService.stopMonitoring()
   stateDetector.stop()
   ptyManager.detachAll()
   if (process.platform !== 'darwin') app.quit()

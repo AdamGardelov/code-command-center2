@@ -9,9 +9,9 @@ export function registerTerminalIpc(
   stateDetector: StateDetector
 ): void {
   ipcMain.on('session:attach', (_event, id: string) => {
-    const tmuxName = sessionManager.getTmuxName(id)
-    if (tmuxName) {
-      ptyManager.attach(id, tmuxName)
+    const info = sessionManager.getSessionInfo(id)
+    if (info) {
+      ptyManager.attach(id, info.tmuxName, info.remoteHost)
     }
   })
 
