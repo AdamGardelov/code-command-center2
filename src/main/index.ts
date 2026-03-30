@@ -29,22 +29,20 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  ipcMain.on('window:minimize', () => mainWindow.minimize())
-  ipcMain.on('window:maximize', () => {
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow.maximize()
-    }
-  })
-  ipcMain.on('window:close', () => mainWindow.close())
-
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+ipcMain.on('window:minimize', () => BrowserWindow.getFocusedWindow()?.minimize())
+ipcMain.on('window:maximize', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (win?.isMaximized()) win.unmaximize()
+  else win?.maximize()
+})
+ipcMain.on('window:close', () => BrowserWindow.getFocusedWindow()?.close())
 
 app.whenReady().then(() => {
   createWindow()
