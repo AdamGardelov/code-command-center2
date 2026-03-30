@@ -1,9 +1,8 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 
-// Enable subpixel font rendering and GPU acceleration
-app.commandLine.appendSwitch('enable-font-antialiasing')
-app.commandLine.appendSwitch('disable-lcd-text')
+// Enable proper font rendering
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
+app.commandLine.appendSwitch('enable-lcd-text')
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { SessionManager } from './session-manager'
