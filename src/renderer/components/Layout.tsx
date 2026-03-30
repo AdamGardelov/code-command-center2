@@ -104,7 +104,7 @@ export default function Layout(): React.JSX.Element {
           {sessions.length === 0 ? (
             <EmptyState />
           ) : viewMode === 'single' && activeSession ? (
-            <div className="flex-1 p-1">
+            <div className="flex-1">
               <TerminalPanel key={activeSession.id} session={activeSession} />
             </div>
           ) : (
