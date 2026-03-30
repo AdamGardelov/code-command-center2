@@ -59,8 +59,11 @@ export function useKeyboard(): void {
       }
 
       if (e.key === 'Escape') {
-        const { modalOpen, toggleModal } = useSessionStore.getState()
-        if (modalOpen) {
+        const { modalOpen, toggleModal, settingsOpen, toggleSettings } = useSessionStore.getState()
+        if (settingsOpen) {
+          e.preventDefault()
+          toggleSettings()
+        } else if (modalOpen) {
           e.preventDefault()
           toggleModal()
         }
