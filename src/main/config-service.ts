@@ -12,7 +12,9 @@ const DEFAULT_CONFIG: CccConfig = {
   sessionColors: {},
   sessionTypes: {},
   enabledProviders: ['claude'],
-  remoteHosts: []
+  remoteHosts: [],
+  worktreeBasePath: '~/worktrees',
+  sessionGroups: []
 }
 
 export class ConfigService {
@@ -37,7 +39,9 @@ export class ConfigService {
             ? parsed.sessionTypes
             : {},
           enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude'],
-          remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : []
+          remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : [],
+          worktreeBasePath: typeof parsed.worktreeBasePath === 'string' ? parsed.worktreeBasePath : '~/worktrees',
+          sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : []
         }
       } else {
         this.config = { ...DEFAULT_CONFIG }
@@ -73,6 +77,8 @@ export class ConfigService {
     if (partial.sidebarWidth !== undefined) this.config.sidebarWidth = partial.sidebarWidth
     if (partial.favoriteFolders !== undefined) this.config.favoriteFolders = partial.favoriteFolders
     if (partial.remoteHosts !== undefined) this.config.remoteHosts = partial.remoteHosts
+    if (partial.worktreeBasePath !== undefined) this.config.worktreeBasePath = partial.worktreeBasePath
+    if (partial.sessionGroups !== undefined) this.config.sessionGroups = partial.sessionGroups
 
     this.save(this.config)
     return this.config
