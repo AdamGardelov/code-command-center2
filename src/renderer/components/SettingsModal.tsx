@@ -3,7 +3,7 @@ import { X, Plus, Trash2, Pencil, Check, RotateCcw, Bot, Sparkles, Server, Chevr
 import { useSessionStore } from '../stores/session-store'
 import type { FavoriteFolder, AiProvider, RemoteHost } from '../../shared/types'
 
-type Tab = 'providers' | 'favorites' | 'appearance' | 'remotes'
+type Tab = 'providers' | 'favorites' | 'appearance' | 'remotes' | 'worktrees'
 
 export default function SettingsModal(): React.JSX.Element {
   const settingsOpen = useSessionStore((s) => s.settingsOpen)
@@ -17,6 +17,7 @@ export default function SettingsModal(): React.JSX.Element {
   const setSidebarWidth = useSessionStore((s) => s.setSidebarWidth)
   const persistSidebarWidth = useSessionStore((s) => s.persistSidebarWidth)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
+  const worktreeBasePath = useSessionStore((s) => s.worktreeBasePath)
 
   const [tab, setTab] = useState<Tab>('providers')
   const [editIdx, setEditIdx] = useState<number | null>(null)
@@ -114,6 +115,14 @@ export default function SettingsModal(): React.JSX.Element {
         className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
       />
+      <input
+        type="text"
+        value={editForm.worktreePath ?? ''}
+        onChange={(e) => setEditForm({ ...editForm, worktreePath: e.target.value || undefined })}
+        placeholder="Worktree path override (optional)"
+        className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+        style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+      />
       <div className="flex gap-2 justify-end">
         <button
           onClick={cancelEdit}
@@ -164,7 +173,7 @@ export default function SettingsModal(): React.JSX.Element {
 
         {/* Tabs */}
         <div className="flex gap-0 px-6 border-b" style={{ borderColor: 'var(--bg-raised)' }}>
-          {(['providers', 'favorites', 'remotes', 'appearance'] as Tab[]).map((t) => (
+          {(['providers', 'favorites', 'remotes', 'appearance', 'worktrees'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -676,6 +685,29 @@ export default function SettingsModal(): React.JSX.Element {
                   <RotateCcw size={11} />
                   Reset
                 </button>
+              </div>
+            </div>
+          )}
+
+          {tab === 'worktrees' && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                  Default Worktree Base Path
+                </label>
+                <input
+                  type="text"
+                  defaultValue={worktreeBasePath}
+                  onBlur={(e) => {
+                    void window.cccAPI.config.update({ worktreeBasePath: e.target.value })
+                  }}
+                  placeholder="~/worktrees"
+                  className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+                  style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Worktrees will be created at this path / repo name / branch name
+                </p>
               </div>
             </div>
           )}
