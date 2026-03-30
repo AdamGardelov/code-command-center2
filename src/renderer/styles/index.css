@@ -72,30 +72,29 @@ body {
   width: 2px;
 }
 
-/* xterm.js container */
+/* xterm.js container — all layers must share same bg to hide pixel gaps */
 .xterm-container {
   width: 100%;
   height: 100%;
   background-color: var(--bg-terminal);
+  overflow: hidden;
 }
 
 .terminal-outer {
   background-color: var(--bg-terminal);
+  overflow: hidden;
 }
 
 .xterm-container .xterm {
   height: 100%;
+  width: 100%;
   padding: 0;
   background-color: var(--bg-terminal);
 }
 
-.xterm-container .xterm-viewport {
-  overflow-y: auto !important;
-  background-color: var(--bg-terminal) !important;
-}
-
+.xterm-container .xterm-viewport,
 .xterm-container .xterm-screen {
-  width: 100% !important;
+  background-color: var(--bg-terminal) !important;
 }
 
 /* Grid view */
