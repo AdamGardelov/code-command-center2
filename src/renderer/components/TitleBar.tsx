@@ -34,7 +34,10 @@ export default function TitleBar(): React.JSX.Element {
         {activeSession && (
           <>
             <span style={{ color: 'var(--bg-raised)' }} className="text-[10px]">/</span>
-            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <span
+              className="text-[11px] font-medium"
+              style={{ color: activeSession.color ?? 'var(--text-secondary)' }}
+            >
               {activeSession.name}
             </span>
             {activeSession.status === 'working' && (

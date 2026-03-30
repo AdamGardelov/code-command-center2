@@ -8,6 +8,7 @@ export interface Session {
   workingDirectory: string
   status: SessionStatus
   type: SessionType
+  color: string
   gitBranch?: string
   createdAt: number
   lastActiveAt: number

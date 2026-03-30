@@ -1,6 +1,22 @@
 import { execFileSync } from 'child_process'
 import type { Session, SessionCreate } from '../shared/types'
 
+// Muted, distinguishable palette that works on dark backgrounds
+const SESSION_COLORS = [
+  '#88a1bb', // blue
+  '#b7bd73', // green
+  '#e9c880', // yellow
+  '#bf6b69', // red
+  '#ad95b8', // magenta
+  '#95bdb7', // cyan
+  '#c55757', // bright red
+  '#83a5d6', // bright blue
+  '#bcc95f', // bright green
+  '#bc99d4', // bright magenta
+  '#83beb1', // bright cyan
+  '#e1c65e', // bright yellow
+]
+
 function tmux(...args: string[]): string | null {
   try {
     return execFileSync('tmux', args, { encoding: 'utf-8', timeout: 5000 }).trim()
@@ -49,9 +65,20 @@ const PREFIX = 'ccc-'
 
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
+  private colorIndex = 0
 
   checkDependencies(): { tmux: boolean; claude: boolean } {
     return { tmux: isTmuxInstalled(), claude: isClaudeInstalled() }
+  }
+
+  private nextColor(): string {
+    const color = SESSION_COLORS[this.colorIndex % SESSION_COLORS.length]
+    this.colorIndex++
+    return color
+  }
+
+  private applyTmuxColor(tmuxName: string, color: string): void {
+    tmux('set-option', '-t', `=${tmuxName}`, 'status-style', `bg=${color},fg=#1d1f21`)
   }
 
   async list(): Promise<Session[]> {
@@ -78,12 +105,15 @@ export class SessionManager {
         if (existing.status === 'error') existing.status = 'idle'
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
+        const color = this.nextColor()
+        this.applyTmuxColor(name, color)
         const session: Session = {
           id: generateId(),
           name: name.slice(PREFIX.length),
           workingDirectory: currentPath || '~',
           status: 'idle',
           type: 'claude',
+          color,
           gitBranch: getGitBranch(currentPath || '~'),
           createdAt: created,
           lastActiveAt: Date.now()
@@ -135,12 +165,16 @@ export class SessionManager {
       throw new Error(`Failed to create tmux session: ${tmuxName}`)
     }
 
+    const color = this.nextColor()
+    this.applyTmuxColor(tmuxName, color)
+
     const session: Session = {
       id: generateId(),
       name: opts.name,
       workingDirectory: opts.workingDirectory,
       status: opts.type === 'claude' ? 'working' : 'idle',
       type: opts.type,
+      color,
       gitBranch: getGitBranch(expandedDir),
       createdAt: Date.now(),
       lastActiveAt: Date.now()

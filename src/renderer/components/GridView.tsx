@@ -105,7 +105,7 @@ export default function GridView(): React.JSX.Element {
             <span
               className="text-[10px] font-medium truncate"
               style={{
-                color: session.id === activeSessionId ? 'var(--accent)' : 'var(--text-secondary)'
+                color: session.id === activeSessionId ? session.color : 'var(--text-secondary)'
               }}
             >
               {session.name}

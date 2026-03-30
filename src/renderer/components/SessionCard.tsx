@@ -45,8 +45,8 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       onClick={onClick}
       className="w-full text-left px-2.5 py-2 rounded-md transition-all duration-100 group relative"
       style={{
-        backgroundColor: isActive ? 'var(--accent-muted)' : 'transparent',
-        borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent'
+        backgroundColor: isActive ? `${session.color}18` : 'transparent',
+        borderLeft: `2px solid ${isActive ? session.color : 'transparent'}`
       }}
       onMouseEnter={(e) => {
         if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.02)'
@@ -63,7 +63,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         />
         <span
           className="text-[11px] font-medium truncate flex-1"
-          style={{ color: isActive ? 'var(--accent)' : 'var(--text-primary)' }}
+          style={{ color: isActive ? session.color : 'var(--text-primary)' }}
         >
           {session.name}
         </span>
