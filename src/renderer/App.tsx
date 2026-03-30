@@ -9,9 +9,14 @@ export default function App(): React.JSX.Element {
   const loadConfig = useSessionStore((s) => s.loadConfig)
   const loadSessions = useSessionStore((s) => s.loadSessions)
   const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus)
+  const loadHostStatuses = useSessionStore((s) => s.loadHostStatuses)
+  const updateHostStatus = useSessionStore((s) => s.updateHostStatus)
 
   useEffect(() => {
-    loadConfig().then(() => loadSessions())
+    loadConfig().then(() => {
+      loadSessions()
+      loadHostStatuses()
+    })
 
     const interval = setInterval(loadSessions, 5000)
 
@@ -19,11 +24,16 @@ export default function App(): React.JSX.Element {
       updateSessionStatus(sessionName, status)
     })
 
+    const unsubHost = window.cccAPI.host.onStatusChanged((name, online) => {
+      updateHostStatus(name, online)
+    })
+
     return () => {
       clearInterval(interval)
       unsubState()
+      unsubHost()
     }
-  }, [loadSessions, updateSessionStatus])
+  }, [loadSessions, updateSessionStatus, loadHostStatuses, updateHostStatus])
 
   return <Layout />
 }
