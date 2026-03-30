@@ -17,22 +17,55 @@ export default function TitleBar(): React.JSX.Element {
         WebkitAppRegion: 'drag'
       } as React.CSSProperties}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-semibold tracking-wide" style={{ color: 'var(--accent)' }}>
-          CCC
-        </span>
+      {/* Left: app name */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <div
+            className="w-2.5 h-2.5 rounded-sm"
+            style={{ backgroundColor: 'var(--accent)' }}
+          />
+          <span
+            className="text-[11px] font-bold tracking-wider uppercase"
+            style={{ color: 'var(--text-primary)', letterSpacing: '0.08em' }}
+          >
+            CCC
+          </span>
+        </div>
         {activeSession && (
           <>
-            <span style={{ color: 'var(--text-muted)' }} className="text-xs">/</span>
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span style={{ color: 'var(--bg-raised)' }} className="text-[10px]">/</span>
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
               {activeSession.name}
             </span>
+            {activeSession.status === 'working' && (
+              <span
+                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider status-pulse"
+                style={{
+                  backgroundColor: 'var(--accent-muted)',
+                  color: 'var(--accent)'
+                }}
+              >
+                working
+              </span>
+            )}
+            {activeSession.status === 'waiting' && (
+              <span
+                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider status-pulse"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  color: 'var(--error)'
+                }}
+              >
+                needs input
+              </span>
+            )}
           </>
         )}
       </div>
 
+      {/* Right: controls */}
       <div
-        className="flex items-center gap-1"
+        className="flex items-center gap-0.5"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
@@ -43,7 +76,7 @@ export default function TitleBar(): React.JSX.Element {
         >
           {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
         </button>
-        <div className="w-px h-3 mx-0.5" style={{ backgroundColor: 'var(--bg-raised)' }} />
+        <div className="w-px h-3 mx-1" style={{ backgroundColor: 'var(--bg-raised)' }} />
         <button
           onClick={() => window.cccAPI.window.minimize()}
           className="p-1.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
@@ -56,7 +89,7 @@ export default function TitleBar(): React.JSX.Element {
           className="p-1.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
           style={{ color: 'var(--text-muted)' }}
         >
-          <Square size={12} />
+          <Square size={11} />
         </button>
         <button
           onClick={() => window.cccAPI.window.close()}
