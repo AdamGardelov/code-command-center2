@@ -7,6 +7,8 @@ export default function NewSessionModal(): React.JSX.Element {
   const modalOpen = useSessionStore((s) => s.modalOpen)
   const toggleModal = useSessionStore((s) => s.toggleModal)
   const createSession = useSessionStore((s) => s.createSession)
+  const favorites = useSessionStore((s) => s.favorites)
+  const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const [name, setName] = useState('')
   const [workingDirectory, setWorkingDirectory] = useState('')
   const [type, setType] = useState<SessionType>('claude')
@@ -69,6 +71,44 @@ export default function NewSessionModal(): React.JSX.Element {
             <X size={14} />
           </button>
         </div>
+
+        {favorites.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+              Favorites
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {favorites.map((fav, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => { setName(fav.name); setWorkingDirectory(fav.path) }}
+                  className="px-2.5 py-1.5 rounded-md text-[11px] border transition-colors duration-100 hover:border-[var(--accent)]"
+                  style={{
+                    borderColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--bg-raised)',
+                    backgroundColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent-muted)' : 'var(--bg-primary)',
+                    color: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--text-secondary)'
+                  }}
+                >
+                  {fav.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {favorites.length === 0 && (
+          <div className="mb-4 text-center">
+            <button
+              type="button"
+              onClick={() => { toggleModal(); toggleSettings() }}
+              className="text-[10px] transition-colors hover:underline"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Add favorite repos in Settings
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
