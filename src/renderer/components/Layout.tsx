@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TitleBar from './TitleBar'
 import SessionSidebar from './SessionSidebar'
@@ -57,48 +57,51 @@ export default function Layout(): React.JSX.Element {
       <TitleBar />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar + drag handle + toggle */}
         <div
-          className="overflow-hidden flex-shrink-0 relative"
+          className="flex-shrink-0 flex"
           style={{
-            width: sidebarOpen ? sidebarWidth : 0,
+            width: sidebarOpen ? sidebarWidth + 16 : 16,
             transition: dragging.current ? 'none' : 'width 200ms ease-in-out'
           }}
         >
-          <div className="h-full" style={{ width: sidebarWidth }}>
-            <SessionSidebar />
+          {/* Sidebar content */}
+          <div
+            className="overflow-hidden"
+            style={{
+              width: sidebarOpen ? sidebarWidth : 0,
+              transition: dragging.current ? 'none' : 'width 200ms ease-in-out'
+            }}
+          >
+            <div className="h-full" style={{ width: sidebarWidth }}>
+              <SessionSidebar />
+            </div>
+          </div>
+
+          {/* Drag handle + collapse button column */}
+          <div className="w-4 flex-shrink-0 flex flex-col items-center relative"
+            style={{ backgroundColor: 'var(--bg-primary)' }}
+          >
+            {/* Drag handle (only when sidebar open) */}
+            {sidebarOpen && (
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--accent)] hover:opacity-50 transition-opacity duration-100"
+                style={{ backgroundColor: 'var(--bg-raised)' }}
+                onMouseDown={handleDragStart}
+              />
+            )}
+
+            {/* Toggle button */}
+            <button
+              onClick={toggleSidebar}
+              className="mt-2 p-0.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+              style={{ color: 'var(--text-muted)' }}
+              title="Toggle sidebar (Ctrl+B)"
+            >
+              {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+            </button>
           </div>
         </div>
-
-        {/* Drag handle */}
-        {sidebarOpen && (
-          <div
-            className="w-1 flex-shrink-0 cursor-col-resize group relative"
-            style={{ backgroundColor: 'var(--bg-raised)' }}
-            onMouseDown={handleDragStart}
-          >
-            <div
-              className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-[var(--accent)] group-hover:opacity-30 transition-opacity duration-100"
-            />
-          </div>
-        )}
-
-        {/* Sidebar toggle button */}
-        <button
-          onClick={toggleSidebar}
-          className="absolute left-1 z-10 p-1 rounded transition-all duration-200"
-          style={{
-            top: 46,
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--bg-raised)',
-            color: 'var(--text-muted)',
-            left: sidebarOpen ? sidebarWidth + 6 : 6,
-            transition: dragging.current ? 'none' : 'left 200ms ease-in-out'
-          }}
-          title="Toggle sidebar (Ctrl+B)"
-        >
-          {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-        </button>
 
         {/* Main area */}
         <main className="flex-1 flex overflow-hidden">
