@@ -47,6 +47,20 @@ const api: CccAPI = {
   config: {
     load: (): Promise<CccConfig> => ipcRenderer.invoke('config:load'),
     update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial)
+  },
+  host: {
+    statuses: () => ipcRenderer.invoke('host:statuses'),
+    onStatusChanged: (callback: (name: string, online: boolean) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        name: string,
+        online: boolean
+      ): void => {
+        callback(name, online)
+      }
+      ipcRenderer.on('host:status-changed', handler)
+      return () => ipcRenderer.removeListener('host:status-changed', handler)
+    }
   }
 }
 
