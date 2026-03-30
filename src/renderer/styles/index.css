@@ -2,9 +2,9 @@
 
 :root,
 [data-theme="dark"] {
-  --bg-primary: #1d1f21;
-  --bg-surface: #292c33;
-  --bg-raised: #363a43;
+  --bg-primary: #18191c;
+  --bg-surface: #1e2025;
+  --bg-raised: #2a2d35;
   --bg-terminal: #292c33;
   --text-primary: #eaeaea;
   --text-secondary: #c5c8c6;
