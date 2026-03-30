@@ -17,6 +17,7 @@ export default function SettingsModal(): React.JSX.Element {
   const setSidebarWidth = useSessionStore((s) => s.setSidebarWidth)
   const persistSidebarWidth = useSessionStore((s) => s.persistSidebarWidth)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
+  const setRemoteHosts = useSessionStore((s) => s.setRemoteHosts)
   const worktreeBasePath = useSessionStore((s) => s.worktreeBasePath)
 
   const [tab, setTab] = useState<Tab>('providers')
@@ -25,7 +26,6 @@ export default function SettingsModal(): React.JSX.Element {
   const [addMode, setAddMode] = useState(false)
 
   // Remote hosts state
-  const [remoteHostsList, setRemoteHostsList] = useState<RemoteHost[]>(remoteHosts)
   const [editRemoteIdx, setEditRemoteIdx] = useState<number | null>(null)
   const [editRemoteForm, setEditRemoteForm] = useState<{ name: string; host: string }>({ name: '', host: '' })
   const [addRemoteMode, setAddRemoteMode] = useState(false)
@@ -35,8 +35,7 @@ export default function SettingsModal(): React.JSX.Element {
   const [addRemoteFavMode, setAddRemoteFavMode] = useState(false)
 
   const saveRemoteHosts = (updated: RemoteHost[]): void => {
-    setRemoteHostsList(updated)
-    void window.cccAPI.config.update({ remoteHosts: updated })
+    void setRemoteHosts(updated)
   }
 
   if (!settingsOpen) return <></>
@@ -324,7 +323,7 @@ export default function SettingsModal(): React.JSX.Element {
 
           {tab === 'remotes' && (
             <div className="flex flex-col gap-2">
-              {remoteHostsList.map((rh, idx) =>
+              {remoteHosts.map((rh, idx) =>
                 editRemoteIdx === idx ? (
                   <div key={idx} className="flex flex-col gap-2 p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)' }}>
                     <input
@@ -355,7 +354,7 @@ export default function SettingsModal(): React.JSX.Element {
                       <button
                         onClick={() => {
                           if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
-                          const updated = [...remoteHostsList]
+                          const updated = [...remoteHosts]
                           updated[idx] = { ...updated[idx], name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim() }
                           saveRemoteHosts(updated)
                           setEditRemoteIdx(null)
@@ -406,7 +405,7 @@ export default function SettingsModal(): React.JSX.Element {
                       </button>
                       <button
                         onClick={() => {
-                          const updated = remoteHostsList.filter((_, i) => i !== idx)
+                          const updated = remoteHosts.filter((_, i) => i !== idx)
                           saveRemoteHosts(updated)
                           if (expandedRemote === idx) setExpandedRemote(null)
                         }}
@@ -462,7 +461,7 @@ export default function SettingsModal(): React.JSX.Element {
                                 <button
                                   onClick={() => {
                                     if (!editRemoteFavForm.name.trim() || !editRemoteFavForm.path.trim()) return
-                                    const updated = [...remoteHostsList]
+                                    const updated = [...remoteHosts]
                                     const favs = [...updated[idx].favoriteFolders]
                                     if (addRemoteFavMode) {
                                       favs.push({ ...editRemoteFavForm })
@@ -505,7 +504,7 @@ export default function SettingsModal(): React.JSX.Element {
                               </button>
                               <button
                                 onClick={() => {
-                                  const updated = [...remoteHostsList]
+                                  const updated = [...remoteHosts]
                                   updated[idx] = { ...updated[idx], favoriteFolders: updated[idx].favoriteFolders.filter((_, i) => i !== fIdx) }
                                   saveRemoteHosts(updated)
                                 }}
@@ -556,7 +555,7 @@ export default function SettingsModal(): React.JSX.Element {
                               <button
                                 onClick={() => {
                                   if (!editRemoteFavForm.name.trim() || !editRemoteFavForm.path.trim()) return
-                                  const updated = [...remoteHostsList]
+                                  const updated = [...remoteHosts]
                                   const favs = [...updated[idx].favoriteFolders, { ...editRemoteFavForm }]
                                   updated[idx] = { ...updated[idx], favoriteFolders: favs }
                                   saveRemoteHosts(updated)
@@ -620,7 +619,7 @@ export default function SettingsModal(): React.JSX.Element {
                     <button
                       onClick={() => {
                         if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
-                        const updated = [...remoteHostsList, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), favoriteFolders: [] }]
+                        const updated = [...remoteHosts, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), favoriteFolders: [] }]
                         saveRemoteHosts(updated)
                         setAddRemoteMode(false)
                         setEditRemoteForm({ name: '', host: '' })

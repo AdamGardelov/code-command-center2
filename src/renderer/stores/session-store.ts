@@ -38,6 +38,7 @@ interface SessionStore {
   toggleTheme: () => void
   toggleSettings: () => void
   setFavorites: (favoriteFolders: FavoriteFolder[]) => Promise<void>
+  setRemoteHosts: (remoteHosts: RemoteHost[]) => Promise<void>
   setEnabledProviders: (providers: AiProvider[]) => Promise<void>
   persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
@@ -126,6 +127,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setFavorites: async (favoriteFolders) => {
     await window.cccAPI.config.update({ favoriteFolders })
     set({ favorites: favoriteFolders })
+  },
+  setRemoteHosts: async (remoteHosts) => {
+    await window.cccAPI.config.update({ remoteHosts })
+    set({ remoteHosts })
   },
   setEnabledProviders: async (providers) => {
     await window.cccAPI.config.update({ enabledProviders: providers })
