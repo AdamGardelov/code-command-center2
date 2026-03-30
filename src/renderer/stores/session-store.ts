@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -10,7 +10,10 @@ interface SessionStore {
   modalOpen: boolean
   theme: Theme
   loading: boolean
+  settingsOpen: boolean
+  favorites: FavoriteFolder[]
 
+  loadConfig: () => Promise<void>
   loadSessions: () => Promise<void>
   createSession: (opts: SessionCreate) => Promise<void>
   removeSession: (id: string) => Promise<void>
@@ -20,6 +23,9 @@ interface SessionStore {
   setSidebarWidth: (width: number) => void
   toggleModal: () => void
   toggleTheme: () => void
+  toggleSettings: () => void
+  setFavorites: (favoriteFolders: FavoriteFolder[]) => Promise<void>
+  persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   nextSession: () => void
   prevSession: () => void
@@ -34,6 +40,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   modalOpen: false,
   theme: 'dark',
   loading: true,
+  settingsOpen: false,
+  favorites: [],
+
+  loadConfig: async () => {
+    const config = await window.cccAPI.config.load()
+    document.documentElement.setAttribute('data-theme', config.theme)
+    set({
+      theme: config.theme,
+      sidebarWidth: config.sidebarWidth,
+      favorites: config.favoriteFolders
+    })
+  },
 
   loadSessions: async () => {
     const sessions = await window.cccAPI.session.list()
@@ -76,8 +94,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   toggleTheme: () => set((state) => {
     const next = state.theme === 'dark' ? 'light' : 'dark'
     document.documentElement.setAttribute('data-theme', next)
+    void window.cccAPI.config.update({ theme: next })
     return { theme: next }
   }),
+  toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),
+  setFavorites: async (favoriteFolders) => {
+    await window.cccAPI.config.update({ favoriteFolders })
+    set({ favorites: favoriteFolders })
+  },
+  persistSidebarWidth: async () => {
+    const { sidebarWidth } = get()
+    await window.cccAPI.config.update({ sidebarWidth })
+  },
 
   updateSessionStatus: (sessionName, status) => {
     set((state) => ({
