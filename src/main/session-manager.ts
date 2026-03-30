@@ -59,6 +59,21 @@ function getGitBranch(dir: string): string | undefined {
   }
 }
 
+function getRepoRoot(dir: string): string | undefined {
+  try {
+    const expanded = dir.replace(/^~/, process.env.HOME ?? '')
+    return (
+      execFileSync('git', ['-C', expanded, 'rev-parse', '--show-toplevel'], {
+        encoding: 'utf-8',
+        timeout: 3000,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }).trim() || undefined
+    )
+  } catch {
+    return undefined
+  }
+}
+
 function generateId(): string {
   return `ccc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
@@ -173,6 +188,7 @@ export class SessionManager {
         existing.workingDirectory = currentPath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
         existing.gitBranch = getGitBranch(existing.workingDirectory)
+        existing.repoPath = getRepoRoot(existing.workingDirectory)
         if (existing.status === 'error') existing.status = 'idle'
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
@@ -188,6 +204,7 @@ export class SessionManager {
           type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           gitBranch: getGitBranch(currentPath || '~'),
+          repoPath: getRepoRoot(currentPath || '~'),
           createdAt: created,
           lastActiveAt: Date.now()
         }
@@ -289,6 +306,7 @@ export class SessionManager {
       color,
       remoteHost: opts.remoteHost,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
+      repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
       createdAt: Date.now(),
       lastActiveAt: Date.now()
     }
