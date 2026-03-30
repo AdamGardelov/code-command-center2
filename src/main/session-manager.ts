@@ -83,7 +83,9 @@ export class SessionManager {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       if (!hostConfig) return null
-      return this.sshService.exec(hostConfig.host, `tmux ${args.join(' ')}`)
+      // Shell-escape each argument for remote execution
+      const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
+      return this.sshService.exec(hostConfig.host, `tmux ${escaped}`)
     }
     return tmux(...args)
   }
@@ -229,17 +231,15 @@ export class SessionManager {
 
     if (isRemote) {
       // Remote session creation via SSH
-      let cmd = `tmux new-session -d -s '${tmuxName}' -c '${opts.workingDirectory}' -e CCC_SESSION_NAME=${opts.name}`
-      if (opts.type === 'claude') {
-        cmd += ' -- claude'
-      } else if (opts.type === 'gemini') {
-        cmd += ' -- gemini'
-      }
-      this.tmuxCmd(opts.remoteHost, 'new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`, ...(opts.type === 'claude' ? ['--', 'claude'] : opts.type === 'gemini' ? ['--', 'gemini'] : []))
+      const newArgs = ['new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`]
+      if (opts.type === 'claude') newArgs.push('--', 'claude')
+      else if (opts.type === 'gemini') newArgs.push('--', 'gemini')
+
+      this.tmuxCmd(opts.remoteHost, ...newArgs)
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'window-size', 'latest')
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'aggressive-resize', 'on')
 
-      const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', `=${tmuxName}`)
+      const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', tmuxName)
       if (check === null) {
         throw new Error(`Failed to create remote tmux session: ${tmuxName} on ${opts.remoteHost}`)
       }
