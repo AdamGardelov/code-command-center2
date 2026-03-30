@@ -1,5 +1,7 @@
 import * as pty from 'node-pty'
 import type { BrowserWindow } from 'electron'
+import type { SessionStatus } from '../shared/types'
+import { OscParser } from './osc-parser'
 
 interface ActivePty {
   pty: pty.IPty
@@ -9,9 +11,26 @@ interface ActivePty {
 export class PtyManager {
   private ptys: Map<string, ActivePty> = new Map()
   private window: BrowserWindow | null = null
+  private oscParser: OscParser
+  private onStatusChange: ((sessionId: string, status: SessionStatus) => void) | null = null
+
+  constructor() {
+    this.oscParser = new OscParser((sessionId, status) => {
+      if (this.onStatusChange) {
+        this.onStatusChange(sessionId, status)
+      }
+      if (this.window && !this.window.isDestroyed()) {
+        this.window.webContents.send('session:state-changed', sessionId, status)
+      }
+    })
+  }
 
   setWindow(win: BrowserWindow): void {
     this.window = win
+  }
+
+  setStatusChangeHandler(handler: (sessionId: string, status: SessionStatus) => void): void {
+    this.onStatusChange = handler
   }
 
   attach(sessionId: string, tmuxSessionName: string): void {
@@ -28,12 +47,17 @@ export class PtyManager {
     })
 
     ptyProcess.onData((data) => {
+      // Parse OSC sequences inline (fast — no copying, no delay)
+      this.oscParser.parse(sessionId, data)
+
+      // Forward data to renderer unchanged
       if (this.window && !this.window.isDestroyed()) {
         this.window.webContents.send('terminal:data', sessionId, data)
       }
     })
 
     ptyProcess.onExit(() => {
+      this.oscParser.clear(sessionId)
       this.ptys.delete(sessionId)
       if (this.window && !this.window.isDestroyed()) {
         this.window.webContents.send('terminal:exit', sessionId)
@@ -51,6 +75,7 @@ export class PtyManager {
     } catch {
       // Process may already be dead
     }
+    this.oscParser.clear(sessionId)
     this.ptys.delete(sessionId)
   }
 

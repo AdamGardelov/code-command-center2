@@ -60,9 +60,18 @@ ipcMain.on('window:maximize', () => {
 })
 ipcMain.on('window:close', () => BrowserWindow.getFocusedWindow()?.close())
 
+// OSC-based status detection updates session manager
+ptyManager.setStatusChangeHandler((sessionId, status) => {
+  const session = sessionManager.getById(sessionId)
+  if (session) {
+    sessionManager.updateStatus(session.name, status)
+  }
+})
+
 registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
 
+// Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()
 
 app.whenReady().then(() => {
