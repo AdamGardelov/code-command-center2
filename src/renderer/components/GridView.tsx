@@ -1,21 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSessionStore } from '../stores/session-store'
 import TerminalPanel from './TerminalPanel'
 
+function calcCols(count: number): number {
+  if (count <= 1) return 1
+  if (count <= 4) return 2
+  if (count <= 9) return 3
+  return 4
+}
+
 export default function GridView(): React.JSX.Element {
-  const containerRef = useRef<HTMLDivElement>(null)
   const sessions = useSessionStore((s) => s.sessions)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
 
-  // Session order for drag-and-drop reordering
   const [order, setOrder] = useState<string[]>([])
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const [cols, setCols] = useState(2)
 
-  // Sync order with sessions
   useEffect(() => {
     setOrder((prev) => {
       const ids = new Set(sessions.map((s) => s.id))
@@ -25,29 +28,14 @@ export default function GridView(): React.JSX.Element {
     })
   }, [sessions])
 
-  // Dynamic columns based on container width (like Switchboard: min 500px per card)
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width
-        const minCard = 500
-        const gap = 2
-        const fitCols = Math.max(1, Math.floor((width + gap) / (minCard + gap)))
-        setCols(Math.min(fitCols, sessions.length || 1))
-      }
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [sessions.length])
-
-  const handleDragStart = useCallback((id: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
     setDragId(id)
+    e.dataTransfer.effectAllowed = 'move'
   }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
     e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
     setDragOverId(id)
   }, [])
 
@@ -84,13 +72,12 @@ export default function GridView(): React.JSX.Element {
     .map((id) => sessions.find((s) => s.id === id))
     .filter(Boolean) as typeof sessions
 
-  // Calculate rows based on session count and cols
+  const cols = calcCols(orderedSessions.length)
   const rows = Math.ceil(orderedSessions.length / cols)
 
   return (
     <div
-      ref={containerRef}
-      className="grid-view"
+      className="grid-view flex-1"
       style={{
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`
@@ -101,14 +88,13 @@ export default function GridView(): React.JSX.Element {
           key={session.id}
           className={`grid-card ${dragId === session.id ? 'dragging' : ''} ${dragOverId === session.id ? 'drag-over' : ''}`}
           draggable
-          onDragStart={() => handleDragStart(session.id)}
+          onDragStart={(e) => handleDragStart(e, session.id)}
           onDragOver={(e) => handleDragOver(e, session.id)}
           onDrop={() => handleDrop(session.id)}
           onDragEnd={handleDragEnd}
           onClick={() => setActiveSession(session.id)}
           onDoubleClick={() => handleDoubleClick(session.id)}
         >
-          {/* Drag handle header */}
           <div
             className="h-6 flex items-center px-2 cursor-grab active:cursor-grabbing flex-shrink-0"
             style={{ backgroundColor: 'var(--bg-surface)' }}
@@ -125,7 +111,6 @@ export default function GridView(): React.JSX.Element {
               {session.name}
             </span>
           </div>
-          {/* Terminal */}
           <div className="flex-1 min-h-0">
             <TerminalPanel session={session} />
           </div>
