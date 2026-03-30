@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { GitBranch, Trash2, Folder } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
+import GroupContextMenu from './GroupContextMenu'
 
 interface SessionCardProps {
   session: Session
@@ -47,10 +49,16 @@ const showStatus = (session: Session): boolean => {
 
 export default function SessionCard({ session, isActive, onClick }: SessionCardProps): React.JSX.Element {
   const removeSession = useSessionStore((s) => s.removeSession)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
   return (
+    <>
     <button
       onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setContextMenu({ x: e.clientX, y: e.clientY })
+      }}
       className="w-full text-left rounded-lg transition-all duration-100 group relative overflow-hidden"
       style={{
         backgroundColor: isActive ? 'var(--bg-raised)' : 'var(--bg-primary)',
@@ -145,5 +153,14 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         )}
       </div>
     </button>
+      {contextMenu && (
+        <GroupContextMenu
+          sessionId={session.id}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   )
 }
