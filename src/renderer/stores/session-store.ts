@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, GridItem, Theme } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, GridItem, Theme, SessionStatus } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -10,9 +10,11 @@ interface SessionStore {
   gridLayout: GridItem[]
   modalOpen: boolean
   theme: Theme
+  loading: boolean
 
-  createSession: (opts: SessionCreate) => void
-  removeSession: (id: string) => void
+  loadSessions: () => Promise<void>
+  createSession: (opts: SessionCreate) => Promise<void>
+  removeSession: (id: string) => Promise<void>
   setActiveSession: (id: string) => void
   setViewMode: (mode: ViewMode) => void
   toggleSidebar: () => void
@@ -20,16 +22,13 @@ interface SessionStore {
   toggleModal: () => void
   toggleTheme: () => void
   updateGridLayout: (layout: GridItem[]) => void
+  updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   nextSession: () => void
   prevSession: () => void
 }
 
-function generateId(): string {
-  return crypto.randomUUID()
-}
-
 function generateGridLayout(sessions: Session[]): GridItem[] {
-  const cols = sessions.length <= 2 ? sessions.length : sessions.length <= 4 ? 2 : 3
+  const cols = sessions.length <= 2 ? (sessions.length || 1) : sessions.length <= 4 ? 2 : 3
   return sessions.map((s, i) => ({
     i: s.id,
     x: i % cols,
@@ -39,62 +38,31 @@ function generateGridLayout(sessions: Session[]): GridItem[] {
   }))
 }
 
-const now = Date.now()
-
-const mockSessions: Session[] = [
-  {
-    id: generateId(),
-    name: 'api-server',
-    workingDirectory: '~/projects/api-server',
-    status: 'running',
-    createdAt: now - 3600000,
-    lastActiveAt: now - 120000
-  },
-  {
-    id: generateId(),
-    name: 'frontend',
-    workingDirectory: '~/projects/frontend',
-    status: 'running',
-    createdAt: now - 7200000,
-    lastActiveAt: now - 900000
-  },
-  {
-    id: generateId(),
-    name: 'infra-setup',
-    workingDirectory: '~/projects/infra',
-    status: 'stopped',
-    createdAt: now - 86400000,
-    lastActiveAt: now - 3600000
-  },
-  {
-    id: generateId(),
-    name: 'docs-rewrite',
-    workingDirectory: '~/projects/docs',
-    status: 'error',
-    createdAt: now - 10800000,
-    lastActiveAt: now - 10800000
-  }
-]
-
 export const useSessionStore = create<SessionStore>((set, get) => ({
-  sessions: mockSessions,
-  activeSessionId: mockSessions[0].id,
+  sessions: [],
+  activeSessionId: null,
   viewMode: 'single',
   sidebarOpen: true,
   sidebarWidth: 260,
-  gridLayout: generateGridLayout(mockSessions),
+  gridLayout: [],
   modalOpen: false,
   theme: 'dark',
+  loading: true,
 
-  createSession: (opts) => {
-    const session: Session = {
-      id: generateId(),
-      name: opts.name,
-      workingDirectory: opts.workingDirectory,
-      status: 'running',
-      createdAt: Date.now(),
-      lastActiveAt: Date.now()
-    }
+  loadSessions: async () => {
+    const sessions = await window.cccAPI.session.list()
+    set((state) => ({
+      sessions,
+      loading: false,
+      activeSessionId: state.activeSessionId && sessions.find(s => s.id === state.activeSessionId)
+        ? state.activeSessionId
+        : sessions[0]?.id ?? null,
+      gridLayout: generateGridLayout(sessions)
+    }))
+  },
+
+  createSession: async (opts) => {
+    const session = await window.cccAPI.session.create(opts)
     set((state) => {
       const sessions = [...state.sessions, session]
       return {
@@ -105,7 +73,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })
   },
 
-  removeSession: (id) => {
+  removeSession: async (id) => {
+    await window.cccAPI.session.kill(id)
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== id)
       const activeSessionId =
@@ -131,6 +100,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     return { theme: next }
   }),
   updateGridLayout: (layout) => set({ gridLayout: layout }),
+
+  updateSessionStatus: (sessionName, status) => {
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.name === sessionName ? { ...s, status } : s
+      )
+    }))
+  },
 
   nextSession: () => {
     const { sessions, activeSessionId } = get()
