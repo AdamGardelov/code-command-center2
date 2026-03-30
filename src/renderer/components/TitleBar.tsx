@@ -1,6 +1,22 @@
 import { Minus, Square, X, Sun, Moon } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 
+const statusColors: Record<string, string> = {
+  idle: 'var(--success)',
+  working: 'var(--accent)',
+  waiting: 'var(--error)',
+  stopped: 'var(--text-muted)',
+  error: 'var(--error)'
+}
+
+const statusLabels: Record<string, string> = {
+  idle: 'Idle',
+  working: 'Working',
+  waiting: 'Needs input',
+  stopped: 'Stopped',
+  error: 'Error'
+}
+
 export default function TitleBar(): React.JSX.Element {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const sessions = useSessionStore((s) => s.sessions)
@@ -10,65 +26,53 @@ export default function TitleBar(): React.JSX.Element {
 
   return (
     <div
-      className="h-9 flex items-center justify-between px-4 border-b select-none"
+      className="h-9 flex items-center justify-between px-4 border-b select-none flex-shrink-0"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--bg-raised)',
         WebkitAppRegion: 'drag'
       } as React.CSSProperties}
     >
-      {/* Left: app name */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-2.5 h-2.5 rounded-sm"
-            style={{ backgroundColor: 'var(--accent)' }}
-          />
-          <span
-            className="text-[11px] font-bold tracking-wider uppercase"
-            style={{ color: 'var(--text-primary)', letterSpacing: '0.08em' }}
-          >
-            CCC
-          </span>
-        </div>
-        {activeSession && (
+      {/* Left: session info */}
+      <div className="flex items-center gap-2 min-w-0">
+        {activeSession ? (
           <>
-            <span style={{ color: 'var(--bg-raised)' }} className="text-[10px]">/</span>
             <span
-              className="text-[11px] font-medium"
-              style={{ color: activeSession.color ?? 'var(--text-secondary)' }}
+              className="text-[11px] font-semibold truncate"
+              style={{ color: activeSession.color ?? 'var(--text-primary)' }}
             >
               {activeSession.name}
             </span>
-            {activeSession.status === 'working' && (
-              <span
-                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider status-pulse"
-                style={{
-                  backgroundColor: 'var(--accent-muted)',
-                  color: 'var(--accent)'
-                }}
-              >
-                working
-              </span>
+            {activeSession.type !== 'shell' && (
+              <>
+                <span
+                  className="w-[5px] h-[5px] rounded-full flex-shrink-0"
+                  style={{ backgroundColor: statusColors[activeSession.status] ?? 'var(--text-muted)' }}
+                />
+                <span
+                  className="text-[9px] font-medium uppercase tracking-wide flex-shrink-0"
+                  style={{ color: statusColors[activeSession.status] ?? 'var(--text-muted)' }}
+                >
+                  {statusLabels[activeSession.status] ?? activeSession.status}
+                </span>
+              </>
             )}
-            {activeSession.status === 'waiting' && (
-              <span
-                className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider status-pulse"
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  color: 'var(--error)'
-                }}
-              >
-                needs input
+            {activeSession.gitBranch && (
+              <span className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
+                {activeSession.gitBranch}
               </span>
             )}
           </>
+        ) : (
+          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+            Code Command Center
+          </span>
         )}
       </div>
 
       {/* Right: controls */}
       <div
-        className="flex items-center gap-0.5"
+        className="flex items-center gap-0.5 flex-shrink-0"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
