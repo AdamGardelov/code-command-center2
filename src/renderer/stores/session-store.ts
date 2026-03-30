@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -15,8 +15,19 @@ interface SessionStore {
   enabledProviders: AiProvider[]
   hostStatuses: Record<string, boolean>
   remoteHosts: RemoteHost[]
+  sessionGroups: SessionGroup[]
+  worktreeBasePath: string
 
   loadConfig: () => Promise<void>
+  loadGroups: () => Promise<void>
+  createGroup: (name: string) => Promise<SessionGroup>
+  deleteGroup: (groupId: string) => Promise<void>
+  addSessionToGroup: (groupId: string, sessionId: string) => Promise<void>
+  removeSessionFromGroup: (groupId: string, sessionId: string) => Promise<void>
+  getGroupedSessions: () => {
+    groups: Array<{ group: SessionGroup | { id: string; name: string; auto: true }; sessionIds: string[] }>
+    ungrouped: string[]
+  }
   loadSessions: () => Promise<void>
   createSession: (opts: SessionCreate) => Promise<void>
   removeSession: (id: string) => Promise<void>
@@ -51,6 +62,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   favorites: [],
   hostStatuses: {},
   remoteHosts: [],
+  sessionGroups: [],
+  worktreeBasePath: '~/worktrees',
 
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
@@ -60,7 +73,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sidebarWidth: config.sidebarWidth,
       favorites: config.favoriteFolders,
       enabledProviders: config.enabledProviders ?? ['claude'],
-      remoteHosts: config.remoteHosts ?? []
+      remoteHosts: config.remoteHosts ?? [],
+      sessionGroups: config.sessionGroups ?? [],
+      worktreeBasePath: config.worktreeBasePath ?? '~/worktrees'
     })
   },
 
@@ -155,5 +170,82 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const idx = sessions.findIndex((s) => s.id === activeSessionId)
     const prev = (idx - 1 + sessions.length) % sessions.length
     set({ activeSessionId: sessions[prev].id })
-  }
+  },
+
+  loadGroups: async () => {
+    const config = await window.cccAPI.config.load()
+    set({ sessionGroups: config.sessionGroups ?? [] })
+  },
+
+  createGroup: async (name) => {
+    const group = await window.cccAPI.group.create(name)
+    set((state) => ({ sessionGroups: [...state.sessionGroups, group] }))
+    return group
+  },
+
+  deleteGroup: async (groupId) => {
+    await window.cccAPI.group.delete(groupId)
+    set((state) => ({
+      sessionGroups: state.sessionGroups.filter(g => g.id !== groupId)
+    }))
+  },
+
+  addSessionToGroup: async (groupId, sessionId) => {
+    await window.cccAPI.group.addSession(groupId, sessionId)
+    set((state) => ({
+      sessionGroups: state.sessionGroups.map(g =>
+        g.id === groupId && !g.sessionIds.includes(sessionId)
+          ? { ...g, sessionIds: [...g.sessionIds, sessionId] }
+          : g
+      )
+    }))
+  },
+
+  removeSessionFromGroup: async (groupId, sessionId) => {
+    await window.cccAPI.group.removeSession(groupId, sessionId)
+    set((state) => ({
+      sessionGroups: state.sessionGroups.map(g =>
+        g.id === groupId
+          ? { ...g, sessionIds: g.sessionIds.filter(id => id !== sessionId) }
+          : g
+      )
+    }))
+  },
+
+  getGroupedSessions: () => {
+    const { sessions, sessionGroups } = get()
+    const manuallyGrouped = new Set<string>()
+    const groups: Array<{ group: SessionGroup | { id: string; name: string; auto: true }; sessionIds: string[] }> = []
+
+    // Manual groups first
+    for (const group of sessionGroups) {
+      const validIds = group.sessionIds.filter(id => sessions.find(s => s.id === id))
+      if (validIds.length > 0) {
+        groups.push({ group, sessionIds: validIds })
+        for (const id of validIds) manuallyGrouped.add(id)
+      }
+    }
+
+    // Auto-groups from repoPath
+    const repoMap = new Map<string, string[]>()
+    for (const session of sessions) {
+      if (manuallyGrouped.has(session.id) || !session.repoPath) continue
+      const existing = repoMap.get(session.repoPath) ?? []
+      existing.push(session.id)
+      repoMap.set(session.repoPath, existing)
+    }
+    for (const [repoPath, sessionIds] of repoMap) {
+      if (sessionIds.length >= 2) {
+        const repoName = repoPath.split('/').pop() ?? repoPath
+        groups.push({
+          group: { id: `auto-${repoPath}`, name: repoName, auto: true },
+          sessionIds
+        })
+        for (const id of sessionIds) manuallyGrouped.add(id)
+      }
+    }
+
+    const ungrouped = sessions.filter(s => !manuallyGrouped.has(s.id)).map(s => s.id)
+    return { groups, ungrouped }
+  },
 }))
