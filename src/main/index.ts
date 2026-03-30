@@ -6,8 +6,14 @@ import { PtyManager } from './pty-manager'
 import { StateDetector } from './state-detector'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
+import { registerConfigIpc } from './ipc/config'
+import { ConfigService } from './config-service'
+
+const configService = new ConfigService()
+configService.load()
 
 const sessionManager = new SessionManager()
+sessionManager.setConfigService(configService)
 const ptyManager = new PtyManager()
 const stateDetector = new StateDetector()
 
@@ -70,6 +76,7 @@ ptyManager.setStatusChangeHandler((sessionId, status) => {
 
 registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
+registerConfigIpc(configService)
 
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()

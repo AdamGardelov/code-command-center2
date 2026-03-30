@@ -66,12 +66,19 @@ const PREFIX = 'ccc-'
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
+  private configService: { get(): { sessionColors: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string> }>): void } | null = null
+
+  setConfigService(service: { get(): { sessionColors: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string> }>): void }): void {
+    this.configService = service
+  }
 
   checkDependencies(): { tmux: boolean; claude: boolean } {
     return { tmux: isTmuxInstalled(), claude: isClaudeInstalled() }
   }
 
-  private nextColor(): string {
+  private getColorForSession(sessionName: string): string {
+    const saved = this.configService?.get().sessionColors[sessionName]
+    if (saved) return saved
     const color = SESSION_COLORS[this.colorIndex % SESSION_COLORS.length]
     this.colorIndex++
     return color
@@ -109,11 +116,13 @@ export class SessionManager {
         if (existing.status === 'error') existing.status = 'idle'
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
-        const color = this.nextColor()
+        const sessionName = name.slice(PREFIX.length)
+        const color = this.getColorForSession(sessionName)
         this.applyTmuxColor(name, color)
+        this.configService?.update({ sessionColors: { [sessionName]: color } })
         const session: Session = {
           id: generateId(),
-          name: name.slice(PREFIX.length),
+          name: sessionName,
           workingDirectory: currentPath || '~',
           status: 'idle',
           type: 'claude',
@@ -169,8 +178,9 @@ export class SessionManager {
       throw new Error(`Failed to create tmux session: ${tmuxName}`)
     }
 
-    const color = this.nextColor()
+    const color = this.getColorForSession(opts.name)
     this.applyTmuxColor(tmuxName, color)
+    this.configService?.update({ sessionColors: { [opts.name]: color } })
 
     const session: Session = {
       id: generateId(),
