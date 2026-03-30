@@ -1,4 +1,4 @@
-import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, Terminal } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 
@@ -88,7 +88,7 @@ export default function SessionSidebar(): React.JSX.Element {
                 {claudeSessions.length}
               </span>
             </div>
-            <div className="flex flex-col gap-px">
+            <div className="flex flex-col gap-1.5">
               {claudeSessions.map((s) => (
                 <SessionCard
                   key={s.id}
@@ -105,7 +105,7 @@ export default function SessionSidebar(): React.JSX.Element {
         {shellSessions.length > 0 && (
           <div className="mb-2">
             <div className="flex items-center gap-1.5 px-2 py-1.5">
-              <Terminal size={12} style={{ color: 'var(--text-secondary)' }} />
+              <SquareTerminal size={12} style={{ color: 'var(--text-secondary)' }} />
               <span
                 className="text-[10px] uppercase tracking-[1px] font-semibold"
                 style={{ color: 'var(--text-secondary)' }}
