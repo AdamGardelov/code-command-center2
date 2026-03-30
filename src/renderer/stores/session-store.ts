@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -13,6 +13,8 @@ interface SessionStore {
   settingsOpen: boolean
   favorites: FavoriteFolder[]
   enabledProviders: AiProvider[]
+  hostStatuses: Record<string, boolean>
+  remoteHosts: RemoteHost[]
 
   loadConfig: () => Promise<void>
   loadSessions: () => Promise<void>
@@ -29,6 +31,8 @@ interface SessionStore {
   setEnabledProviders: (providers: AiProvider[]) => Promise<void>
   persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
+  loadHostStatuses: () => Promise<void>
+  updateHostStatus: (name: string, online: boolean) => void
   nextSession: () => void
   prevSession: () => void
 }
@@ -45,6 +49,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   settingsOpen: false,
   enabledProviders: ['claude'] as AiProvider[],
   favorites: [],
+  hostStatuses: {},
+  remoteHosts: [],
 
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
@@ -53,7 +59,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       theme: config.theme,
       sidebarWidth: config.sidebarWidth,
       favorites: config.favoriteFolders,
-      enabledProviders: config.enabledProviders ?? ['claude']
+      enabledProviders: config.enabledProviders ?? ['claude'],
+      remoteHosts: config.remoteHosts ?? []
     })
   },
 
@@ -113,6 +120,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   persistSidebarWidth: async () => {
     const { sidebarWidth } = get()
     await window.cccAPI.config.update({ sidebarWidth })
+  },
+
+  loadHostStatuses: async () => {
+    const statuses = await window.cccAPI.host.statuses()
+    set({ hostStatuses: statuses })
+  },
+
+  updateHostStatus: (name, online) => {
+    set((state) => ({
+      hostStatuses: { ...state.hostStatuses, [name]: online }
+    }))
   },
 
   updateSessionStatus: (sessionName, status) => {
