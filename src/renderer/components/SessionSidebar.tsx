@@ -70,12 +70,13 @@ function Category({ icon, label, count, sessions, activeSessionId, onSelect, def
 interface MachineGroupProps {
   name: string
   online: boolean
+  isLocal?: boolean
   sessions: Session[]
   activeSessionId: string | null
   onSelect: (id: string) => void
 }
 
-function MachineGroup({ name, online, sessions, activeSessionId, onSelect }: MachineGroupProps): React.JSX.Element {
+function MachineGroup({ name, online, isLocal, sessions, activeSessionId, onSelect }: MachineGroupProps): React.JSX.Element {
   const [open, setOpen] = useState(true)
 
   const claudeSessions = sessions.filter((s) => s.type === 'claude')
@@ -96,15 +97,17 @@ function MachineGroup({ name, online, sessions, activeSessionId, onSelect }: Mac
         <span className="text-[10px] font-bold uppercase tracking-wide flex-1 text-left" style={{ color: 'var(--text-secondary)' }}>
           {name}
         </span>
-        <span
-          className="text-[8px] px-1 py-px rounded font-medium"
-          style={{
-            color: online ? 'var(--success)' : 'var(--text-muted)',
-            backgroundColor: online ? 'var(--success)' + '20' : 'var(--bg-raised)'
-          }}
-        >
-          {online ? 'online' : 'offline'}
-        </span>
+        {!isLocal && (
+          <span
+            className="text-[8px] px-1 py-px rounded font-medium"
+            style={{
+              color: online ? 'var(--success)' : 'var(--text-muted)',
+              backgroundColor: online ? 'var(--success)' + '20' : 'var(--bg-raised)'
+            }}
+          >
+            {online ? 'online' : 'offline'}
+          </span>
+        )}
         <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
           {sessions.length}
         </span>
@@ -235,23 +238,26 @@ export default function SessionSidebar(): React.JSX.Element {
             <MachineGroup
               name="Local"
               online={true}
+              isLocal
               sessions={localSessions}
               activeSessionId={activeSessionId}
               onSelect={setActiveSession}
             />
-            {remoteHosts.map((rh) => {
-              const hostSessions = filtered.filter((s) => s.remoteHost === rh.name)
-              return (
-                <MachineGroup
-                  key={rh.name}
-                  name={rh.name}
-                  online={hostStatuses[rh.name] ?? false}
-                  sessions={hostSessions}
-                  activeSessionId={activeSessionId}
-                  onSelect={setActiveSession}
-                />
-              )
-            })}
+            {remoteHosts
+              .filter((rh) => hostStatuses[rh.name] !== false)
+              .map((rh) => {
+                const hostSessions = filtered.filter((s) => s.remoteHost === rh.name)
+                return (
+                  <MachineGroup
+                    key={rh.name}
+                    name={rh.name}
+                    online={hostStatuses[rh.name] ?? false}
+                    sessions={hostSessions}
+                    activeSessionId={activeSessionId}
+                    onSelect={setActiveSession}
+                  />
+                )
+              })}
           </>
         ) : (
           <>
