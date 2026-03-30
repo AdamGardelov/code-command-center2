@@ -1,5 +1,6 @@
 import { Minus, Square, X, Sun, Moon } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
+import logoSrc from '../assets/logo.png'
 
 export default function TitleBar(): React.JSX.Element {
   const theme = useSessionStore((s) => s.theme)
@@ -14,7 +15,7 @@ export default function TitleBar(): React.JSX.Element {
       } as React.CSSProperties}
     >
       <div className="flex items-center gap-1.5">
-        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
+        <img src={logoSrc} alt="CCC" className="w-4 h-4" draggable={false} />
         <span className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
           CCC
         </span>
