@@ -10,6 +10,7 @@ export default function SessionSidebar(): React.JSX.Element {
   const setViewMode = useSessionStore((s) => s.setViewMode)
   const toggleModal = useSessionStore((s) => s.toggleModal)
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
+  const toggleSettings = useSessionStore((s) => s.toggleSettings)
 
   const claudeSessions = sessions.filter((s) => s.type === 'claude')
   const shellSessions = sessions.filter((s) => s.type === 'shell')
@@ -47,6 +48,7 @@ export default function SessionSidebar(): React.JSX.Element {
           New
         </button>
         <button
+          onClick={toggleSettings}
           className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
           style={{ color: 'var(--text-muted)' }}
           title="Settings"
