@@ -17,6 +17,7 @@ export default function Layout(): React.JSX.Element {
   const viewMode = useSessionStore((s) => s.viewMode)
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
   const setSidebarWidth = useSessionStore((s) => s.setSidebarWidth)
+  const persistSidebarWidth = useSessionStore((s) => s.persistSidebarWidth)
   const activeSession = sessions.find((s) => s.id === activeSessionId)
 
   const dragging = useRef(false)
@@ -42,6 +43,7 @@ export default function Layout(): React.JSX.Element {
         document.removeEventListener('mouseup', handleDragEnd)
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
+        void persistSidebarWidth()
       }
 
       document.addEventListener('mousemove', handleDragMove)
@@ -49,7 +51,7 @@ export default function Layout(): React.JSX.Element {
       document.body.style.cursor = 'col-resize'
       document.body.style.userSelect = 'none'
     },
-    [sidebarWidth, setSidebarWidth]
+    [sidebarWidth, setSidebarWidth, persistSidebarWidth]
   )
 
   return (
