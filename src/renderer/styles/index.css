@@ -88,7 +88,7 @@ body {
 
 .xterm-container .xterm {
   height: 100%;
-  padding: 2px 0 0 4px;
+  padding: 0;
 }
 
 .xterm-container .xterm-viewport {
