@@ -6,11 +6,12 @@ import { useSessionStore } from './stores/session-store'
 export default function App(): React.JSX.Element {
   useKeyboard()
 
+  const loadConfig = useSessionStore((s) => s.loadConfig)
   const loadSessions = useSessionStore((s) => s.loadSessions)
   const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus)
 
   useEffect(() => {
-    loadSessions()
+    loadConfig().then(() => loadSessions())
 
     const interval = setInterval(loadSessions, 5000)
 
