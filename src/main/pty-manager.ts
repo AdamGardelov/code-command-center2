@@ -38,7 +38,8 @@ export class PtyManager {
 
     const shell = process.env.SHELL || '/bin/bash'
 
-    const ptyProcess = pty.spawn(shell, ['-lc', `tmux attach-session -t '=${tmuxSessionName}'`], {
+    // -d detaches other clients so tmux uses THIS client's size
+    const ptyProcess = pty.spawn(shell, ['-lc', `tmux attach-session -d -t '=${tmuxSessionName}'`], {
       name: 'xterm-256color',
       cols: 120,
       rows: 30,

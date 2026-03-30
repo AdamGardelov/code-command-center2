@@ -123,7 +123,12 @@ export class SessionManager {
       args.push('--', 'claude')
     }
 
+    // Create the session
     tmux(...args)
+
+    // Configure tmux to follow the latest client size (no stale dimensions)
+    tmux('set-option', '-t', `=${tmuxName}`, 'window-size', 'latest')
+    tmux('set-option', '-t', `=${tmuxName}`, 'aggressive-resize', 'on')
 
     const check = tmux('has-session', '-t', `=${tmuxName}`)
     if (check === null) {
