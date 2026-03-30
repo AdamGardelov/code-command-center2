@@ -9,7 +9,8 @@ const DEFAULT_CONFIG: CccConfig = {
   theme: 'dark',
   sidebarWidth: 260,
   favoriteFolders: [],
-  sessionColors: {}
+  sessionColors: {},
+  sessionTypes: {}
 }
 
 export class ConfigService {
@@ -29,6 +30,9 @@ export class ConfigService {
           favoriteFolders: Array.isArray(parsed.favoriteFolders) ? parsed.favoriteFolders : [],
           sessionColors: parsed.sessionColors && typeof parsed.sessionColors === 'object'
             ? parsed.sessionColors
+            : {},
+          sessionTypes: parsed.sessionTypes && typeof parsed.sessionTypes === 'object'
+            ? parsed.sessionTypes
             : {}
         }
       } else {
@@ -56,6 +60,9 @@ export class ConfigService {
   update(partial: Partial<CccConfig>): CccConfig {
     if (partial.sessionColors) {
       this.config.sessionColors = { ...this.config.sessionColors, ...partial.sessionColors }
+    }
+    if (partial.sessionTypes) {
+      this.config.sessionTypes = { ...this.config.sessionTypes, ...partial.sessionTypes }
     }
     if (partial.theme !== undefined) this.config.theme = partial.theme
     if (partial.sidebarWidth !== undefined) this.config.sidebarWidth = partial.sidebarWidth

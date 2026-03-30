@@ -125,7 +125,7 @@ export class SessionManager {
           name: sessionName,
           workingDirectory: currentPath || '~',
           status: 'idle',
-          type: 'claude',
+          type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           gitBranch: getGitBranch(currentPath || '~'),
           createdAt: created,
@@ -180,7 +180,10 @@ export class SessionManager {
 
     const color = this.getColorForSession(opts.name)
     this.applyTmuxColor(tmuxName, color)
-    this.configService?.update({ sessionColors: { [opts.name]: color } })
+    this.configService?.update({
+      sessionColors: { [opts.name]: color },
+      sessionTypes: { [opts.name]: opts.type }
+    })
 
     const session: Session = {
       id: generateId(),

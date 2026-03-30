@@ -35,6 +35,7 @@ export interface CccConfig {
   sidebarWidth: number
   favoriteFolders: FavoriteFolder[]
   sessionColors: Record<string, string>
+  sessionTypes: Record<string, SessionType>
 }
 
 export interface CccAPI {
