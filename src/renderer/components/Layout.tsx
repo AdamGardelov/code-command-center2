@@ -3,6 +3,7 @@ import TitleBar from './TitleBar'
 import SessionSidebar from './SessionSidebar'
 import TerminalPanel from './TerminalPanel'
 import EmptyState from './EmptyState'
+import GridView from './GridView'
 import StatusBar from './StatusBar'
 import NewSessionModal from './NewSessionModal'
 
@@ -35,11 +36,7 @@ export default function Layout(): React.JSX.Element {
               <TerminalPanel session={activeSession} />
             </div>
           ) : (
-            <div className="flex-1 p-1 flex items-center justify-center">
-              <p style={{ color: 'var(--text-muted)' }} className="text-sm">
-                Grid view — coming in next task
-              </p>
-            </div>
+            <GridView />
           )}
         </main>
       </div>
