@@ -64,6 +64,12 @@ export function useTerminal(
       // WebGL not available — canvas fallback
     }
 
+    // Set container background to match xterm exactly (avoids fractional pixel gaps)
+    const bg = getTerminalTheme(theme).background
+    container.style.backgroundColor = bg
+    const parentPanel = container.closest('[class*="flex-col"]') as HTMLElement | null
+    if (parentPanel) parentPanel.style.backgroundColor = bg
+
     fitAddon.fit()
     termRef.current = terminal
     fitRef.current = fitAddon
@@ -105,6 +111,15 @@ export function useTerminal(
   useEffect(() => {
     if (termRef.current) {
       termRef.current.options.theme = getTerminalTheme(theme)
+      // Update container background to match terminal
+      const container = containerRef.current?.closest('[style*="bg-terminal"]') as HTMLElement | null
+      if (container) {
+        container.style.backgroundColor = theme === 'light' ? '#fafafa' : '#0d0d14'
+      }
+      // Refit after theme change
+      if (fitRef.current) {
+        fitRef.current.fit()
+      }
     }
-  }, [theme])
+  }, [theme, containerRef])
 }

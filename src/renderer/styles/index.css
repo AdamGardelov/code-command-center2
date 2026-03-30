@@ -88,7 +88,15 @@ body {
 
 .xterm-container .xterm {
   height: 100%;
-  padding: 4px;
+  padding: 2px 0 0 4px;
+}
+
+.xterm-container .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm-container .xterm-screen {
+  width: 100% !important;
 }
 
 /* Status pulse animation */
