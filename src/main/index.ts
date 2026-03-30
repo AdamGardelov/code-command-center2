@@ -19,11 +19,18 @@ import { registerConfigIpc } from './ipc/config'
 import { registerHostIpc } from './ipc/host'
 import { ConfigService } from './config-service'
 import { SshService } from './ssh-service'
+import { GitService } from './git-service'
+import { registerGitIpc } from './ipc/git'
+import { registerGroupIpc } from './ipc/group'
 
 const configService = new ConfigService()
 configService.load()
 
 const sshService = new SshService()
+
+const gitService = new GitService()
+gitService.setSshService(sshService)
+gitService.setConfigService(configService)
 
 const sessionManager = new SessionManager()
 sessionManager.setConfigService(configService)
@@ -99,6 +106,8 @@ registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
 registerConfigIpc(configService)
 registerHostIpc(sshService)
+registerGitIpc(gitService)
+registerGroupIpc(configService)
 
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()

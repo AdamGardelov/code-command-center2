@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 import type { Session } from '../../shared/types'
@@ -67,6 +67,54 @@ function Category({ icon, label, count, sessions, activeSessionId, onSelect, def
   )
 }
 
+interface SessionGroupSectionProps {
+  name: string
+  sessions: Session[]
+  activeSessionId: string | null
+  onSelect: (id: string) => void
+  isAuto?: boolean
+}
+
+function SessionGroupSection({ name, sessions, activeSessionId, onSelect, isAuto }: SessionGroupSectionProps): React.JSX.Element {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div className="mb-0.5 ml-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-colors duration-100 hover:bg-[rgba(255,255,255,0.03)]"
+      >
+        {open
+          ? <ChevronDown size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+          : <ChevronRight size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+        }
+        <GitBranch size={9} style={{ color: isAuto ? 'var(--text-muted)' : 'var(--accent)' }} className="flex-shrink-0" />
+        <span
+          className="text-[10px] font-semibold flex-1 text-left truncate"
+          style={{ color: isAuto ? 'var(--text-muted)' : 'var(--text-secondary)' }}
+        >
+          {name}
+        </span>
+        <span className="text-[9px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
+          {sessions.length}
+        </span>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-1 mt-0.5 ml-1">
+          {sessions.map((s) => (
+            <SessionCard
+              key={s.id}
+              session={s}
+              isActive={s.id === activeSessionId}
+              onClick={() => onSelect(s.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface MachineGroupProps {
   name: string
   online: boolean
@@ -78,10 +126,29 @@ interface MachineGroupProps {
 
 function MachineGroup({ name, online, isLocal, sessions, activeSessionId, onSelect }: MachineGroupProps): React.JSX.Element {
   const [open, setOpen] = useState(true)
+  const sessions_ = useSessionStore((s) => s.sessions)
+  const sessionGroups = useSessionStore((s) => s.sessionGroups)
+  const getGroupedSessions = useSessionStore((s) => s.getGroupedSessions)
 
-  const claudeSessions = sessions.filter((s) => s.type === 'claude')
-  const geminiSessions = sessions.filter((s) => s.type === 'gemini')
-  const shellSessions = sessions.filter((s) => s.type === 'shell')
+  const { groups, ungrouped } = useMemo(() => getGroupedSessions(), [sessions_, sessionGroups])
+
+  // Filter to only sessions in this machine
+  const machineSessionIds = new Set(sessions.map(s => s.id))
+  const machineGroups = groups
+    .map(g => ({
+      ...g,
+      sessionIds: g.sessionIds.filter(id => machineSessionIds.has(id))
+    }))
+    .filter(g => g.sessionIds.length > 0)
+  const machineUngrouped = ungrouped.filter(id => machineSessionIds.has(id))
+
+  const ungroupedSessions = machineUngrouped
+    .map(id => sessions.find(s => s.id === id))
+    .filter((s): s is Session => !!s)
+
+  const claudeUngrouped = ungroupedSessions.filter(s => s.type === 'claude')
+  const geminiUngrouped = ungroupedSessions.filter(s => s.type === 'gemini')
+  const shellUngrouped = ungroupedSessions.filter(s => s.type === 'shell')
 
   return (
     <div className="mb-1" style={{ opacity: online ? 1 : 0.4 }}>
@@ -114,32 +181,47 @@ function MachineGroup({ name, online, isLocal, sessions, activeSessionId, onSele
       </button>
       {open && (
         <div className="ml-1">
-          {claudeSessions.length > 0 && (
+          {machineGroups.map(({ group, sessionIds }) => {
+            const groupSessions = sessionIds
+              .map(id => sessions.find(s => s.id === id))
+              .filter((s): s is Session => !!s)
+            return (
+              <SessionGroupSection
+                key={group.id}
+                name={group.name}
+                sessions={groupSessions}
+                activeSessionId={activeSessionId}
+                onSelect={onSelect}
+                isAuto={'auto' in group}
+              />
+            )
+          })}
+          {claudeUngrouped.length > 0 && (
             <Category
               icon={<ClaudeIcon size={12} />}
               label="Claude Code"
-              count={claudeSessions.length}
-              sessions={claudeSessions}
+              count={claudeUngrouped.length}
+              sessions={claudeUngrouped}
               activeSessionId={activeSessionId}
               onSelect={onSelect}
             />
           )}
-          {geminiSessions.length > 0 && (
+          {geminiUngrouped.length > 0 && (
             <Category
               icon={<GeminiIcon size={12} />}
               label="Gemini"
-              count={geminiSessions.length}
-              sessions={geminiSessions}
+              count={geminiUngrouped.length}
+              sessions={geminiUngrouped}
               activeSessionId={activeSessionId}
               onSelect={onSelect}
             />
           )}
-          {shellSessions.length > 0 && (
+          {shellUngrouped.length > 0 && (
             <Category
               icon={<SquareTerminal size={11} style={{ color: 'var(--text-secondary)' }} />}
               label="Shell"
-              count={shellSessions.length}
-              sessions={shellSessions}
+              count={shellUngrouped.length}
+              sessions={shellUngrouped}
               activeSessionId={activeSessionId}
               onSelect={onSelect}
             />

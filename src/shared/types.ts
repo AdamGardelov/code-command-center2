@@ -13,6 +13,7 @@ export interface Session {
   color: string
   remoteHost?: string
   gitBranch?: string
+  repoPath?: string
   createdAt: number
   lastActiveAt: number
 }
@@ -32,22 +33,39 @@ export interface FavoriteFolder {
   name: string
   path: string
   defaultBranch: string
+  worktreePath?: string
 }
 
 export interface RemoteHost {
   name: string
   host: string
+  worktreeBasePath?: string
   favoriteFolders: FavoriteFolder[]
+}
+
+export interface SessionGroup {
+  id: string
+  name: string
+  sessionIds: string[]
+}
+
+export interface Worktree {
+  path: string
+  branch: string
+  isMain: boolean
+  repoPath: string
 }
 
 export interface CccConfig {
   theme: Theme
   sidebarWidth: number
+  worktreeBasePath: string
   favoriteFolders: FavoriteFolder[]
   sessionColors: Record<string, string>
   sessionTypes: Record<string, SessionType>
   enabledProviders: AiProvider[]
   remoteHosts: RemoteHost[]
+  sessionGroups: SessionGroup[]
 }
 
 export interface CccAPI {
@@ -78,5 +96,17 @@ export interface CccAPI {
   host: {
     statuses: () => Promise<Record<string, boolean>>
     onStatusChanged: (callback: (name: string, online: boolean) => void) => () => void
+  }
+  git: {
+    listWorktrees: (repoPath: string, remoteHost?: string) => Promise<Worktree[]>
+    addWorktree: (repoPath: string, branch: string, targetPath: string, remoteHost?: string) => Promise<Worktree>
+    removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>
+    listBranches: (repoPath: string, remoteHost?: string) => Promise<string[]>
+  }
+  group: {
+    create: (name: string) => Promise<SessionGroup>
+    delete: (groupId: string) => Promise<void>
+    addSession: (groupId: string, sessionId: string) => Promise<void>
+    removeSession: (groupId: string, sessionId: string) => Promise<void>
   }
 }

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { CccAPI, CccConfig, SessionCreate, SessionStatus } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup } from '../shared/types'
 
 const api: CccAPI = {
   window: {
@@ -61,6 +61,24 @@ const api: CccAPI = {
       ipcRenderer.on('host:status-changed', handler)
       return () => ipcRenderer.removeListener('host:status-changed', handler)
     }
+  },
+  git: {
+    listWorktrees: (repoPath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:list-worktrees', repoPath, remoteHost),
+    addWorktree: (repoPath: string, branch: string, targetPath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, remoteHost),
+    removeWorktree: (worktreePath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:remove-worktree', worktreePath, remoteHost),
+    listBranches: (repoPath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:list-branches', repoPath, remoteHost)
+  },
+  group: {
+    create: (name: string): Promise<SessionGroup> => ipcRenderer.invoke('group:create', name),
+    delete: (groupId: string): Promise<void> => ipcRenderer.invoke('group:delete', groupId),
+    addSession: (groupId: string, sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('group:add-session', groupId, sessionId),
+    removeSession: (groupId: string, sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('group:remove-session', groupId, sessionId)
   }
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, SquareTerminal, Server, Monitor } from 'lucide-react'
+import { X, SquareTerminal, Server, Monitor, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType } from '../../shared/types'
 
@@ -34,8 +34,24 @@ export default function NewSessionModal(): React.JSX.Element {
   const [remoteHost, setRemoteHost] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [worktreeMode, setWorktreeMode] = useState(false)
+  const [branch, setBranch] = useState('')
+  const [branches, setBranches] = useState<string[]>([])
+  const [loadingBranches, setLoadingBranches] = useState(false)
 
   if (!modalOpen) return <></>
+
+  const loadBranches = async (repoPath: string): Promise<void> => {
+    setLoadingBranches(true)
+    try {
+      const branchList = await window.cccAPI.git.listBranches(repoPath, remoteHost)
+      setBranches(branchList)
+    } catch {
+      setBranches([])
+    } finally {
+      setLoadingBranches(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
@@ -46,9 +62,21 @@ export default function NewSessionModal(): React.JSX.Element {
     setError(null)
 
     try {
+      let dir = workingDirectory.trim() || '~'
+
+      if (worktreeMode && branch.trim()) {
+        const worktree = await window.cccAPI.git.addWorktree(
+          workingDirectory.trim(),
+          branch.trim(),
+          '',
+          remoteHost
+        )
+        dir = worktree.path
+      }
+
       await createSession({
         name: name.trim(),
-        workingDirectory: workingDirectory.trim() || '~',
+        workingDirectory: dir,
         type,
         remoteHost
       })
@@ -56,6 +84,9 @@ export default function NewSessionModal(): React.JSX.Element {
       setWorkingDirectory('')
       setType(enabledProviders[0] ?? 'claude')
       setRemoteHost(undefined)
+      setWorktreeMode(false)
+      setBranch('')
+      setBranches([])
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -118,7 +149,11 @@ export default function NewSessionModal(): React.JSX.Element {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => { setName(fav.name); setWorkingDirectory(fav.path) }}
+                    onClick={() => {
+                      setName(fav.name)
+                      setWorkingDirectory(fav.path)
+                      void loadBranches(fav.path)
+                    }}
                     className="px-2.5 py-1.5 rounded-md text-[11px] border transition-colors duration-100 hover:border-[var(--accent)]"
                     style={{
                       borderColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--bg-raised)',
@@ -248,6 +283,66 @@ export default function NewSessionModal(): React.JSX.Element {
                 className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
                 style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
               />
+            </div>
+          )}
+
+          {workingDirectory.trim() && type !== 'shell' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Mode
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWorktreeMode(false)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                  style={{
+                    backgroundColor: !worktreeMode ? 'var(--accent-muted)' : 'transparent',
+                    borderColor: !worktreeMode ? 'var(--accent)' : 'var(--bg-raised)',
+                    color: !worktreeMode ? 'var(--accent)' : 'var(--text-muted)'
+                  }}
+                >
+                  Open in repo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorktreeMode(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                  style={{
+                    backgroundColor: worktreeMode ? 'var(--accent-muted)' : 'transparent',
+                    borderColor: worktreeMode ? 'var(--accent)' : 'var(--bg-raised)',
+                    color: worktreeMode ? 'var(--accent)' : 'var(--text-muted)'
+                  }}
+                >
+                  <GitBranch size={12} />
+                  New worktree
+                </button>
+              </div>
+            </div>
+          )}
+
+          {worktreeMode && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Branch
+              </label>
+              <input
+                type="text"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                placeholder="e.g. feature-auth"
+                list="branch-suggestions"
+                className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+              />
+              {branches.length > 0 && (
+                <datalist id="branch-suggestions">
+                  {branches.map(b => <option key={b} value={b} />)}
+                </datalist>
+              )}
+              {loadingBranches && (
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Loading branches...</p>
+              )}
             </div>
           )}
 
