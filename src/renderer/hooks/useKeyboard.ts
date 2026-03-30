@@ -15,7 +15,7 @@ export function useKeyboard(): void {
       if (mod && e.key === 'w') {
         e.preventDefault()
         const { activeSessionId, removeSession } = useSessionStore.getState()
-        if (activeSessionId) removeSession(activeSessionId)
+        if (activeSessionId) void removeSession(activeSessionId)
         return
       }
 
