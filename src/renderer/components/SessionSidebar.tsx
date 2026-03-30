@@ -1,6 +1,17 @@
-import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, Bot, Terminal } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, Terminal } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
+
+function ClaudeIcon({ size = 12 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M16.604 2.073a1.29 1.29 0 0 0-1.218.072L12 4.39 8.614 2.145a1.29 1.29 0 0 0-1.218-.072c-.386.17-.66.52-.727.935L5.77 8.41l-4.4 2.533a1.29 1.29 0 0 0 0 2.236l4.4 2.533.9 5.402c.066.415.34.766.726.935.386.17.836.13 1.218-.072L12 19.732l3.386 2.245a1.29 1.29 0 0 0 1.218.072c.386-.17.66-.52.727-.935l.9-5.402 4.4-2.533a1.29 1.29 0 0 0 0-2.236l-4.4-2.533-.9-5.402a1.29 1.29 0 0 0-.727-.935Z"
+        fill="#D97757"
+      />
+    </svg>
+  )
+}
 
 export default function SessionSidebar(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
@@ -63,15 +74,15 @@ export default function SessionSidebar(): React.JSX.Element {
         {claudeSessions.length > 0 && (
           <div className="mb-2">
             <div className="flex items-center gap-1.5 px-2 py-1.5">
-              <Bot size={11} style={{ color: 'var(--text-muted)' }} />
+              <ClaudeIcon size={13} />
               <span
-                className="text-[9px] uppercase tracking-[1.5px] font-semibold"
-                style={{ color: 'var(--text-muted)' }}
+                className="text-[10px] uppercase tracking-[1px] font-semibold"
+                style={{ color: 'var(--text-secondary)' }}
               >
-                Claude
+                Claude Code
               </span>
               <span
-                className="text-[9px] ml-auto tabular-nums"
+                className="text-[10px] ml-auto tabular-nums font-medium"
                 style={{ color: 'var(--text-muted)' }}
               >
                 {claudeSessions.length}
@@ -94,15 +105,15 @@ export default function SessionSidebar(): React.JSX.Element {
         {shellSessions.length > 0 && (
           <div className="mb-2">
             <div className="flex items-center gap-1.5 px-2 py-1.5">
-              <Terminal size={11} style={{ color: 'var(--text-muted)' }} />
+              <Terminal size={12} style={{ color: 'var(--text-secondary)' }} />
               <span
-                className="text-[9px] uppercase tracking-[1.5px] font-semibold"
-                style={{ color: 'var(--text-muted)' }}
+                className="text-[10px] uppercase tracking-[1px] font-semibold"
+                style={{ color: 'var(--text-secondary)' }}
               >
                 Shell
               </span>
               <span
-                className="text-[9px] ml-auto tabular-nums"
+                className="text-[10px] ml-auto tabular-nums font-medium"
                 style={{ color: 'var(--text-muted)' }}
               >
                 {shellSessions.length}
@@ -160,7 +171,7 @@ export default function SessionSidebar(): React.JSX.Element {
           </button>
         </div>
         <span
-          className="text-[9px] tabular-nums px-1"
+          className="text-[10px] tabular-nums px-1 font-medium"
           style={{ color: 'var(--text-muted)' }}
         >
           {runningCount}/{sessions.length}

@@ -68,7 +68,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
           {session.name}
         </span>
         <span
-          className="text-[9px] tabular-nums flex-shrink-0 opacity-60 group-hover:opacity-0 transition-opacity duration-100"
+          className="text-[10px] tabular-nums flex-shrink-0 opacity-70 group-hover:opacity-0 transition-opacity duration-100"
           style={{ color: 'var(--text-muted)' }}
         >
           {formatRelativeTime(session.lastActiveAt)}
@@ -90,16 +90,16 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       {/* Row 2: status label + git branch */}
       <div className="flex items-center gap-1.5 mt-0.5 ml-[11px]">
         <span
-          className="text-[9px] font-medium"
+          className="text-[10px] font-medium"
           style={{ color: statusColors[session.status] ?? 'var(--text-muted)' }}
         >
           {statusLabels[session.status] ?? session.status}
         </span>
         {session.gitBranch && (
           <>
-            <span style={{ color: 'var(--bg-raised)' }} className="text-[9px]">|</span>
-            <GitBranch size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
-            <span className="text-[9px] truncate" style={{ color: 'var(--text-muted)' }}>
+            <span style={{ color: 'var(--text-muted)' }} className="text-[10px]">·</span>
+            <GitBranch size={10} style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0" />
+            <span className="text-[10px] truncate" style={{ color: 'var(--text-secondary)' }}>
               {session.gitBranch}
             </span>
           </>
