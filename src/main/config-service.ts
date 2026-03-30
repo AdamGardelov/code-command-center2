@@ -11,7 +11,8 @@ const DEFAULT_CONFIG: CccConfig = {
   favoriteFolders: [],
   sessionColors: {},
   sessionTypes: {},
-  enabledProviders: ['claude']
+  enabledProviders: ['claude'],
+  remoteHosts: []
 }
 
 export class ConfigService {
@@ -35,7 +36,8 @@ export class ConfigService {
           sessionTypes: parsed.sessionTypes && typeof parsed.sessionTypes === 'object'
             ? parsed.sessionTypes
             : {},
-          enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude']
+          enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude'],
+          remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : []
         }
       } else {
         this.config = { ...DEFAULT_CONFIG }
@@ -70,6 +72,7 @@ export class ConfigService {
     if (partial.theme !== undefined) this.config.theme = partial.theme
     if (partial.sidebarWidth !== undefined) this.config.sidebarWidth = partial.sidebarWidth
     if (partial.favoriteFolders !== undefined) this.config.favoriteFolders = partial.favoriteFolders
+    if (partial.remoteHosts !== undefined) this.config.remoteHosts = partial.remoteHosts
 
     this.save(this.config)
     return this.config
