@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TitleBar from './TitleBar'
+import SessionTopBar from './SessionTopBar'
 import SessionSidebar from './SessionSidebar'
 import TerminalPanel from './TerminalPanel'
 import EmptyState from './EmptyState'
@@ -103,11 +104,14 @@ export default function Layout(): React.JSX.Element {
         )}
 
         {/* Main area */}
-        <main className="flex-1 flex overflow-hidden" style={{ backgroundColor: 'var(--bg-terminal)' }}>
+        <main className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-terminal)' }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : viewMode === 'single' && activeSession ? (
-            <TerminalPanel key={activeSession.id} session={activeSession} />
+            <>
+              <SessionTopBar session={activeSession} />
+              <TerminalPanel key={activeSession.id} session={activeSession} />
+            </>
           ) : (
             <GridView />
           )}
