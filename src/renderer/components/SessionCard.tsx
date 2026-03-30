@@ -17,11 +17,15 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`
 }
 
-const statusColors: Record<Session['status'], string> = {
-  running: 'var(--accent)',
+const statusColors: Record<string, string> = {
+  idle: 'var(--success)',
+  working: 'var(--accent)',
+  waiting: 'var(--error)',
   stopped: 'var(--text-muted)',
   error: 'var(--error)'
 }
+
+const pulseStatuses = new Set(['working', 'waiting'])
 
 export default function SessionCard({ session, isActive, onClick }: SessionCardProps): React.JSX.Element {
   return (
@@ -35,8 +39,8 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
     >
       <div className="flex items-center gap-2">
         <span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: statusColors[session.status] }}
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${pulseStatuses.has(session.status) ? 'status-pulse' : ''}`}
+          style={{ backgroundColor: statusColors[session.status] ?? 'var(--text-muted)' }}
         />
         <span
           className="text-xs font-medium truncate"
@@ -44,12 +48,21 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         >
           {session.name}
         </span>
+        {session.type === 'shell' && (
+          <span className="text-[9px] px-1 rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
+            sh
+          </span>
+        )}
       </div>
-      <div
-        className="text-[10px] mt-0.5 ml-3.5"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        {formatRelativeTime(session.lastActiveAt)}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] mt-0.5 ml-3.5" style={{ color: 'var(--text-muted)' }}>
+          {formatRelativeTime(session.lastActiveAt)}
+        </span>
+        {session.gitBranch && (
+          <span className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+            {session.gitBranch}
+          </span>
+        )}
       </div>
     </button>
   )
