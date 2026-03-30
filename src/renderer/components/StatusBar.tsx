@@ -7,7 +7,7 @@ export default function StatusBar(): React.JSX.Element {
 
   return (
     <div
-      className="h-5 flex items-center justify-between px-4 text-[9px] border-t select-none flex-shrink-0"
+      className="h-5 flex items-center justify-between px-4 text-[10px] font-medium border-t select-none flex-shrink-0"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--bg-raised)',

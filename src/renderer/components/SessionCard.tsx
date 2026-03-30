@@ -42,7 +42,7 @@ const statusLabels: Record<string, string> = {
 const pulseStatuses = new Set(['working', 'waiting'])
 
 const showStatus = (session: Session): boolean => {
-  return session.type === 'claude'
+  return session.type !== 'shell'
 }
 
 export default function SessionCard({ session, isActive, onClick }: SessionCardProps): React.JSX.Element {
@@ -73,7 +73,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         {/* Row 1: name + status dot + time */}
         <div className="flex items-center gap-2">
           <span
-            className="text-[11px] font-semibold truncate flex-1"
+            className="text-[12px] font-semibold truncate flex-1"
             style={{ color: isActive ? session.color : 'var(--text-primary)' }}
           >
             {session.name}
@@ -85,12 +85,11 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
             />
           )}
           <span
-            className="text-[9px] tabular-nums flex-shrink-0 group-hover:opacity-0 transition-opacity duration-100"
+            className="text-[10px] tabular-nums flex-shrink-0 font-medium group-hover:opacity-0 transition-opacity duration-100"
             style={{ color: 'var(--text-muted)' }}
           >
             {formatRelativeTime(session.lastActiveAt)}
           </span>
-          {/* Delete on hover */}
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -100,28 +99,28 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
             style={{ color: 'var(--error)' }}
             title="Kill session"
           >
-            <Trash2 size={11} />
+            <Trash2 size={12} />
           </button>
         </div>
 
-        {/* Row 2: status (claude only) + git branch */}
+        {/* Row 2: status + git branch */}
         {(showStatus(session) || session.gitBranch) && (
           <div className="flex items-center gap-1.5 mt-1">
             {showStatus(session) && (
               <span
-                className="text-[9px] font-semibold uppercase tracking-wide"
+                className="text-[10px] font-bold uppercase tracking-wide"
                 style={{ color: statusColors[session.status] ?? 'var(--text-muted)' }}
               >
                 {statusLabels[session.status] ?? session.status}
               </span>
             )}
             {showStatus(session) && session.gitBranch && (
-              <span style={{ color: 'var(--text-muted)' }} className="text-[9px]">·</span>
+              <span style={{ color: 'var(--text-muted)' }} className="text-[10px]">·</span>
             )}
             {session.gitBranch && (
               <>
-                <GitBranch size={9} style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0" />
-                <span className="text-[9px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                <GitBranch size={10} style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0" />
+                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--text-secondary)' }}>
                   {session.gitBranch}
                 </span>
               </>
@@ -132,8 +131,8 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         {/* Row 3: working directory */}
         {session.workingDirectory && session.workingDirectory !== '~' && (
           <div className="flex items-center gap-1 mt-1">
-            <Folder size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
-            <span className="text-[9px] truncate" style={{ color: 'var(--text-muted)' }}>
+            <Folder size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+            <span className="text-[10px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
               {shortenPath(session.workingDirectory)}
             </span>
           </div>

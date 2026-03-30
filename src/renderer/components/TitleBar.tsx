@@ -15,7 +15,7 @@ export default function TitleBar(): React.JSX.Element {
     >
       <div className="flex items-center gap-1.5">
         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
-        <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
           CCC
         </span>
       </div>

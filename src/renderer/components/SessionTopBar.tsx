@@ -36,7 +36,7 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
     >
       {/* Session name */}
       <span
-        className="text-[11px] font-semibold"
+        className="text-[12px] font-semibold"
         style={{ color: session.color ?? 'var(--text-primary)' }}
       >
         {session.name}
@@ -46,11 +46,11 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
       {session.type !== 'shell' && (
         <div className="flex items-center gap-1.5">
           <span
-            className={`w-[5px] h-[5px] rounded-full ${session.status === 'working' || session.status === 'waiting' ? 'status-pulse' : ''}`}
+            className={`w-[6px] h-[6px] rounded-full ${session.status === 'working' || session.status === 'waiting' ? 'status-pulse' : ''}`}
             style={{ backgroundColor: statusColors[session.status] ?? 'var(--text-muted)' }}
           />
           <span
-            className="text-[9px] font-medium"
+            className="text-[10px] font-semibold"
             style={{ color: statusColors[session.status] ?? 'var(--text-muted)' }}
           >
             {statusLabels[session.status] ?? session.status}
@@ -61,8 +61,8 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
       {/* Git branch */}
       {session.gitBranch && (
         <div className="flex items-center gap-1">
-          <GitBranch size={10} style={{ color: 'var(--text-muted)' }} />
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          <GitBranch size={11} style={{ color: 'var(--text-muted)' }} />
+          <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
             {session.gitBranch}
           </span>
         </div>
@@ -71,8 +71,8 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
       {/* Working directory */}
       {session.workingDirectory && session.workingDirectory !== '~' && (
         <div className="flex items-center gap-1 ml-auto">
-          <Folder size={10} style={{ color: 'var(--text-muted)' }} />
-          <span className="text-[10px] truncate max-w-[300px]" style={{ color: 'var(--text-muted)' }}>
+          <Folder size={11} style={{ color: 'var(--text-muted)' }} />
+          <span className="text-[11px] font-medium truncate max-w-[300px]" style={{ color: 'var(--text-muted)' }}>
             {shortenPath(session.workingDirectory)}
           </span>
         </div>

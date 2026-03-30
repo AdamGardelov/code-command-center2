@@ -40,14 +40,14 @@ function Category({ icon, label, count, sessions, activeSessionId, onSelect, def
         className="w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors duration-100 hover:bg-[rgba(255,255,255,0.03)]"
       >
         {open
-          ? <ChevronDown size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
-          : <ChevronRight size={9} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+          ? <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+          : <ChevronRight size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
         }
         {icon}
-        <span className="text-[10px] font-medium flex-1 text-left" style={{ color: 'var(--text-secondary)' }}>
+        <span className="text-[11px] font-semibold flex-1 text-left" style={{ color: 'var(--text-secondary)' }}>
           {label}
         </span>
-        <span className="text-[9px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
           {count}
         </span>
       </button>
@@ -136,7 +136,7 @@ export default function SessionSidebar(): React.JSX.Element {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search sessions..."
-            className="flex-1 bg-transparent border-none outline-none text-[10px]"
+            className="flex-1 bg-transparent border-none outline-none text-[11px]"
             style={{ color: 'var(--text-primary)' }}
           />
         </div>
@@ -202,7 +202,7 @@ export default function SessionSidebar(): React.JSX.Element {
         <div className="flex gap-0.5 flex-1">
           <button
             onClick={() => setViewMode('single')}
-            className="flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium transition-colors duration-100"
+            className="flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors duration-100"
             style={{
               backgroundColor: viewMode === 'single' ? 'var(--bg-raised)' : 'transparent',
               color: viewMode === 'single' ? 'var(--text-primary)' : 'var(--text-muted)'
@@ -213,7 +213,7 @@ export default function SessionSidebar(): React.JSX.Element {
           </button>
           <button
             onClick={() => setViewMode('grid')}
-            className="flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium transition-colors duration-100"
+            className="flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors duration-100"
             style={{
               backgroundColor: viewMode === 'grid' ? 'var(--accent-muted)' : 'transparent',
               color: viewMode === 'grid' ? 'var(--accent)' : 'var(--text-muted)'
@@ -223,7 +223,7 @@ export default function SessionSidebar(): React.JSX.Element {
             Grid
           </button>
         </div>
-        <span className="text-[9px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
           {runningCount}/{sessions.length}
         </span>
       </div>
