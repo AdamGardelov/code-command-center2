@@ -21,7 +21,7 @@ export default function TerminalPanel({ session, showHeader = false }: TerminalP
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden terminal-outer"
+      className="flex flex-col flex-1 h-full overflow-hidden terminal-outer"
     >
       {showHeader && (
         <div
