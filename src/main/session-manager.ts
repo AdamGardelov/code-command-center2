@@ -78,7 +78,11 @@ export class SessionManager {
   }
 
   private applyTmuxColor(tmuxName: string, color: string): void {
-    tmux('set-option', '-t', `=${tmuxName}`, 'status-style', `bg=${color},fg=#1d1f21`)
+    // Set session-level status bar color
+    tmux('set-option', '-t', tmuxName, 'status-style', `bg=${color},fg=#1d1f21`)
+    // Also set left/right status to match
+    tmux('set-option', '-t', tmuxName, 'status-left-style', `bg=${color},fg=#1d1f21`)
+    tmux('set-option', '-t', tmuxName, 'status-right-style', `bg=${color},fg=#1d1f21`)
   }
 
   async list(): Promise<Session[]> {
@@ -157,8 +161,8 @@ export class SessionManager {
     tmux(...args)
 
     // Configure tmux to follow the latest client size (no stale dimensions)
-    tmux('set-option', '-t', `=${tmuxName}`, 'window-size', 'latest')
-    tmux('set-option', '-t', `=${tmuxName}`, 'aggressive-resize', 'on')
+    tmux('set-option', '-t', tmuxName, 'window-size', 'latest')
+    tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
 
     const check = tmux('has-session', '-t', `=${tmuxName}`)
     if (check === null) {
