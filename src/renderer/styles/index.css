@@ -80,23 +80,35 @@ body {
   width: 2px;
 }
 
-/* xterm.js container */
+/* xterm.js container — background must match xterm canvas to hide fractional pixel gaps */
 .xterm-container {
   width: 100%;
   height: 100%;
+  background-color: var(--bg-terminal);
+}
+
+.terminal-outer {
+  background-color: var(--bg-terminal);
 }
 
 .xterm-container .xterm {
   height: 100%;
   padding: 0;
+  background-color: var(--bg-terminal);
 }
 
 .xterm-container .xterm-viewport {
   overflow-y: auto !important;
+  background-color: var(--bg-terminal) !important;
 }
 
 .xterm-container .xterm-screen {
   width: 100% !important;
+}
+
+/* Force react-grid-layout items to match terminal background */
+.react-grid-item {
+  background-color: var(--bg-terminal) !important;
 }
 
 /* Status pulse animation */
