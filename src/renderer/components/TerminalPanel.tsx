@@ -1,41 +1,23 @@
+import { useRef } from 'react'
 import type { Session } from '../../shared/types'
+import { useTerminal } from '../hooks/useTerminal'
 
 interface TerminalPanelProps {
   session: Session
   showHeader?: boolean
 }
 
-function getMockOutput(session: Session): string[] {
-  const header = [
-    '╭──────────────────────────────────────╮',
-    `│  Claude Code  v1.2.3                 │`,
-    `│  ${session.workingDirectory.padEnd(37)}│`,
-    '╰──────────────────────────────────────╯',
-    ''
-  ]
-
-  if (session.status === 'error') {
-    return [...header, '  ✗ Error: Connection lost', '  Process exited with code 1']
-  }
-  if (session.status === 'stopped') {
-    return [...header, '  Session ended.', '', '  ✓ 3 files modified', '  ✓ All tasks completed']
-  }
-  return [
-    ...header,
-    '  Analyzing codebase structure...',
-    '  Found 47 files, 3,200 lines',
-    '',
-    '  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    '',
-    '> I can see your project structure. What would',
-    '  you like to work on?',
-    '',
-    '  ▌'
-  ]
+const statusColors: Record<string, string> = {
+  idle: 'var(--success)',
+  working: 'var(--accent)',
+  waiting: 'var(--error)',
+  stopped: 'var(--text-muted)',
+  error: 'var(--error)'
 }
 
 export default function TerminalPanel({ session, showHeader = false }: TerminalPanelProps): React.JSX.Element {
-  const lines = getMockOutput(session)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useTerminal(containerRef, session.id)
 
   return (
     <div
@@ -53,42 +35,17 @@ export default function TerminalPanel({ session, showHeader = false }: TerminalP
         >
           <span
             className="w-1.5 h-1.5 rounded-full mr-2"
-            style={{
-              backgroundColor:
-                session.status === 'running'
-                  ? 'var(--accent)'
-                  : session.status === 'error'
-                    ? 'var(--error)'
-                    : 'var(--text-muted)'
-            }}
+            style={{ backgroundColor: statusColors[session.status] ?? 'var(--text-muted)' }}
           />
           {session.name}
-          <span className="ml-2" style={{ color: 'var(--text-muted)' }}>
-            {session.workingDirectory}
-          </span>
+          {session.gitBranch && (
+            <span className="ml-2" style={{ color: 'var(--text-muted)' }}>
+              {session.gitBranch}
+            </span>
+          )}
         </div>
       )}
-      <div className="flex-1 p-3 overflow-y-auto" style={{ fontFamily: 'var(--font-mono)' }}>
-        {lines.map((line, i) => (
-          <div
-            key={i}
-            className="text-[11px] leading-relaxed whitespace-pre"
-            style={{
-              color: line.startsWith('>')
-                ? 'var(--text-primary)'
-                : line.includes('✗') || line.includes('Error')
-                  ? 'var(--error)'
-                  : line.includes('✓')
-                    ? 'var(--success)'
-                    : line.includes('━')
-                      ? 'var(--accent)'
-                      : 'var(--text-muted)'
-            }}
-          >
-            {line || '\u00A0'}
-          </div>
-        ))}
-      </div>
+      <div ref={containerRef} className="flex-1 xterm-container" />
     </div>
   )
 }
