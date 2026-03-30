@@ -2,6 +2,14 @@ import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal } f
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 
+function GeminiIcon({ size = 13 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <path d="M14 28C14 21.77 9.94 16.66 4.42 15.08C2.91 14.64 1.36 14.38 0 14.25V13.75C1.36 13.62 2.91 13.36 4.42 12.92C9.94 11.34 14 6.23 14 0C14 6.23 18.06 11.34 23.58 12.92C25.09 13.36 26.64 13.62 28 13.75V14.25C26.64 14.38 25.09 14.64 23.58 15.08C18.06 16.66 14 21.77 14 28Z" fill="#4285F4" />
+    </svg>
+  )
+}
+
 function ClaudeIcon({ size = 13 }: { size?: number }): React.JSX.Element {
   return (
     <svg width={size} height={size} viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -24,6 +32,7 @@ export default function SessionSidebar(): React.JSX.Element {
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
 
   const claudeSessions = sessions.filter((s) => s.type === 'claude')
+  const geminiSessions = sessions.filter((s) => s.type === 'gemini')
   const shellSessions = sessions.filter((s) => s.type === 'shell')
   const runningCount = sessions.filter((s) => s.status === 'working' || s.status === 'idle' || s.status === 'waiting').length
 
@@ -90,6 +99,37 @@ export default function SessionSidebar(): React.JSX.Element {
             </div>
             <div className="flex flex-col gap-1.5">
               {claudeSessions.map((s) => (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  isActive={s.id === activeSessionId}
+                  onClick={() => setActiveSession(s.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Gemini sessions */}
+        {geminiSessions.length > 0 && (
+          <div className="mb-2">
+            <div className="flex items-center gap-1.5 px-2 py-1.5">
+              <GeminiIcon size={13} />
+              <span
+                className="text-[10px] uppercase tracking-[1px] font-semibold"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Gemini
+              </span>
+              <span
+                className="text-[10px] ml-auto tabular-nums font-medium"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {geminiSessions.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {geminiSessions.map((s) => (
                 <SessionCard
                   key={s.id}
                   session={s}

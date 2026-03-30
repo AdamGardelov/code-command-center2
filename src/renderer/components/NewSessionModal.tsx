@@ -1,7 +1,23 @@
 import { useState } from 'react'
-import { X, Terminal, Bot } from 'lucide-react'
+import { X, SquareTerminal } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType } from '../../shared/types'
+
+function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 1200 1200" fill="none">
+      <path d="M233.96 800.21L468.64 668.54l3.95-11.44-3.95-6.36h-11.44l-39.22-2.42-134.09-3.62-116.3-4.83L54.93 633.83l-28.35-5.04L0 592.75l2.74-17.48 23.84-16.03 34.15 2.98 75.46 5.15 113.24 7.81 82.15 4.83 121.69 12.65h19.33l2.74-7.81-6.6-4.83-5.16-4.83L346.39 495.79 219.54 411.87l-66.44-48.32-35.92-24.48-18.12-22.95-7.81-50.1 32.62-35.92 43.81 2.98 11.19 2.98 44.38 34.15L318.04 343.57l123.79 91.17 18.12 15.06 7.25-5.15.89-3.62-8.14-13.63-67.46-121.69-71.84-123.79-31.96-51.3-8.46-30.77c-2.98-12.64-5.15-23.27-5.15-36.24L312.32 13.21l20.54-6.6 49.53 6.6 20.86 18.12 30.77 70.39 49.85 110.82 77.32 150.68 22.63 44.7 12.08 41.4 4.51 12.64h7.81v-7.25l6.36-84.89 11.76-104.21 11.44-134.09 3.95-37.77 18.68-45.26 37.13-24.48 29 13.85 23.84 34.15-3.3 22.07-14.17 92.13-27.79 144.32-18.12 96.64h10.55l12.08-12.08 48.89-64.91 82.15-102.68 36.24-40.75 42.28-45.02 27.14-21.42h51.3l37.77 56.13-16.91 57.99-52.83 67-43.81 56.78-62.82 84.56-39.22 67.65 3.62 5.4 9.34-0.89 141.91-30.2 76.67-13.85 91.49-15.7 41.4 19.33 4.51 19.65-16.27 40.19-97.85 24.16-114.77 22.95-170.9 40.43-2.09 1.53 2.42 2.98 76.99 7.25 32.94 1.77 80.62 0 150.12 11.19 39.22 25.93 23.52 31.73-3.95 24.16-60.4 30.77-81.5-19.33-190.23-45.26-65.46-16.27-9.02 0v5.4l54.36 53.15 99.62 89.96 124.75 115.97 6.36 28.67-16.03 22.63-16.91-2.42-109.61-82.47-42.28-37.13-95.76-80.62-5.56 0v8.46l22.07 32.29 116.54 175.17 6.04 53.72-8.46 17.48-30.2 10.55-33.18-6.04-68.21-95.76-70.39-107.84-56.78-96.64-6.93 3.95-33.5 360.89-15.7 18.44-36.24 13.85-30.2-22.95-16.03-37.13 16.03-73.37 19.33-95.87 15.7-76.1 14.17-94.55 8.46-31.41-.56-2.09-6.93.89-71.23 97.85-108.4 146.5-85.77 91.81-20.54 8.14-35.6-18.44 3.3-32.94 19.89-29.32 118.7-150.99 71.6-93.58 46.23-48.17-.32-7.81-2.74 0L205.29 929.4l-56.13 7.25-24.16-22.63 2.98-37.13 11.44-12.08 94.79-65.23Z" fill="#D97757" />
+    </svg>
+  )
+}
+
+function GeminiIcon({ size = 14 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <path d="M14 28C14 21.77 9.94 16.66 4.42 15.08C2.91 14.64 1.36 14.38 0 14.25V13.75C1.36 13.62 2.91 13.36 4.42 12.92C9.94 11.34 14 6.23 14 0C14 6.23 18.06 11.34 23.58 12.92C25.09 13.36 26.64 13.62 28 13.75V14.25C26.64 14.38 25.09 14.64 23.58 15.08C18.06 16.66 14 21.77 14 28Z" fill="#4285F4" />
+    </svg>
+  )
+}
 
 export default function NewSessionModal(): React.JSX.Element {
   const modalOpen = useSessionStore((s) => s.modalOpen)
@@ -9,9 +25,10 @@ export default function NewSessionModal(): React.JSX.Element {
   const createSession = useSessionStore((s) => s.createSession)
   const favorites = useSessionStore((s) => s.favorites)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
+  const enabledProviders = useSessionStore((s) => s.enabledProviders)
   const [name, setName] = useState('')
   const [workingDirectory, setWorkingDirectory] = useState('')
-  const [type, setType] = useState<SessionType>('claude')
+  const [type, setType] = useState<SessionType>(enabledProviders[0] ?? 'claude')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,7 +37,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!name.trim() || creating) return
-    if (type === 'claude' && !workingDirectory.trim()) return
+    if (type !== 'shell' && !workingDirectory.trim()) return
 
     setCreating(true)
     setError(null)
@@ -33,7 +50,7 @@ export default function NewSessionModal(): React.JSX.Element {
       })
       setName('')
       setWorkingDirectory('')
-      setType('claude')
+      setType(enabledProviders[0] ?? 'claude')
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -45,6 +62,15 @@ export default function NewSessionModal(): React.JSX.Element {
   const handleBackdropClick = (e: React.MouseEvent): void => {
     if (e.target === e.currentTarget && !creating) toggleModal()
   }
+
+  const typeButtons: { type: SessionType; label: string; icon: React.ReactNode }[] = []
+  if (enabledProviders.includes('claude')) {
+    typeButtons.push({ type: 'claude', label: 'Claude', icon: <ClaudeIcon size={14} /> })
+  }
+  if (enabledProviders.includes('gemini')) {
+    typeButtons.push({ type: 'gemini', label: 'Gemini', icon: <GeminiIcon size={14} /> })
+  }
+  typeButtons.push({ type: 'shell', label: 'Shell', icon: <SquareTerminal size={14} /> })
 
   return (
     <div
@@ -117,32 +143,22 @@ export default function NewSessionModal(): React.JSX.Element {
               Type
             </label>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setType('claude')}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                style={{
-                  backgroundColor: type === 'claude' ? 'var(--accent-muted)' : 'transparent',
-                  borderColor: type === 'claude' ? 'var(--accent)' : 'var(--bg-raised)',
-                  color: type === 'claude' ? 'var(--accent)' : 'var(--text-muted)'
-                }}
-              >
-                <Bot size={14} />
-                Claude
-              </button>
-              <button
-                type="button"
-                onClick={() => setType('shell')}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                style={{
-                  backgroundColor: type === 'shell' ? 'var(--accent-muted)' : 'transparent',
-                  borderColor: type === 'shell' ? 'var(--accent)' : 'var(--bg-raised)',
-                  color: type === 'shell' ? 'var(--accent)' : 'var(--text-muted)'
-                }}
-              >
-                <Terminal size={14} />
-                Shell
-              </button>
+              {typeButtons.map((btn) => (
+                <button
+                  key={btn.type}
+                  type="button"
+                  onClick={() => setType(btn.type)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                  style={{
+                    backgroundColor: type === btn.type ? 'var(--accent-muted)' : 'transparent',
+                    borderColor: type === btn.type ? 'var(--accent)' : 'var(--bg-raised)',
+                    color: type === btn.type ? 'var(--accent)' : 'var(--text-muted)'
+                  }}
+                >
+                  {btn.icon}
+                  {btn.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -161,19 +177,21 @@ export default function NewSessionModal(): React.JSX.Element {
             />
           </div>
 
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
-              Working Directory
-            </label>
-            <input
-              type="text"
-              value={workingDirectory}
-              onChange={(e) => setWorkingDirectory(e.target.value)}
-              placeholder="e.g. ~/projects/my-app"
-              className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
-              style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
-            />
-          </div>
+          {type !== 'shell' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Working Directory
+              </label>
+              <input
+                type="text"
+                value={workingDirectory}
+                onChange={(e) => setWorkingDirectory(e.target.value)}
+                placeholder="e.g. ~/projects/my-app"
+                className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+              />
+            </div>
+          )}
 
           {error && (
             <p className="text-[11px]" style={{ color: 'var(--error)' }}>{error}</p>

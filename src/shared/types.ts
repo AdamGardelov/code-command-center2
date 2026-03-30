@@ -1,6 +1,8 @@
 export type SessionStatus = 'idle' | 'working' | 'waiting' | 'stopped' | 'error'
 
-export type SessionType = 'claude' | 'shell'
+export type SessionType = 'claude' | 'gemini' | 'shell'
+
+export type AiProvider = 'claude' | 'gemini'
 
 export interface Session {
   id: string
@@ -36,6 +38,7 @@ export interface CccConfig {
   favoriteFolders: FavoriteFolder[]
   sessionColors: Record<string, string>
   sessionTypes: Record<string, SessionType>
+  enabledProviders: AiProvider[]
 }
 
 export interface CccAPI {

@@ -10,7 +10,8 @@ const DEFAULT_CONFIG: CccConfig = {
   sidebarWidth: 260,
   favoriteFolders: [],
   sessionColors: {},
-  sessionTypes: {}
+  sessionTypes: {},
+  enabledProviders: ['claude']
 }
 
 export class ConfigService {
@@ -33,7 +34,8 @@ export class ConfigService {
             : {},
           sessionTypes: parsed.sessionTypes && typeof parsed.sessionTypes === 'object'
             ? parsed.sessionTypes
-            : {}
+            : {},
+          enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude']
         }
       } else {
         this.config = { ...DEFAULT_CONFIG }
@@ -64,6 +66,7 @@ export class ConfigService {
     if (partial.sessionTypes) {
       this.config.sessionTypes = { ...this.config.sessionTypes, ...partial.sessionTypes }
     }
+    if (partial.enabledProviders !== undefined) this.config.enabledProviders = partial.enabledProviders
     if (partial.theme !== undefined) this.config.theme = partial.theme
     if (partial.sidebarWidth !== undefined) this.config.sidebarWidth = partial.sidebarWidth
     if (partial.favoriteFolders !== undefined) this.config.favoriteFolders = partial.favoriteFolders

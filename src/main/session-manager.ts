@@ -165,6 +165,8 @@ export class SessionManager {
 
     if (opts.type === 'claude') {
       args.push('--', 'claude')
+    } else if (opts.type === 'gemini') {
+      args.push('--', 'gemini')
     }
 
     // Create the session
@@ -190,7 +192,7 @@ export class SessionManager {
       id: generateId(),
       name: opts.name,
       workingDirectory: opts.workingDirectory,
-      status: opts.type === 'claude' ? 'working' : 'idle',
+      status: opts.type === 'shell' ? 'idle' : 'working',
       type: opts.type,
       color,
       gitBranch: getGitBranch(expandedDir),

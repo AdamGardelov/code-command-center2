@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -12,6 +12,7 @@ interface SessionStore {
   loading: boolean
   settingsOpen: boolean
   favorites: FavoriteFolder[]
+  enabledProviders: AiProvider[]
 
   loadConfig: () => Promise<void>
   loadSessions: () => Promise<void>
@@ -25,6 +26,7 @@ interface SessionStore {
   toggleTheme: () => void
   toggleSettings: () => void
   setFavorites: (favoriteFolders: FavoriteFolder[]) => Promise<void>
+  setEnabledProviders: (providers: AiProvider[]) => Promise<void>
   persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   nextSession: () => void
@@ -41,6 +43,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   theme: 'dark',
   loading: true,
   settingsOpen: false,
+  enabledProviders: ['claude'] as AiProvider[],
   favorites: [],
 
   loadConfig: async () => {
@@ -49,7 +52,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({
       theme: config.theme,
       sidebarWidth: config.sidebarWidth,
-      favorites: config.favoriteFolders
+      favorites: config.favoriteFolders,
+      enabledProviders: config.enabledProviders ?? ['claude']
     })
   },
 
@@ -101,6 +105,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setFavorites: async (favoriteFolders) => {
     await window.cccAPI.config.update({ favoriteFolders })
     set({ favorites: favoriteFolders })
+  },
+  setEnabledProviders: async (providers) => {
+    await window.cccAPI.config.update({ enabledProviders: providers })
+    set({ enabledProviders: providers })
   },
   persistSidebarWidth: async () => {
     const { sidebarWidth } = get()
