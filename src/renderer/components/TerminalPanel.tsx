@@ -5,13 +5,23 @@ interface TerminalPanelProps {
   showHeader?: boolean
 }
 
-const mockOutputs: Record<string, string[]> = {
-  running: [
+function getMockOutput(session: Session): string[] {
+  const header = [
     '╭──────────────────────────────────────╮',
-    '│  Claude Code  v1.2.3                 │',
-    '│  ~/projects/...                      │',
+    `│  Claude Code  v1.2.3                 │`,
+    `│  ${session.workingDirectory.padEnd(37)}│`,
     '╰──────────────────────────────────────╯',
-    '',
+    ''
+  ]
+
+  if (session.status === 'error') {
+    return [...header, '  ✗ Error: Connection lost', '  Process exited with code 1']
+  }
+  if (session.status === 'stopped') {
+    return [...header, '  Session ended.', '', '  ✓ 3 files modified', '  ✓ All tasks completed']
+  }
+  return [
+    ...header,
     '  Analyzing codebase structure...',
     '  Found 47 files, 3,200 lines',
     '',
@@ -21,29 +31,11 @@ const mockOutputs: Record<string, string[]> = {
     '  you like to work on?',
     '',
     '  ▌'
-  ],
-  stopped: [
-    '╭──────────────────────────────────────╮',
-    '│  Claude Code  v1.2.3                 │',
-    '╰──────────────────────────────────────╯',
-    '',
-    '  Session ended.',
-    '',
-    '  ✓ 3 files modified',
-    '  ✓ All tasks completed'
-  ],
-  error: [
-    '╭──────────────────────────────────────╮',
-    '│  Claude Code  v1.2.3                 │',
-    '╰──────────────────────────────────────╯',
-    '',
-    '  ✗ Error: Connection lost',
-    '  Process exited with code 1'
   ]
 }
 
 export default function TerminalPanel({ session, showHeader = false }: TerminalPanelProps): React.JSX.Element {
-  const lines = mockOutputs[session.status] ?? mockOutputs.running
+  const lines = getMockOutput(session)
 
   return (
     <div

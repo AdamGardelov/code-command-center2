@@ -27,7 +27,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
   return (
     <button
       onClick={onClick}
-      className="w-full text-left px-3 py-2.5 rounded-md transition-all duration-100 border-l-2 group"
+      className="w-full text-left px-3 py-2.5 rounded-md transition-all duration-100 border-l-2 group hover:bg-[rgba(255,255,255,0.03)]"
       style={{
         backgroundColor: isActive ? 'var(--accent-muted)' : 'transparent',
         borderLeftColor: isActive ? 'var(--accent)' : 'transparent'

@@ -35,3 +35,23 @@ body {
     transform: scale(1);
   }
 }
+
+.terminal-crossfade-enter {
+  opacity: 0;
+}
+.terminal-crossfade-enter-active {
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+/* react-grid-layout overrides for dark theme */
+.react-grid-item.react-grid-placeholder {
+  background: var(--accent) !important;
+  opacity: 0.15 !important;
+  border-radius: 6px;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-right-color: var(--text-muted) !important;
+  border-bottom-color: var(--text-muted) !important;
+}

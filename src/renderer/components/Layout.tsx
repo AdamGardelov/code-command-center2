@@ -33,7 +33,7 @@ export default function Layout(): React.JSX.Element {
             <EmptyState />
           ) : viewMode === 'single' && activeSession ? (
             <div className="flex-1 p-1">
-              <TerminalPanel session={activeSession} />
+              <TerminalPanel key={activeSession.id} session={activeSession} />
             </div>
           ) : (
             <GridView />
