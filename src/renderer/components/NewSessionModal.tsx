@@ -19,7 +19,8 @@ export default function NewSessionModal(): React.JSX.Element {
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
-    if (!name.trim() || !workingDirectory.trim() || creating) return
+    if (!name.trim() || creating) return
+    if (type === 'claude' && !workingDirectory.trim()) return
 
     setCreating(true)
     setError(null)
@@ -27,7 +28,7 @@ export default function NewSessionModal(): React.JSX.Element {
     try {
       await createSession({
         name: name.trim(),
-        workingDirectory: workingDirectory.trim(),
+        workingDirectory: workingDirectory.trim() || '~',
         type
       })
       setName('')
