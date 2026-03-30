@@ -64,6 +64,22 @@ body {
   transition: opacity 150ms ease;
 }
 
+/* Sidebar drag handle */
+.sidebar-drag-handle {
+  position: relative;
+}
+.sidebar-drag-handle::before {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+  z-index: 1;
+}
+.sidebar-drag-handle:hover {
+  background-color: var(--accent) !important;
+  opacity: 0.7;
+  width: 2px;
+}
+
 /* react-grid-layout overrides for dark theme */
 .react-grid-item.react-grid-placeholder {
   background: var(--accent) !important;

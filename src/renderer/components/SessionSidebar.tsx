@@ -1,4 +1,4 @@
-import { Plus, LayoutGrid, Monitor } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, PanelLeftClose } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 
@@ -9,6 +9,7 @@ export default function SessionSidebar(): React.JSX.Element {
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
   const toggleModal = useSessionStore((s) => s.toggleModal)
+  const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
 
   return (
     <div
@@ -18,9 +19,17 @@ export default function SessionSidebar(): React.JSX.Element {
         borderColor: 'var(--bg-raised)'
       }}
     >
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+      <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+        <button
+          onClick={toggleSidebar}
+          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+          style={{ color: 'var(--text-muted)' }}
+          title="Collapse sidebar (Ctrl+B)"
+        >
+          <PanelLeftClose size={13} />
+        </button>
         <span
-          className="text-[10px] uppercase tracking-[1.5px] font-medium"
+          className="text-[10px] uppercase tracking-[1.5px] font-medium flex-1"
           style={{ color: 'var(--text-muted)' }}
         >
           Sessions
