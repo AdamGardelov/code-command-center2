@@ -24,6 +24,19 @@ export type ViewMode = 'single' | 'grid'
 
 export type Theme = 'dark' | 'light'
 
+export interface FavoriteFolder {
+  name: string
+  path: string
+  defaultBranch: string
+}
+
+export interface CccConfig {
+  theme: Theme
+  sidebarWidth: number
+  favoriteFolders: FavoriteFolder[]
+  sessionColors: Record<string, string>
+}
+
 export interface CccAPI {
   window: {
     minimize: () => void
@@ -44,5 +57,9 @@ export interface CccAPI {
   }
   state: {
     onStateChanged: (callback: (sessionId: string, status: SessionStatus) => void) => () => void
+  }
+  config: {
+    load: () => Promise<CccConfig>
+    update: (partial: Partial<CccConfig>) => Promise<CccConfig>
   }
 }
