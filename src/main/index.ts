@@ -1,5 +1,10 @@
 import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 
+// Set WM_CLASS for Linux taskbar icon mapping
+if (process.platform === 'linux') {
+  app.setName('code-command-center')
+}
+
 // Enable proper font rendering
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
 app.commandLine.appendSwitch('enable-lcd-text')
