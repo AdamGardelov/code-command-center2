@@ -4,6 +4,7 @@ import SessionSidebar from './SessionSidebar'
 import TerminalPanel from './TerminalPanel'
 import EmptyState from './EmptyState'
 import StatusBar from './StatusBar'
+import NewSessionModal from './NewSessionModal'
 
 export default function Layout(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
@@ -44,6 +45,7 @@ export default function Layout(): React.JSX.Element {
       </div>
 
       <StatusBar />
+      <NewSessionModal />
     </div>
   )
 }
