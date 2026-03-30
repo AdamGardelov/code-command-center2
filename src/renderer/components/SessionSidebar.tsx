@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 import type { Session } from '../../shared/types'
@@ -67,6 +67,86 @@ function Category({ icon, label, count, sessions, activeSessionId, onSelect, def
   )
 }
 
+interface MachineGroupProps {
+  name: string
+  online: boolean
+  sessions: Session[]
+  activeSessionId: string | null
+  onSelect: (id: string) => void
+}
+
+function MachineGroup({ name, online, sessions, activeSessionId, onSelect }: MachineGroupProps): React.JSX.Element {
+  const [open, setOpen] = useState(true)
+
+  const claudeSessions = sessions.filter((s) => s.type === 'claude')
+  const geminiSessions = sessions.filter((s) => s.type === 'gemini')
+  const shellSessions = sessions.filter((s) => s.type === 'shell')
+
+  return (
+    <div className="mb-1" style={{ opacity: online ? 1 : 0.4 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors duration-100 hover:bg-[rgba(255,255,255,0.03)]"
+      >
+        {open
+          ? <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+          : <ChevronRight size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+        }
+        <Server size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+        <span className="text-[10px] font-bold uppercase tracking-wide flex-1 text-left" style={{ color: 'var(--text-secondary)' }}>
+          {name}
+        </span>
+        <span
+          className="text-[8px] px-1 py-px rounded font-medium"
+          style={{
+            color: online ? 'var(--success)' : 'var(--text-muted)',
+            backgroundColor: online ? 'var(--success)' + '20' : 'var(--bg-raised)'
+          }}
+        >
+          {online ? 'online' : 'offline'}
+        </span>
+        <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
+          {sessions.length}
+        </span>
+      </button>
+      {open && (
+        <div className="ml-1">
+          {claudeSessions.length > 0 && (
+            <Category
+              icon={<ClaudeIcon size={12} />}
+              label="Claude Code"
+              count={claudeSessions.length}
+              sessions={claudeSessions}
+              activeSessionId={activeSessionId}
+              onSelect={onSelect}
+            />
+          )}
+          {geminiSessions.length > 0 && (
+            <Category
+              icon={<GeminiIcon size={12} />}
+              label="Gemini"
+              count={geminiSessions.length}
+              sessions={geminiSessions}
+              activeSessionId={activeSessionId}
+              onSelect={onSelect}
+            />
+          )}
+          {shellSessions.length > 0 && (
+            <Category
+              icon={<SquareTerminal size={11} style={{ color: 'var(--text-secondary)' }} />}
+              label="Shell"
+              count={shellSessions.length}
+              sessions={shellSessions}
+              activeSessionId={activeSessionId}
+              onSelect={onSelect}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SessionSidebar(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
@@ -76,16 +156,22 @@ export default function SessionSidebar(): React.JSX.Element {
   const toggleModal = useSessionStore((s) => s.toggleModal)
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
+  const remoteHosts = useSessionStore((s) => s.remoteHosts)
+  const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [searchQuery, setSearchQuery] = useState('')
 
   const filtered = searchQuery
     ? sessions.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : sessions
 
+  const hasRemoteHosts = remoteHosts.length > 0
+
   const claudeSessions = filtered.filter((s) => s.type === 'claude')
   const geminiSessions = filtered.filter((s) => s.type === 'gemini')
   const shellSessions = filtered.filter((s) => s.type === 'shell')
   const runningCount = sessions.filter((s) => s.status === 'working' || s.status === 'idle' || s.status === 'waiting').length
+
+  const localSessions = filtered.filter((s) => !s.remoteHost)
 
   return (
     <div
@@ -144,37 +230,64 @@ export default function SessionSidebar(): React.JSX.Element {
 
       {/* Session list */}
       <div className="flex-1 overflow-y-auto px-1.5 py-0.5 min-h-0">
-        {claudeSessions.length > 0 && (
-          <Category
-            icon={<ClaudeIcon size={12} />}
-            label="Claude Code"
-            count={claudeSessions.length}
-            sessions={claudeSessions}
-            activeSessionId={activeSessionId}
-            onSelect={setActiveSession}
-          />
-        )}
+        {hasRemoteHosts ? (
+          <>
+            <MachineGroup
+              name="Local"
+              online={true}
+              sessions={localSessions}
+              activeSessionId={activeSessionId}
+              onSelect={setActiveSession}
+            />
+            {remoteHosts.map((rh) => {
+              const hostSessions = filtered.filter((s) => s.remoteHost === rh.name)
+              return (
+                <MachineGroup
+                  key={rh.name}
+                  name={rh.name}
+                  online={hostStatuses[rh.name] ?? false}
+                  sessions={hostSessions}
+                  activeSessionId={activeSessionId}
+                  onSelect={setActiveSession}
+                />
+              )
+            })}
+          </>
+        ) : (
+          <>
+            {claudeSessions.length > 0 && (
+              <Category
+                icon={<ClaudeIcon size={12} />}
+                label="Claude Code"
+                count={claudeSessions.length}
+                sessions={claudeSessions}
+                activeSessionId={activeSessionId}
+                onSelect={setActiveSession}
+              />
+            )}
 
-        {geminiSessions.length > 0 && (
-          <Category
-            icon={<GeminiIcon size={12} />}
-            label="Gemini"
-            count={geminiSessions.length}
-            sessions={geminiSessions}
-            activeSessionId={activeSessionId}
-            onSelect={setActiveSession}
-          />
-        )}
+            {geminiSessions.length > 0 && (
+              <Category
+                icon={<GeminiIcon size={12} />}
+                label="Gemini"
+                count={geminiSessions.length}
+                sessions={geminiSessions}
+                activeSessionId={activeSessionId}
+                onSelect={setActiveSession}
+              />
+            )}
 
-        {shellSessions.length > 0 && (
-          <Category
-            icon={<SquareTerminal size={11} style={{ color: 'var(--text-secondary)' }} />}
-            label="Shell"
-            count={shellSessions.length}
-            sessions={shellSessions}
-            activeSessionId={activeSessionId}
-            onSelect={setActiveSession}
-          />
+            {shellSessions.length > 0 && (
+              <Category
+                icon={<SquareTerminal size={11} style={{ color: 'var(--text-secondary)' }} />}
+                label="Shell"
+                count={shellSessions.length}
+                sessions={shellSessions}
+                activeSessionId={activeSessionId}
+                onSelect={setActiveSession}
+              />
+            )}
+          </>
         )}
 
         {sessions.length === 0 && (
