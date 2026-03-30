@@ -6,6 +6,7 @@ interface SessionStore {
   activeSessionId: string | null
   viewMode: ViewMode
   sidebarOpen: boolean
+  sidebarWidth: number
   gridLayout: GridItem[]
   modalOpen: boolean
   theme: Theme
@@ -15,6 +16,7 @@ interface SessionStore {
   setActiveSession: (id: string) => void
   setViewMode: (mode: ViewMode) => void
   toggleSidebar: () => void
+  setSidebarWidth: (width: number) => void
   toggleModal: () => void
   toggleTheme: () => void
   updateGridLayout: (layout: GridItem[]) => void
@@ -79,6 +81,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   activeSessionId: mockSessions[0].id,
   viewMode: 'single',
   sidebarOpen: true,
+  sidebarWidth: 260,
   gridLayout: generateGridLayout(mockSessions),
   modalOpen: false,
   theme: 'dark',
@@ -120,6 +123,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setActiveSession: (id) => set({ activeSessionId: id }),
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setSidebarWidth: (width) => set({ sidebarWidth: Math.max(180, Math.min(500, width)) }),
   toggleModal: () => set((state) => ({ modalOpen: !state.modalOpen })),
   toggleTheme: () => set((state) => {
     const next = state.theme === 'dark' ? 'light' : 'dark'
