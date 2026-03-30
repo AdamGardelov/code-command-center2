@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { CccAPI, SessionCreate, SessionStatus } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus } from '../shared/types'
 
 const api: CccAPI = {
   window: {
@@ -43,6 +43,10 @@ const api: CccAPI = {
       ipcRenderer.on('session:state-changed', handler)
       return () => ipcRenderer.removeListener('session:state-changed', handler)
     }
+  },
+  config: {
+    load: (): Promise<CccConfig> => ipcRenderer.invoke('config:load'),
+    update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial)
   }
 }
 
