@@ -70,12 +70,22 @@ export function useTerminal(
     const outerPanel = container.closest('.terminal-outer') as HTMLElement | null
     if (outerPanel) outerPanel.style.backgroundColor = bg
 
-    fitAddon.fit()
     termRef.current = terminal
     fitRef.current = fitAddon
 
-    const { cols, rows } = terminal
-    window.cccAPI.terminal.resize(sessionId, cols, rows)
+    // Fit after a frame to ensure container has final layout dimensions (grid mode)
+    requestAnimationFrame(() => {
+      fitAddon.fit()
+      const { cols, rows } = terminal
+      window.cccAPI.terminal.resize(sessionId, cols, rows)
+
+      // Second fit after layout settles (react-grid-layout may resize async)
+      setTimeout(() => {
+        fitAddon.fit()
+        const { cols, rows } = terminal
+        window.cccAPI.terminal.resize(sessionId, cols, rows)
+      }, 100)
+    })
 
     window.cccAPI.session.attach(sessionId)
 
