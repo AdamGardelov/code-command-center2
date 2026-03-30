@@ -1,5 +1,6 @@
 import { execFileSync } from 'child_process'
-import type { Session, SessionCreate } from '../shared/types'
+import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
+import type { SshService } from './ssh-service'
 
 // Muted, distinguishable palette that works on dark backgrounds
 const SESSION_COLORS = [
@@ -67,10 +68,24 @@ const PREFIX = 'ccc-'
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string> }>): void } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[] }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void } | null = null
+  private sshService: SshService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string> }>): void }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[] }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void }): void {
     this.configService = service
+  }
+
+  setSshService(service: SshService): void {
+    this.sshService = service
+  }
+
+  private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
+    if (remoteHost && this.sshService) {
+      const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+      if (!hostConfig) return null
+      return this.sshService.exec(hostConfig.host, `tmux ${args.join(' ')}`)
+    }
+    return tmux(...args)
   }
 
   checkDependencies(): { tmux: boolean; claude: boolean } {
@@ -91,6 +106,48 @@ export class SessionManager {
     // Also set left/right status to match
     tmux('set-option', '-t', tmuxName, 'status-left-style', `bg=${color},fg=#1d1f21`)
     tmux('set-option', '-t', tmuxName, 'status-right-style', `bg=${color},fg=#1d1f21`)
+  }
+
+  private listRemote(hostName: string, sshHost: string): Session[] {
+    if (!this.sshService) return []
+    const output = this.sshService.exec(
+      sshHost,
+      'tmux list-sessions -F "#{session_name}\t#{session_created}\t#{pane_current_path}"'
+    )
+    if (!output) return []
+
+    const sessions: Session[] = []
+    for (const line of output.split('\n')) {
+      const [name, createdStr, currentPath] = line.split('\t')
+      if (!name?.startsWith(PREFIX)) continue
+
+      const sessionName = name.slice(PREFIX.length)
+      // Check if we already track this remote session
+      const existing = this.findByTmuxNameAndHost(sessionName, hostName)
+      if (existing) {
+        existing.workingDirectory = currentPath || existing.workingDirectory
+        existing.lastActiveAt = Date.now()
+        if (existing.status === 'error') existing.status = 'idle'
+        sessions.push(existing)
+      } else {
+        const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
+        const color = this.getColorForSession(sessionName)
+        const session: Session = {
+          id: generateId(),
+          name: sessionName,
+          workingDirectory: currentPath || '~',
+          status: 'idle',
+          type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
+          color,
+          remoteHost: hostName,
+          createdAt: created,
+          lastActiveAt: Date.now()
+        }
+        this.sessions.set(session.id, session)
+        sessions.push(session)
+      }
+    }
+    return sessions
   }
 
   async list(): Promise<Session[]> {
@@ -136,9 +193,26 @@ export class SessionManager {
       }
     }
 
+    // Mark stopped local sessions
     for (const session of this.sessions.values()) {
+      if (session.remoteHost) continue
       const tmuxName = PREFIX + session.name
       if (!tmuxSessions.has(tmuxName) && session.status !== 'stopped') {
+        session.status = 'stopped'
+      }
+    }
+
+    // Enumerate remote sessions
+    const remoteHosts = this.configService?.get().remoteHosts ?? []
+    const remoteSessionIds = new Set<string>()
+    for (const rh of remoteHosts) {
+      const remoteSessions = this.listRemote(rh.name, rh.host)
+      for (const s of remoteSessions) remoteSessionIds.add(s.id)
+    }
+
+    // Mark stopped remote sessions that no longer appear
+    for (const session of this.sessions.values()) {
+      if (session.remoteHost && !remoteSessionIds.has(session.id) && session.status !== 'stopped') {
         session.status = 'stopped'
       }
     }
@@ -151,38 +225,56 @@ export class SessionManager {
   async create(opts: SessionCreate): Promise<Session> {
     const tmuxName = PREFIX + opts.name
     const expandedDir = opts.workingDirectory.replace(/^~/, process.env.HOME ?? '')
+    const isRemote = !!opts.remoteHost
 
-    const args = [
-      'new-session',
-      '-d',
-      '-s',
-      tmuxName,
-      '-c',
-      expandedDir,
-      '-e',
-      `CCC_SESSION_NAME=${opts.name}`
-    ]
+    if (isRemote) {
+      // Remote session creation via SSH
+      let cmd = `tmux new-session -d -s '${tmuxName}' -c '${opts.workingDirectory}' -e CCC_SESSION_NAME=${opts.name}`
+      if (opts.type === 'claude') {
+        cmd += ' -- claude'
+      } else if (opts.type === 'gemini') {
+        cmd += ' -- gemini'
+      }
+      this.tmuxCmd(opts.remoteHost, 'new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`, ...(opts.type === 'claude' ? ['--', 'claude'] : opts.type === 'gemini' ? ['--', 'gemini'] : []))
+      this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'window-size', 'latest')
+      this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'aggressive-resize', 'on')
 
-    if (opts.type === 'claude') {
-      args.push('--', 'claude')
-    } else if (opts.type === 'gemini') {
-      args.push('--', 'gemini')
-    }
+      const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', `=${tmuxName}`)
+      if (check === null) {
+        throw new Error(`Failed to create remote tmux session: ${tmuxName} on ${opts.remoteHost}`)
+      }
+    } else {
+      // Local session creation
+      const args = [
+        'new-session',
+        '-d',
+        '-s',
+        tmuxName,
+        '-c',
+        expandedDir,
+        '-e',
+        `CCC_SESSION_NAME=${opts.name}`
+      ]
 
-    // Create the session
-    tmux(...args)
+      if (opts.type === 'claude') {
+        args.push('--', 'claude')
+      } else if (opts.type === 'gemini') {
+        args.push('--', 'gemini')
+      }
 
-    // Configure tmux to follow the latest client size (no stale dimensions)
-    tmux('set-option', '-t', tmuxName, 'window-size', 'latest')
-    tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
+      tmux(...args)
+      tmux('set-option', '-t', tmuxName, 'window-size', 'latest')
+      tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
 
-    const check = tmux('has-session', '-t', `=${tmuxName}`)
-    if (check === null) {
-      throw new Error(`Failed to create tmux session: ${tmuxName}`)
+      const check = tmux('has-session', '-t', `=${tmuxName}`)
+      if (check === null) {
+        throw new Error(`Failed to create tmux session: ${tmuxName}`)
+      }
+
+      this.applyTmuxColor(tmuxName, this.getColorForSession(opts.name))
     }
 
     const color = this.getColorForSession(opts.name)
-    this.applyTmuxColor(tmuxName, color)
     this.configService?.update({
       sessionColors: { [opts.name]: color },
       sessionTypes: { [opts.name]: opts.type }
@@ -195,7 +287,8 @@ export class SessionManager {
       status: opts.type === 'shell' ? 'idle' : 'working',
       type: opts.type,
       color,
-      gitBranch: getGitBranch(expandedDir),
+      remoteHost: opts.remoteHost,
+      gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       createdAt: Date.now(),
       lastActiveAt: Date.now()
     }
@@ -209,7 +302,7 @@ export class SessionManager {
     if (!session) return
 
     const tmuxName = PREFIX + session.name
-    tmux('kill-session', '-t', `=${tmuxName}`)
+    this.tmuxCmd(session.remoteHost, 'kill-session', '-t', `=${tmuxName}`)
     session.status = 'stopped'
     this.sessions.delete(id)
   }
@@ -232,10 +325,29 @@ export class SessionManager {
     }
   }
 
+  getSessionInfo(id: string): { tmuxName: string; remoteHost?: string } | undefined {
+    const session = this.sessions.get(id)
+    if (!session) return undefined
+    const hostConfig = session.remoteHost
+      ? this.configService?.get().remoteHosts?.find(h => h.name === session.remoteHost)
+      : undefined
+    return {
+      tmuxName: PREFIX + session.name,
+      remoteHost: hostConfig?.host
+    }
+  }
+
   private findByTmuxName(tmuxName: string): Session | undefined {
     const name = tmuxName.slice(PREFIX.length)
     for (const session of this.sessions.values()) {
-      if (session.name === name) return session
+      if (session.name === name && !session.remoteHost) return session
+    }
+    return undefined
+  }
+
+  private findByTmuxNameAndHost(sessionName: string, hostName: string): Session | undefined {
+    for (const session of this.sessions.values()) {
+      if (session.name === sessionName && session.remoteHost === hostName) return session
     }
     return undefined
   }
