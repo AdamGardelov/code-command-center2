@@ -700,6 +700,7 @@ export default function SettingsModal(): React.JSX.Element {
                   defaultValue={worktreeBasePath}
                   onBlur={(e) => {
                     void window.cccAPI.config.update({ worktreeBasePath: e.target.value })
+                    useSessionStore.setState({ worktreeBasePath: e.target.value })
                   }}
                   placeholder="~/worktrees"
                   className="w-full px-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"

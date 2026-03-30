@@ -88,9 +88,12 @@ export class GitService {
 
   removeWorktree(worktreePath: string, remoteHost?: string): void {
     const expanded = remoteHost ? worktreePath : worktreePath.replace(/^~/, process.env.HOME ?? '')
-    const result = this.exec(['worktree', 'remove', expanded], remoteHost)
+    // Resolve repo root from the worktree path so git knows which repo to operate on
+    const repoRoot = this.getRepoRoot(expanded, remoteHost)
+    if (!repoRoot) return
+    const result = this.exec(['-C', repoRoot, 'worktree', 'remove', expanded], remoteHost)
     if (result === null) {
-      this.exec(['worktree', 'remove', '--force', expanded], remoteHost)
+      this.exec(['-C', repoRoot, 'worktree', 'remove', '--force', expanded], remoteHost)
     }
   }
 

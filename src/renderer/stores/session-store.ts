@@ -19,7 +19,6 @@ interface SessionStore {
   worktreeBasePath: string
 
   loadConfig: () => Promise<void>
-  loadGroups: () => Promise<void>
   createGroup: (name: string) => Promise<SessionGroup>
   deleteGroup: (groupId: string) => Promise<void>
   addSessionToGroup: (groupId: string, sessionId: string) => Promise<void>
@@ -170,11 +169,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const idx = sessions.findIndex((s) => s.id === activeSessionId)
     const prev = (idx - 1 + sessions.length) % sessions.length
     set({ activeSessionId: sessions[prev].id })
-  },
-
-  loadGroups: async () => {
-    const config = await window.cccAPI.config.load()
-    set({ sessionGroups: config.sessionGroups ?? [] })
   },
 
   createGroup: async (name) => {

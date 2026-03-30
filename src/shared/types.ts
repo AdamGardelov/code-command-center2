@@ -13,7 +13,6 @@ export interface Session {
   color: string
   remoteHost?: string
   gitBranch?: string
-  groupId?: string
   repoPath?: string
   createdAt: number
   lastActiveAt: number

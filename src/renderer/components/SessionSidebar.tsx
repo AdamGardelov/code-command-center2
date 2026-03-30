@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
@@ -126,9 +126,11 @@ interface MachineGroupProps {
 
 function MachineGroup({ name, online, isLocal, sessions, activeSessionId, onSelect }: MachineGroupProps): React.JSX.Element {
   const [open, setOpen] = useState(true)
+  const sessions_ = useSessionStore((s) => s.sessions)
+  const sessionGroups = useSessionStore((s) => s.sessionGroups)
   const getGroupedSessions = useSessionStore((s) => s.getGroupedSessions)
 
-  const { groups, ungrouped } = getGroupedSessions()
+  const { groups, ungrouped } = useMemo(() => getGroupedSessions(), [sessions_, sessionGroups])
 
   // Filter to only sessions in this machine
   const machineSessionIds = new Set(sessions.map(s => s.id))
