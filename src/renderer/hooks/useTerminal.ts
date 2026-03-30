@@ -104,21 +104,28 @@ export function useTerminal(
     termRef.current = terminal
     fitRef.current = fitAddon
 
-    // Fit after a frame to ensure container has final layout dimensions (grid mode)
+    // Fit first, then attach — so tmux gets correct dimensions from the start
     requestAnimationFrame(() => {
       fitAddon.fit()
       const { cols, rows } = terminal
       window.cccAPI.terminal.resize(sessionId, cols, rows)
 
-      // Second fit after layout settles (react-grid-layout may resize async)
+      // Attach AFTER fit so tmux session uses our dimensions
+      window.cccAPI.session.attach(sessionId)
+
+      // Re-fit after layout fully settles (grid mode)
       setTimeout(() => {
         fitAddon.fit()
-        const { cols, rows } = terminal
-        window.cccAPI.terminal.resize(sessionId, cols, rows)
-      }, 100)
-    })
+        const { cols: c, rows: r } = terminal
+        window.cccAPI.terminal.resize(sessionId, c, r)
+      }, 200)
 
-    window.cccAPI.session.attach(sessionId)
+      setTimeout(() => {
+        fitAddon.fit()
+        const { cols: c, rows: r } = terminal
+        window.cccAPI.terminal.resize(sessionId, c, r)
+      }, 500)
+    })
 
     const inputDisposable = terminal.onData((data) => {
       window.cccAPI.terminal.write(sessionId, data)

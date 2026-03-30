@@ -99,6 +99,12 @@ body {
   background-color: var(--bg-terminal) !important;
 }
 
+/* Hide xterm scrollbar — tmux handles scrolling */
+.xterm-container .xterm-viewport::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
 /* Grid view */
 .grid-view {
   display: grid;
