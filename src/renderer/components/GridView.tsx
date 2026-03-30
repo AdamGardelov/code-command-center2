@@ -111,7 +111,7 @@ export default function GridView(): React.JSX.Element {
               </span>
             </div>
             <div className="h-[calc(100%-24px)]">
-              <TerminalPanel session={session} />
+              <TerminalPanel session={session} showHeader />
             </div>
           </div>
         ))}
