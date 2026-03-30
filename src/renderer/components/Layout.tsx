@@ -8,6 +8,7 @@ import EmptyState from './EmptyState'
 import GridView from './GridView'
 import StatusBar from './StatusBar'
 import NewSessionModal from './NewSessionModal'
+import SettingsModal from './SettingsModal'
 
 export default function Layout(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
@@ -115,6 +116,7 @@ export default function Layout(): React.JSX.Element {
 
       <StatusBar />
       <NewSessionModal />
+      <SettingsModal />
     </div>
   )
 }
