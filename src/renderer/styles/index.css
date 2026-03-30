@@ -114,6 +114,12 @@ body {
   overflow: hidden;
   background-color: var(--bg-terminal);
   border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+  min-width: 0;
+}
+
+.grid-card .xterm-container,
+.grid-card .terminal-outer {
+  background-color: var(--bg-terminal) !important;
 }
 
 .grid-card.drag-over {
