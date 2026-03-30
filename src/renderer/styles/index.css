@@ -113,7 +113,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background-color: var(--bg-terminal);
-  border: 1px solid var(--bg-raised);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
 }
 
 .grid-card.drag-over {
