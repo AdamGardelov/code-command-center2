@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, SquareTerminal } from 'lucide-react'
+import { X, SquareTerminal, Server, Monitor } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType } from '../../shared/types'
 
@@ -26,9 +26,12 @@ export default function NewSessionModal(): React.JSX.Element {
   const favorites = useSessionStore((s) => s.favorites)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const enabledProviders = useSessionStore((s) => s.enabledProviders)
+  const remoteHosts = useSessionStore((s) => s.remoteHosts)
+  const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [name, setName] = useState('')
   const [workingDirectory, setWorkingDirectory] = useState('')
   const [type, setType] = useState<SessionType>(enabledProviders[0] ?? 'claude')
+  const [remoteHost, setRemoteHost] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,11 +49,13 @@ export default function NewSessionModal(): React.JSX.Element {
       await createSession({
         name: name.trim(),
         workingDirectory: workingDirectory.trim() || '~',
-        type
+        type,
+        remoteHost
       })
       setName('')
       setWorkingDirectory('')
       setType(enabledProviders[0] ?? 'claude')
+      setRemoteHost(undefined)
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -99,45 +104,98 @@ export default function NewSessionModal(): React.JSX.Element {
           </button>
         </div>
 
-        {favorites.length > 0 && (
-          <div className="mb-4">
-            <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
-              Favorites
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {favorites.map((fav, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => { setName(fav.name); setWorkingDirectory(fav.path) }}
-                  className="px-2.5 py-1.5 rounded-md text-[11px] border transition-colors duration-100 hover:border-[var(--accent)]"
-                  style={{
-                    borderColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--bg-raised)',
-                    backgroundColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent-muted)' : 'var(--bg-primary)',
-                    color: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--text-secondary)'
-                  }}
-                >
-                  {fav.name}
-                </button>
-              ))}
+        {(() => {
+          const activeFavorites = remoteHost
+            ? remoteHosts.find(h => h.name === remoteHost)?.favoriteFolders ?? []
+            : favorites
+          return activeFavorites.length > 0 ? (
+            <div className="mb-4">
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Favorites
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {activeFavorites.map((fav, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => { setName(fav.name); setWorkingDirectory(fav.path) }}
+                    className="px-2.5 py-1.5 rounded-md text-[11px] border transition-colors duration-100 hover:border-[var(--accent)]"
+                    style={{
+                      borderColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--bg-raised)',
+                      backgroundColor: name === fav.name && workingDirectory === fav.path ? 'var(--accent-muted)' : 'var(--bg-primary)',
+                      color: name === fav.name && workingDirectory === fav.path ? 'var(--accent)' : 'var(--text-secondary)'
+                    }}
+                  >
+                    {fav.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {favorites.length === 0 && (
-          <div className="mb-4 text-center">
-            <button
-              type="button"
-              onClick={() => { toggleModal(); toggleSettings() }}
-              className="text-[10px] transition-colors hover:underline"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Add favorite repos in Settings
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="mb-4 text-center">
+              <button
+                type="button"
+                onClick={() => { toggleModal(); toggleSettings() }}
+                className="text-[10px] transition-colors hover:underline"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Add favorite repos in Settings
+              </button>
+            </div>
+          )
+        })()}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {remoteHosts.length > 0 && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Where
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setRemoteHost(undefined)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                  style={{
+                    backgroundColor: remoteHost === undefined ? 'var(--accent-muted)' : 'transparent',
+                    borderColor: remoteHost === undefined ? 'var(--accent)' : 'var(--bg-raised)',
+                    color: remoteHost === undefined ? 'var(--accent)' : 'var(--text-muted)'
+                  }}
+                >
+                  <Monitor size={12} />
+                  Local
+                </button>
+                {remoteHosts.map((rh) => {
+                  const online = hostStatuses[rh.name] ?? false
+                  return (
+                    <button
+                      key={rh.name}
+                      type="button"
+                      onClick={() => online && setRemoteHost(rh.name)}
+                      disabled={!online}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                      style={{
+                        backgroundColor: remoteHost === rh.name ? 'var(--accent-muted)' : 'transparent',
+                        borderColor: remoteHost === rh.name ? 'var(--accent)' : 'var(--bg-raised)',
+                        color: remoteHost === rh.name ? 'var(--accent)' : 'var(--text-muted)',
+                        opacity: online ? 1 : 0.4,
+                        cursor: online ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      <Server size={12} />
+                      {rh.name}
+                      {!online && (
+                        <span className="text-[8px] px-1 py-px rounded" style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-muted)' }}>
+                          offline
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
               Type
