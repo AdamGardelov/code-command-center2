@@ -1,6 +1,15 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { SessionManager } from './session-manager'
+import { PtyManager } from './pty-manager'
+import { StateDetector } from './state-detector'
+import { registerSessionIpc } from './ipc/session'
+import { registerTerminalIpc } from './ipc/terminal'
+
+const sessionManager = new SessionManager()
+const ptyManager = new PtyManager()
+const stateDetector = new StateDetector()
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -20,8 +29,15 @@ function createWindow(): void {
     }
   })
 
+  ptyManager.setWindow(mainWindow)
+  stateDetector.setWindow(mainWindow)
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('closed', () => {
+    ptyManager.detachAll()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -44,7 +60,17 @@ ipcMain.on('window:maximize', () => {
 })
 ipcMain.on('window:close', () => BrowserWindow.getFocusedWindow()?.close())
 
+registerSessionIpc(sessionManager)
+registerTerminalIpc(ptyManager, sessionManager, stateDetector)
+
+stateDetector.start()
+
 app.whenReady().then(() => {
+  const deps = sessionManager.checkDependencies()
+  if (!deps.tmux) {
+    console.error('tmux is not installed. Install with: sudo apt install tmux')
+  }
+
   createWindow()
 
   app.on('activate', () => {
@@ -53,5 +79,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stateDetector.stop()
+  ptyManager.detachAll()
   if (process.platform !== 'darwin') app.quit()
 })
