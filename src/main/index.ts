@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 
 // Enable proper font rendering
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
@@ -35,7 +35,7 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0a0f',
-    icon: join(__dirname, '../../build/icon.png'),
+    icon: nativeImage.createFromPath(join(__dirname, '../../build/icon.png')),
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
