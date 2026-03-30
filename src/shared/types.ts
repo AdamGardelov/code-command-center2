@@ -11,6 +11,7 @@ export interface Session {
   status: SessionStatus
   type: SessionType
   color: string
+  remoteHost?: string
   gitBranch?: string
   createdAt: number
   lastActiveAt: number
@@ -20,6 +21,7 @@ export interface SessionCreate {
   name: string
   workingDirectory: string
   type: SessionType
+  remoteHost?: string
 }
 
 export type ViewMode = 'single' | 'grid'
@@ -32,6 +34,12 @@ export interface FavoriteFolder {
   defaultBranch: string
 }
 
+export interface RemoteHost {
+  name: string
+  host: string
+  favoriteFolders: FavoriteFolder[]
+}
+
 export interface CccConfig {
   theme: Theme
   sidebarWidth: number
@@ -39,6 +47,7 @@ export interface CccConfig {
   sessionColors: Record<string, string>
   sessionTypes: Record<string, SessionType>
   enabledProviders: AiProvider[]
+  remoteHosts: RemoteHost[]
 }
 
 export interface CccAPI {
@@ -65,5 +74,9 @@ export interface CccAPI {
   config: {
     load: () => Promise<CccConfig>
     update: (partial: Partial<CccConfig>) => Promise<CccConfig>
+  }
+  host: {
+    statuses: () => Promise<Record<string, boolean>>
+    onStatusChanged: (callback: (name: string, online: boolean) => void) => () => void
   }
 }
