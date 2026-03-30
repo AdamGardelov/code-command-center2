@@ -103,13 +103,37 @@ export default function GridView(): React.JSX.Element {
               &#x2807;
             </span>
             <span
-              className="text-[10px] font-medium truncate"
+              className={`w-[6px] h-[6px] rounded-full flex-shrink-0 mr-1.5 ${session.type === 'claude' && (session.status === 'working' || session.status === 'waiting') ? 'status-pulse' : ''}`}
+              style={{
+                backgroundColor: session.type === 'claude'
+                  ? session.status === 'idle' ? 'var(--success)'
+                  : session.status === 'working' ? 'var(--accent)'
+                  : session.status === 'waiting' ? 'var(--error)'
+                  : 'var(--text-muted)'
+                  : 'var(--text-muted)'
+              }}
+            />
+            <span
+              className="text-[10px] font-medium truncate flex-1"
               style={{
                 color: session.id === activeSessionId ? session.color : 'var(--text-secondary)'
               }}
             >
               {session.name}
             </span>
+            {session.type === 'claude' && (
+              <span
+                className="text-[8px] font-semibold uppercase tracking-wide ml-2 flex-shrink-0"
+                style={{
+                  color: session.status === 'idle' ? 'var(--success)'
+                    : session.status === 'working' ? 'var(--accent)'
+                    : session.status === 'waiting' ? 'var(--error)'
+                    : 'var(--text-muted)'
+                }}
+              >
+                {session.status === 'idle' ? 'idle' : session.status === 'working' ? 'working' : session.status === 'waiting' ? 'input' : session.status}
+              </span>
+            )}
           </div>
           <div className="flex-1 min-h-0">
             <TerminalPanel session={session} />
