@@ -1,4 +1,5 @@
 import * as pty from 'node-pty'
+import { execFileSync } from 'child_process'
 import { join } from 'path'
 import type { BrowserWindow } from 'electron'
 import type { SessionStatus } from '../shared/types'
@@ -34,10 +35,26 @@ export class PtyManager {
     this.onStatusChange = handler
   }
 
-  attach(sessionId: string, tmuxSessionName: string, remoteHost?: string): void {
+  attach(sessionId: string, tmuxSessionName: string, remoteHost?: string, cols?: number, rows?: number): void {
     this.detach(sessionId)
 
     const shell = process.env.SHELL || '/bin/bash'
+    const c = cols ?? 120
+    const r = rows ?? 30
+
+    // Set tmux to follow client size before attaching
+    if (remoteHost) {
+      const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
+      const sshBase = `ssh -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 -o BatchMode=yes`
+      try {
+        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set-option -t '=${tmuxSessionName}' window-size latest 2>/dev/null; tmux set-option -t '=${tmuxSessionName}' aggressive-resize on 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+      } catch { /* ignore */ }
+    } else {
+      try {
+        execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'window-size', 'latest'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'aggressive-resize', 'on'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+      } catch { /* ignore */ }
+    }
 
     let ptyArgs: string[]
     if (remoteHost) {
@@ -47,11 +64,10 @@ export class PtyManager {
       ptyArgs = ['-lc', `tmux attach-session -d -t '=${tmuxSessionName}'`]
     }
 
-    // -d detaches other clients so tmux uses THIS client's size
     const ptyProcess = pty.spawn(shell, ptyArgs, {
       name: 'xterm-256color',
-      cols: 120,
-      rows: 30,
+      cols: c,
+      rows: r,
       cwd: process.env.HOME,
       env: { ...process.env, TERM: 'xterm-256color' }
     })

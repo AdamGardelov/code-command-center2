@@ -11,7 +11,7 @@ const api: CccAPI = {
     list: () => ipcRenderer.invoke('session:list'),
     create: (opts: SessionCreate) => ipcRenderer.invoke('session:create', opts),
     kill: (id: string) => ipcRenderer.invoke('session:kill', id),
-    attach: (id: string) => ipcRenderer.send('session:attach', id),
+    attach: (id: string, cols?: number, rows?: number) => ipcRenderer.send('session:attach', id, cols, rows),
     detach: (id: string) => ipcRenderer.send('session:detach', id)
   },
   terminal: {

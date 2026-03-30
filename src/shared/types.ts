@@ -60,7 +60,7 @@ export interface CccAPI {
     list: () => Promise<Session[]>
     create: (opts: SessionCreate) => Promise<Session>
     kill: (id: string) => Promise<void>
-    attach: (id: string) => void
+    attach: (id: string, cols?: number, rows?: number) => void
     detach: (id: string) => void
   }
   terminal: {

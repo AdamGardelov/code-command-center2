@@ -111,7 +111,7 @@ export function useTerminal(
       window.cccAPI.terminal.resize(sessionId, cols, rows)
 
       // Attach AFTER fit so tmux session uses our dimensions
-      window.cccAPI.session.attach(sessionId)
+      window.cccAPI.session.attach(sessionId, cols, rows)
 
       // Re-fit after layout fully settles (grid mode)
       setTimeout(() => {
