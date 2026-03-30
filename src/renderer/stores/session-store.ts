@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, GridItem, Theme, SessionStatus } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -7,7 +7,6 @@ interface SessionStore {
   viewMode: ViewMode
   sidebarOpen: boolean
   sidebarWidth: number
-  gridLayout: GridItem[]
   modalOpen: boolean
   theme: Theme
   loading: boolean
@@ -21,21 +20,9 @@ interface SessionStore {
   setSidebarWidth: (width: number) => void
   toggleModal: () => void
   toggleTheme: () => void
-  updateGridLayout: (layout: GridItem[]) => void
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   nextSession: () => void
   prevSession: () => void
-}
-
-function generateGridLayout(sessions: Session[]): GridItem[] {
-  const cols = sessions.length <= 2 ? (sessions.length || 1) : sessions.length <= 4 ? 2 : 3
-  return sessions.map((s, i) => ({
-    i: s.id,
-    x: i % cols,
-    y: Math.floor(i / cols),
-    w: 1,
-    h: 1
-  }))
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -44,7 +31,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   viewMode: 'single',
   sidebarOpen: true,
   sidebarWidth: 260,
-  gridLayout: [],
   modalOpen: false,
   theme: 'dark',
   loading: true,
@@ -56,35 +42,28 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       loading: false,
       activeSessionId: state.activeSessionId && sessions.find(s => s.id === state.activeSessionId)
         ? state.activeSessionId
-        : sessions[0]?.id ?? null,
-      gridLayout: generateGridLayout(sessions)
+        : sessions[0]?.id ?? null
     }))
   },
 
   createSession: async (opts) => {
     const session = await window.cccAPI.session.create(opts)
-    set((state) => {
-      const sessions = [...state.sessions, session]
-      return {
-        sessions,
-        activeSessionId: session.id,
-        gridLayout: generateGridLayout(sessions)
-      }
-    })
+    set((state) => ({
+      sessions: [...state.sessions, session],
+      activeSessionId: session.id
+    }))
   },
 
   removeSession: async (id) => {
     await window.cccAPI.session.kill(id)
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== id)
-      const activeSessionId =
-        state.activeSessionId === id
-          ? sessions[0]?.id ?? null
-          : state.activeSessionId
       return {
         sessions,
-        activeSessionId,
-        gridLayout: generateGridLayout(sessions)
+        activeSessionId:
+          state.activeSessionId === id
+            ? sessions[0]?.id ?? null
+            : state.activeSessionId
       }
     })
   },
@@ -99,7 +78,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     document.documentElement.setAttribute('data-theme', next)
     return { theme: next }
   }),
-  updateGridLayout: (layout) => set({ gridLayout: layout }),
 
   updateSessionStatus: (sessionName, status) => {
     set((state) => ({

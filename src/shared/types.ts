@@ -23,14 +23,6 @@ export type ViewMode = 'single' | 'grid'
 
 export type Theme = 'dark' | 'light'
 
-export interface GridItem {
-  i: string
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
 export interface CccAPI {
   window: {
     minimize: () => void

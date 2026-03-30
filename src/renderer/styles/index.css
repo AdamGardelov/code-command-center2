@@ -2,17 +2,17 @@
 
 :root,
 [data-theme="dark"] {
-  --bg-primary: #0a0a0f;
-  --bg-surface: #111118;
-  --bg-raised: #1a1a24;
-  --bg-terminal: #0d0d14;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
-  --text-muted: #555555;
-  --accent: #f59e0b;
-  --accent-muted: rgba(245, 158, 11, 0.12);
-  --success: #10b981;
-  --error: #ef4444;
+  --bg-primary: #1d1f21;
+  --bg-surface: #292c33;
+  --bg-raised: #363a43;
+  --bg-terminal: #292c33;
+  --text-primary: #eaeaea;
+  --text-secondary: #c5c8c6;
+  --text-muted: #666666;
+  --accent: #e9c880;
+  --accent-muted: rgba(233, 200, 128, 0.12);
+  --success: #b7bd73;
+  --error: #bf6b69;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --modal-backdrop: rgba(0, 0, 0, 0.6);
@@ -56,14 +56,6 @@ body {
   }
 }
 
-.terminal-crossfade-enter {
-  opacity: 0;
-}
-.terminal-crossfade-enter-active {
-  opacity: 1;
-  transition: opacity 150ms ease;
-}
-
 /* Sidebar drag handle */
 .sidebar-drag-handle {
   position: relative;
@@ -80,7 +72,7 @@ body {
   width: 2px;
 }
 
-/* xterm.js container — background must match xterm canvas to hide fractional pixel gaps */
+/* xterm.js container */
 .xterm-container {
   width: 100%;
   height: 100%;
@@ -106,9 +98,32 @@ body {
   width: 100% !important;
 }
 
-/* Force react-grid-layout items to match terminal background */
-.react-grid-item {
-  background-color: var(--bg-terminal) !important;
+/* Grid view */
+.grid-view {
+  display: grid;
+  gap: 2px;
+  padding: 2px;
+  overflow-y: auto;
+  align-content: start;
+  height: 100%;
+  background-color: var(--bg-raised);
+}
+
+.grid-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-terminal);
+  min-height: 0;
+}
+
+.grid-card.drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.grid-card.dragging {
+  opacity: 0.5;
 }
 
 /* Status pulse animation */
@@ -119,16 +134,4 @@ body {
 
 .status-pulse {
   animation: status-pulse 2s ease-in-out infinite;
-}
-
-/* react-grid-layout overrides for dark theme */
-.react-grid-item.react-grid-placeholder {
-  background: var(--accent) !important;
-  opacity: 0.15 !important;
-  border-radius: 6px;
-}
-
-.react-grid-item > .react-resizable-handle::after {
-  border-right-color: var(--text-muted) !important;
-  border-bottom-color: var(--text-muted) !important;
 }

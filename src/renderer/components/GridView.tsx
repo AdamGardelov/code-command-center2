@@ -1,120 +1,136 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { WidthProvider } from 'react-grid-layout'
-import ReactGridLayout from 'react-grid-layout'
-import type { Layout } from 'react-grid-layout'
-import 'react-grid-layout/css/styles.css'
 import { useSessionStore } from '../stores/session-store'
 import TerminalPanel from './TerminalPanel'
 
-const GridLayout = WidthProvider(ReactGridLayout)
-
 export default function GridView(): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
-
   const sessions = useSessionStore((s) => s.sessions)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  const gridLayout = useSessionStore((s) => s.gridLayout)
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
-  const updateGridLayout = useSessionStore((s) => s.updateGridLayout)
 
-  const cols = sessions.length <= 2 ? sessions.length || 1 : sessions.length <= 4 ? 2 : 3
+  // Session order for drag-and-drop reordering
+  const [order, setOrder] = useState<string[]>([])
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [cols, setCols] = useState(2)
 
-  const [containerHeight, setContainerHeight] = useState(400)
+  // Sync order with sessions
+  useEffect(() => {
+    setOrder((prev) => {
+      const ids = new Set(sessions.map((s) => s.id))
+      const kept = prev.filter((id) => ids.has(id))
+      const newIds = sessions.map((s) => s.id).filter((id) => !kept.includes(id))
+      return [...kept, ...newIds]
+    })
+  }, [sessions])
 
+  // Dynamic columns based on container width (like Switchboard: min 500px per card)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height)
+        const width = entry.contentRect.width
+        const minCard = 500
+        const gap = 2
+        const fitCols = Math.max(1, Math.floor((width + gap) / (minCard + gap)))
+        setCols(Math.min(fitCols, sessions.length || 1))
       }
     })
     observer.observe(el)
     return () => observer.disconnect()
+  }, [sessions.length])
+
+  const handleDragStart = useCallback((id: string) => {
+    setDragId(id)
   }, [])
 
-  const handleLayoutChange = useCallback(
-    (layout: Layout[]) => {
-      updateGridLayout(
-        layout.map((item) => ({
-          i: item.i,
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h
-        }))
-      )
-    },
-    [updateGridLayout]
-  )
+  const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
+    e.preventDefault()
+    setDragOverId(id)
+  }, [])
 
-  const handleDoubleClick = useCallback(
-    (sessionId: string) => {
-      setActiveSession(sessionId)
-      setViewMode('single')
-    },
-    [setActiveSession, setViewMode]
-  )
+  const handleDrop = useCallback((targetId: string) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null)
+      setDragOverId(null)
+      return
+    }
+    setOrder((prev) => {
+      const arr = [...prev]
+      const fromIdx = arr.indexOf(dragId)
+      const toIdx = arr.indexOf(targetId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      arr.splice(fromIdx, 1)
+      arr.splice(toIdx, 0, dragId)
+      return arr
+    })
+    setDragId(null)
+    setDragOverId(null)
+  }, [dragId])
 
-  const rowHeight = Math.floor(
-    (containerHeight / Math.ceil(sessions.length / cols)) - 12
-  )
+  const handleDragEnd = useCallback(() => {
+    setDragId(null)
+    setDragOverId(null)
+  }, [])
+
+  const handleDoubleClick = useCallback((id: string) => {
+    setActiveSession(id)
+    setViewMode('single')
+  }, [setActiveSession, setViewMode])
+
+  const orderedSessions = order
+    .map((id) => sessions.find((s) => s.id === id))
+    .filter(Boolean) as typeof sessions
+
+  // Calculate rows based on session count and cols
+  const rows = Math.ceil(orderedSessions.length / cols)
 
   return (
-    <div ref={containerRef} className="flex-1 h-full p-1 overflow-auto">
-      <GridLayout
-        layout={gridLayout}
-        cols={cols}
-        rowHeight={rowHeight}
-        onLayoutChange={handleLayoutChange}
-        draggableHandle=".grid-drag-handle"
-        isResizable={true}
-        isDraggable={true}
-        margin={[6, 6] as [number, number]}
-        containerPadding={[0, 0] as [number, number]}
-      >
-        {sessions.map((session) => (
+    <div
+      ref={containerRef}
+      className="grid-view"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`
+      }}
+    >
+      {orderedSessions.map((session) => (
+        <div
+          key={session.id}
+          className={`grid-card ${dragId === session.id ? 'dragging' : ''} ${dragOverId === session.id ? 'drag-over' : ''}`}
+          draggable
+          onDragStart={() => handleDragStart(session.id)}
+          onDragOver={(e) => handleDragOver(e, session.id)}
+          onDrop={() => handleDrop(session.id)}
+          onDragEnd={handleDragEnd}
+          onClick={() => setActiveSession(session.id)}
+          onDoubleClick={() => handleDoubleClick(session.id)}
+        >
+          {/* Drag handle header */}
           <div
-            key={session.id}
-            className="overflow-hidden transition-colors duration-100"
-            style={{
-              backgroundColor: 'var(--bg-terminal)',
-              borderLeft: session.id === activeSessionId ? '2px solid var(--accent)' : '2px solid transparent'
-            }}
-            onClick={() => setActiveSession(session.id)}
-            onDoubleClick={() => handleDoubleClick(session.id)}
+            className="h-6 flex items-center px-2 cursor-grab active:cursor-grabbing flex-shrink-0"
+            style={{ backgroundColor: 'var(--bg-surface)' }}
           >
-            <div
-              className="grid-drag-handle h-6 flex items-center px-2 cursor-grab active:cursor-grabbing"
+            <span className="mr-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              &#x2807;
+            </span>
+            <span
+              className="text-[10px] font-medium truncate"
               style={{
-                backgroundColor: 'var(--bg-surface)'
+                color: session.id === activeSessionId ? 'var(--accent)' : 'var(--text-secondary)'
               }}
             >
-              <span
-                className="mr-2 text-[10px]"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                &#x2807;
-              </span>
-              <span
-                className="text-[10px] font-medium truncate"
-                style={{
-                  color:
-                    session.id === activeSessionId
-                      ? 'var(--accent)'
-                      : 'var(--text-secondary)'
-                }}
-              >
-                {session.name}
-              </span>
-            </div>
-            <div className="h-[calc(100%-24px)]">
-              <TerminalPanel session={session} />
-            </div>
+              {session.name}
+            </span>
           </div>
-        ))}
-      </GridLayout>
+          {/* Terminal */}
+          <div className="flex-1 min-h-0">
+            <TerminalPanel session={session} />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
