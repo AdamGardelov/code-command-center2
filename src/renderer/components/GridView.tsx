@@ -77,19 +77,18 @@ export default function GridView(): React.JSX.Element {
         {sessions.map((session) => (
           <div
             key={session.id}
-            className="rounded-md overflow-hidden border transition-colors duration-100"
+            className="overflow-hidden transition-colors duration-100"
             style={{
-              borderColor:
-                session.id === activeSessionId ? 'var(--accent)' : 'var(--bg-raised)'
+              backgroundColor: 'var(--bg-terminal)',
+              borderLeft: session.id === activeSessionId ? '2px solid var(--accent)' : '2px solid transparent'
             }}
             onClick={() => setActiveSession(session.id)}
             onDoubleClick={() => handleDoubleClick(session.id)}
           >
             <div
-              className="grid-drag-handle h-6 flex items-center px-2 cursor-grab active:cursor-grabbing border-b"
+              className="grid-drag-handle h-6 flex items-center px-2 cursor-grab active:cursor-grabbing"
               style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--bg-raised)'
+                backgroundColor: 'var(--bg-surface)'
               }}
             >
               <span
@@ -111,7 +110,7 @@ export default function GridView(): React.JSX.Element {
               </span>
             </div>
             <div className="h-[calc(100%-24px)]">
-              <TerminalPanel session={session} showHeader />
+              <TerminalPanel session={session} />
             </div>
           </div>
         ))}
