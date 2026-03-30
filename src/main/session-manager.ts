@@ -49,7 +49,8 @@ function getGitBranch(dir: string): string | undefined {
     return (
       execFileSync('git', ['-C', expanded, 'rev-parse', '--abbrev-ref', 'HEAD'], {
         encoding: 'utf-8',
-        timeout: 3000
+        timeout: 3000,
+        stdio: ['pipe', 'pipe', 'pipe']
       }).trim() || undefined
     )
   } catch {
