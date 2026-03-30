@@ -1,4 +1,5 @@
 import * as pty from 'node-pty'
+import { join } from 'path'
 import type { BrowserWindow } from 'electron'
 import type { SessionStatus } from '../shared/types'
 import { OscParser } from './osc-parser'
@@ -33,13 +34,21 @@ export class PtyManager {
     this.onStatusChange = handler
   }
 
-  attach(sessionId: string, tmuxSessionName: string): void {
+  attach(sessionId: string, tmuxSessionName: string, remoteHost?: string): void {
     this.detach(sessionId)
 
     const shell = process.env.SHELL || '/bin/bash'
 
+    let ptyArgs: string[]
+    if (remoteHost) {
+      const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
+      ptyArgs = ['-lc', `ssh -t -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 ${remoteHost} "tmux attach-session -d -t '=${tmuxSessionName}'"`]
+    } else {
+      ptyArgs = ['-lc', `tmux attach-session -d -t '=${tmuxSessionName}'`]
+    }
+
     // -d detaches other clients so tmux uses THIS client's size
-    const ptyProcess = pty.spawn(shell, ['-lc', `tmux attach-session -d -t '=${tmuxSessionName}'`], {
+    const ptyProcess = pty.spawn(shell, ptyArgs, {
       name: 'xterm-256color',
       cols: 120,
       rows: 30,
