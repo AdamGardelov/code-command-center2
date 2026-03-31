@@ -49,7 +49,30 @@ const api: CccAPI = {
   config: {
     load: (): Promise<CccConfig> => ipcRenderer.invoke('config:load'),
     update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial),
-    toggleExcluded: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-excluded', sessionName)
+    toggleExcluded: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-excluded', sessionName),
+    toggleMuted: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-muted', sessionName)
+  },
+  notification: {
+    onToast: (callback: (data: { sessionName: string; message: string; color: string }) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        data: { sessionName: string; message: string; color: string }
+      ): void => {
+        callback(data)
+      }
+      ipcRenderer.on('notification:toast', handler)
+      return () => ipcRenderer.removeListener('notification:toast', handler)
+    },
+    onNavigate: (callback: (sessionName: string) => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        sessionName: string
+      ): void => {
+        callback(sessionName)
+      }
+      ipcRenderer.on('notification:navigate', handler)
+      return () => ipcRenderer.removeListener('notification:navigate', handler)
+    }
   },
   host: {
     statuses: () => ipcRenderer.invoke('host:statuses'),
