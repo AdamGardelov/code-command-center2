@@ -30,6 +30,7 @@ import { GitService } from './git-service'
 import { registerGitIpc } from './ipc/git'
 import { registerGroupIpc } from './ipc/group'
 import { NotificationService } from './notification-service'
+import { initUpdater } from './updater'
 
 const configService = new ConfigService()
 configService.load()
@@ -130,6 +131,10 @@ app.whenReady().then(() => {
   }
 
   createWindow()
+
+  if (!is.dev) {
+    initUpdater()
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
