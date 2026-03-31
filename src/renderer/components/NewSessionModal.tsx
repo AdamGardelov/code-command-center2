@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, SquareTerminal, Server, Monitor, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType, Worktree } from '../../shared/types'
+import WorktreeCombobox from './WorktreeCombobox'
 
 function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
   return (
@@ -65,6 +66,18 @@ export default function NewSessionModal(): React.JSX.Element {
       setWorktrees([])
     } finally {
       setLoadingWorktrees(false)
+    }
+  }
+
+  const handleDeleteWorktree = async (worktreePath: string): Promise<void> => {
+    try {
+      await window.cccAPI.git.removeWorktree(worktreePath, remoteHost)
+      setWorktrees((prev) => prev.filter((wt) => wt.path !== worktreePath))
+      if (selectedWorktree === worktreePath) {
+        setSelectedWorktree(null)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete worktree')
     }
   }
 
@@ -346,30 +359,14 @@ export default function NewSessionModal(): React.JSX.Element {
               <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
                 Worktree
               </label>
-              {loadingWorktrees ? (
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Loading worktrees...</p>
-              ) : worktrees.length === 0 ? (
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>No worktrees found for this repo</p>
-              ) : (
-                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
-                  {worktrees.map((wt) => (
-                    <button
-                      key={wt.path}
-                      type="button"
-                      onClick={() => setSelectedWorktree(wt.path)}
-                      className="text-left px-3 py-2 rounded-lg text-xs border transition-colors duration-100"
-                      style={{
-                        backgroundColor: selectedWorktree === wt.path ? 'var(--accent-muted)' : 'var(--bg-primary)',
-                        borderColor: selectedWorktree === wt.path ? 'var(--accent)' : 'var(--bg-raised)',
-                        color: selectedWorktree === wt.path ? 'var(--accent)' : 'var(--text-secondary)'
-                      }}
-                    >
-                      <span className="font-medium">{wt.branch}</span>
-                      <span className="ml-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>{wt.path}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <WorktreeCombobox
+                worktrees={worktrees}
+                loading={loadingWorktrees}
+                selected={selectedWorktree}
+                onSelect={setSelectedWorktree}
+                onClear={() => setSelectedWorktree(null)}
+                onDelete={handleDeleteWorktree}
+              />
             </div>
           )}
 
