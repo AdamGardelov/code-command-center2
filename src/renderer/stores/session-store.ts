@@ -17,12 +17,19 @@ interface SessionStore {
   remoteHosts: RemoteHost[]
   sessionGroups: SessionGroup[]
   worktreeBasePath: string
+  excludedSessions: string[]
+  dangerouslySkipPermissions: boolean
+  ideCommand: string
 
   loadConfig: () => Promise<void>
   createGroup: (name: string) => Promise<SessionGroup>
   deleteGroup: (groupId: string) => Promise<void>
   addSessionToGroup: (groupId: string, sessionId: string) => Promise<void>
   removeSessionFromGroup: (groupId: string, sessionId: string) => Promise<void>
+  toggleExcluded: (sessionId: string) => Promise<void>
+  setDangerouslySkipPermissions: (value: boolean) => Promise<void>
+  setIdeCommand: (value: string) => Promise<void>
+  openInIde: (sessionId: string) => Promise<void>
   getGroupedSessions: () => {
     groups: Array<{ group: SessionGroup | { id: string; name: string; auto: true }; sessionIds: string[] }>
     ungrouped: string[]
@@ -64,6 +71,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   remoteHosts: [],
   sessionGroups: [],
   worktreeBasePath: '~/worktrees',
+  excludedSessions: [],
+  dangerouslySkipPermissions: false,
+  ideCommand: '',
 
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
@@ -75,14 +85,22 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       enabledProviders: config.enabledProviders ?? ['claude'],
       remoteHosts: config.remoteHosts ?? [],
       sessionGroups: config.sessionGroups ?? [],
-      worktreeBasePath: config.worktreeBasePath ?? '~/worktrees'
+      worktreeBasePath: config.worktreeBasePath ?? '~/worktrees',
+      excludedSessions: config.excludedSessions ?? [],
+      dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
+      ideCommand: config.ideCommand ?? '',
     })
   },
 
   loadSessions: async () => {
     const sessions = await window.cccAPI.session.list()
+    const excluded = get().excludedSessions
+    const marked = sessions.map((s: Session) => ({
+      ...s,
+      isExcluded: excluded.includes(s.name)
+    }))
     set((state) => ({
-      sessions,
+      sessions: marked,
       loading: false,
       activeSessionId: state.activeSessionId && sessions.find(s => s.id === state.activeSessionId)
         ? state.activeSessionId
@@ -209,6 +227,34 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           : g
       )
     }))
+  },
+
+  toggleExcluded: async (sessionId: string) => {
+    const session = get().sessions.find(s => s.id === sessionId)
+    if (!session) return
+    await window.cccAPI.config.toggleExcluded(session.name)
+    set({
+      sessions: get().sessions.map(s =>
+        s.id === sessionId ? { ...s, isExcluded: !s.isExcluded } : s
+      ),
+      excludedSessions: get().sessions.find(s => s.id === sessionId)?.isExcluded
+        ? get().excludedSessions.filter(n => n !== session.name)
+        : [...get().excludedSessions, session.name]
+    })
+  },
+
+  setDangerouslySkipPermissions: async (value: boolean) => {
+    await window.cccAPI.config.update({ dangerouslySkipPermissions: value })
+    set({ dangerouslySkipPermissions: value })
+  },
+
+  setIdeCommand: async (value: string) => {
+    await window.cccAPI.config.update({ ideCommand: value || undefined })
+    set({ ideCommand: value })
+  },
+
+  openInIde: async (sessionId: string) => {
+    await window.cccAPI.session.openInIde(sessionId)
   },
 
   getGroupedSessions: () => {

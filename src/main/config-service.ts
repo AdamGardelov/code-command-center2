@@ -14,7 +14,10 @@ const DEFAULT_CONFIG: CccConfig = {
   enabledProviders: ['claude'],
   remoteHosts: [],
   worktreeBasePath: '~/worktrees',
-  sessionGroups: []
+  sessionGroups: [],
+  dangerouslySkipPermissions: false,
+  excludedSessions: [],
+  claudeConfigRoutes: []
 }
 
 export class ConfigService {
@@ -41,7 +44,12 @@ export class ConfigService {
           enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude'],
           remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : [],
           worktreeBasePath: typeof parsed.worktreeBasePath === 'string' ? parsed.worktreeBasePath : '~/worktrees',
-          sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : []
+          sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : [],
+          dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
+          excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
+          ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
+          claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
+          defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined
         }
       } else {
         this.config = { ...DEFAULT_CONFIG }
@@ -79,9 +87,38 @@ export class ConfigService {
     if (partial.remoteHosts !== undefined) this.config.remoteHosts = partial.remoteHosts
     if (partial.worktreeBasePath !== undefined) this.config.worktreeBasePath = partial.worktreeBasePath
     if (partial.sessionGroups !== undefined) this.config.sessionGroups = partial.sessionGroups
+    if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions
+    if (partial.excludedSessions !== undefined) this.config.excludedSessions = partial.excludedSessions
+    if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
+    if (partial.claudeConfigRoutes !== undefined) this.config.claudeConfigRoutes = partial.claudeConfigRoutes
+    if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
 
     this.save(this.config)
     return this.config
+  }
+
+  resolveClaudeConfigDir(workingDirectory: string): string | undefined {
+    const expanded = workingDirectory.replace(/^~/, process.env.HOME ?? '')
+    for (const route of this.config.claudeConfigRoutes) {
+      const prefix = route.pathPrefix.replace(/^~/, process.env.HOME ?? '')
+      if (expanded.startsWith(prefix)) {
+        return route.configDir.replace(/^~/, process.env.HOME ?? '')
+      }
+    }
+    if (this.config.defaultClaudeConfigDir) {
+      return this.config.defaultClaudeConfigDir.replace(/^~/, process.env.HOME ?? '')
+    }
+    return undefined
+  }
+
+  toggleExcluded(sessionName: string): void {
+    const idx = this.config.excludedSessions.indexOf(sessionName)
+    if (idx >= 0) {
+      this.config.excludedSessions.splice(idx, 1)
+    } else {
+      this.config.excludedSessions.push(sessionName)
+    }
+    this.save(this.config)
   }
 
   get(): CccConfig {

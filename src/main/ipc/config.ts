@@ -10,4 +10,8 @@ export function registerConfigIpc(configService: ConfigService): void {
   ipcMain.handle('config:update', (_event, partial: Partial<CccConfig>) => {
     return configService.update(partial)
   })
+
+  ipcMain.handle('config:toggle-excluded', (_event, sessionName: string) => {
+    configService.toggleExcluded(sessionName)
+  })
 }

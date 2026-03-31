@@ -12,7 +12,8 @@ const api: CccAPI = {
     create: (opts: SessionCreate) => ipcRenderer.invoke('session:create', opts),
     kill: (id: string) => ipcRenderer.invoke('session:kill', id),
     attach: (id: string, cols?: number, rows?: number) => ipcRenderer.send('session:attach', id, cols, rows),
-    detach: (id: string) => ipcRenderer.send('session:detach', id)
+    detach: (id: string) => ipcRenderer.send('session:detach', id),
+    openInIde: (id: string): Promise<void> => ipcRenderer.invoke('session:open-ide', id)
   },
   terminal: {
     write: (sessionId: string, data: string) =>
@@ -46,7 +47,8 @@ const api: CccAPI = {
   },
   config: {
     load: (): Promise<CccConfig> => ipcRenderer.invoke('config:load'),
-    update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial)
+    update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial),
+    toggleExcluded: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-excluded', sessionName)
   },
   host: {
     statuses: () => ipcRenderer.invoke('host:statuses'),

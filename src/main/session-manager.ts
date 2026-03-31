@@ -1,4 +1,4 @@
-import { execFileSync } from 'child_process'
+import { execFileSync, spawn } from 'child_process'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
 
@@ -83,10 +83,10 @@ const PREFIX = 'ccc-'
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[] }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
   private sshService: SshService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[] }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
     this.configService = service
   }
 
@@ -249,7 +249,20 @@ export class SessionManager {
     if (isRemote) {
       // Remote session creation via SSH
       const newArgs = ['new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`]
-      if (opts.type === 'claude') newArgs.push('--', 'claude')
+
+      const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
+      if (claudeConfigDir) {
+        newArgs.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+      }
+
+      if (opts.type === 'claude') {
+        const skipPerms = this.configService?.get().dangerouslySkipPermissions
+        if (skipPerms) {
+          newArgs.push('--', 'claude', '--dangerously-skip-permissions')
+        } else {
+          newArgs.push('--', 'claude')
+        }
+      }
       else if (opts.type === 'gemini') newArgs.push('--', 'gemini')
 
       this.tmuxCmd(opts.remoteHost, ...newArgs)
@@ -273,8 +286,18 @@ export class SessionManager {
         `CCC_SESSION_NAME=${opts.name}`
       ]
 
+      const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
+      if (claudeConfigDir) {
+        args.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+      }
+
       if (opts.type === 'claude') {
-        args.push('--', 'claude')
+        const skipPerms = this.configService?.get().dangerouslySkipPermissions
+        if (skipPerms) {
+          args.push('--', 'claude', '--dangerously-skip-permissions')
+        } else {
+          args.push('--', 'claude')
+        }
       } else if (opts.type === 'gemini') {
         args.push('--', 'gemini')
       }
@@ -305,6 +328,7 @@ export class SessionManager {
       type: opts.type,
       color,
       remoteHost: opts.remoteHost,
+      skipPermissions: this.configService?.get().dangerouslySkipPermissions && opts.type === 'claude' ? true : undefined,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
       createdAt: Date.now(),
@@ -353,6 +377,19 @@ export class SessionManager {
       tmuxName: PREFIX + session.name,
       remoteHost: hostConfig?.host
     }
+  }
+
+  openInIde(id: string): void {
+    const session = this.sessions.get(id)
+    if (!session) throw new Error(`Session not found: ${id}`)
+    if (session.remoteHost) throw new Error('IDE integration not supported for remote sessions')
+
+    const ideCommand = this.configService?.get().ideCommand
+    if (!ideCommand) throw new Error('IDE command not configured. Set it in Settings > Advanced.')
+
+    const dir = session.workingDirectory.replace(/^~/, process.env.HOME ?? '')
+    const child = spawn(ideCommand, [dir], { detached: true, stdio: 'ignore' })
+    child.unref()
   }
 
   private findByTmuxName(tmuxName: string): Session | undefined {

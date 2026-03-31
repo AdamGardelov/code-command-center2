@@ -14,4 +14,8 @@ export function registerSessionIpc(sessionManager: SessionManager): void {
   ipcMain.handle('session:kill', async (_event, id: string) => {
     return sessionManager.kill(id)
   })
+
+  ipcMain.handle('session:open-ide', async (_event, id: string) => {
+    sessionManager.openInIde(id)
+  })
 }

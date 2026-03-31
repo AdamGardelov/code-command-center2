@@ -1,13 +1,20 @@
 import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 
-// Set WM_CLASS for Linux taskbar icon mapping
+// Set WM_CLASS (X11) and app_id (Wayland) for Linux taskbar icon mapping
 if (process.platform === 'linux') {
   app.setName('code-command-center')
+  app.commandLine.appendSwitch('class', 'code-command-center')
+  ;(app as unknown as { desktopName: string }).desktopName = 'code-command-center.desktop'
 }
 
 // Enable proper font rendering
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
 app.commandLine.appendSwitch('enable-lcd-text')
+
+// Native Wayland support with fractional scaling (no-op on X11/macOS/Windows)
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
+app.commandLine.appendSwitch('enable-features', 'WaylandFractionalScaleV1')
+app.commandLine.appendSwitch('enable-wayland-ime')
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { SessionManager } from './session-manager'
