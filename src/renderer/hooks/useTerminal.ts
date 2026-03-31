@@ -137,11 +137,17 @@ export function useTerminal(
         return false
       }
       if (e.ctrlKey && e.key === 'c' && terminal.hasSelection()) {
-        navigator.clipboard.writeText(terminal.getSelection())
         terminal.clearSelection()
         return false
       }
       return true
+    })
+
+    const selectionDisposable = terminal.onSelectionChange(() => {
+      const selection = terminal.getSelection()
+      if (selection) {
+        navigator.clipboard.writeText(selection)
+      }
     })
 
     const inputDisposable = terminal.onData((data) => {
@@ -165,6 +171,7 @@ export function useTerminal(
     return () => {
       cancelAnimationFrame(resizeRaf)
       resizeObserver.disconnect()
+      selectionDisposable.dispose()
       inputDisposable.dispose()
       if (unsubDataRef.current) unsubDataRef.current()
       window.cccAPI.session.detach(sessionId)
