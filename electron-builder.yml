@@ -26,3 +26,7 @@ mac:
   target:
     - dmg
   icon: build/icon.png
+publish:
+  provider: github
+  owner: AdamGardelov
+  repo: code-command-center2
