@@ -29,6 +29,7 @@ import { SshService } from './ssh-service'
 import { GitService } from './git-service'
 import { registerGitIpc } from './ipc/git'
 import { registerGroupIpc } from './ipc/group'
+import { NotificationService } from './notification-service'
 
 const configService = new ConfigService()
 configService.load()
@@ -44,6 +45,7 @@ sessionManager.setConfigService(configService)
 sessionManager.setSshService(sshService)
 const ptyManager = new PtyManager()
 const stateDetector = new StateDetector()
+const notificationService = new NotificationService(configService)
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -66,6 +68,7 @@ function createWindow(): void {
 
   ptyManager.setWindow(mainWindow)
   stateDetector.setWindow(mainWindow)
+  notificationService.setWindow(mainWindow)
   sshService.setWindow(mainWindow)
 
   const remoteHosts = configService.get().remoteHosts ?? []
@@ -106,6 +109,7 @@ ptyManager.setStatusChangeHandler((sessionId, status) => {
   const session = sessionManager.getById(sessionId)
   if (session) {
     sessionManager.updateStatus(session.name, status)
+    notificationService.handleStatusChange(session.name, status, session.color)
   }
 })
 
