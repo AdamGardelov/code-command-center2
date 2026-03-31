@@ -257,13 +257,14 @@ export class SessionManager {
 
       if (opts.type === 'claude') {
         const skipPerms = this.configService?.get().dangerouslySkipPermissions
-        if (skipPerms) {
-          newArgs.push('--', 'claude', '--dangerously-skip-permissions')
-        } else {
-          newArgs.push('--', 'claude')
-        }
+        const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
+        const shell = process.env.SHELL || '/bin/bash'
+        newArgs.push('--', shell, '-ic', cmd)
       }
-      else if (opts.type === 'gemini') newArgs.push('--', 'gemini')
+      else if (opts.type === 'gemini') {
+        const shell = process.env.SHELL || '/bin/bash'
+        newArgs.push('--', shell, '-ic', 'gemini')
+      }
 
       this.tmuxCmd(opts.remoteHost, ...newArgs)
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'window-size', 'latest')
@@ -293,13 +294,12 @@ export class SessionManager {
 
       if (opts.type === 'claude') {
         const skipPerms = this.configService?.get().dangerouslySkipPermissions
-        if (skipPerms) {
-          args.push('--', 'claude', '--dangerously-skip-permissions')
-        } else {
-          args.push('--', 'claude')
-        }
+        const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
+        const shell = process.env.SHELL || '/bin/bash'
+        args.push('--', shell, '-ic', cmd)
       } else if (opts.type === 'gemini') {
-        args.push('--', 'gemini')
+        const shell = process.env.SHELL || '/bin/bash'
+        args.push('--', shell, '-ic', 'gemini')
       }
 
       tmux(...args)

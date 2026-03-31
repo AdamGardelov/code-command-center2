@@ -127,6 +127,22 @@ export function useTerminal(
       }, 500)
     })
 
+    terminal.attachCustomKeyEventHandler((e) => {
+      if (e.type !== 'keydown') return true
+      if (e.ctrlKey && e.key === 'v') {
+        navigator.clipboard.readText().then((text) => {
+          window.cccAPI.terminal.write(sessionId, text)
+        })
+        return false
+      }
+      if (e.ctrlKey && e.key === 'c' && terminal.hasSelection()) {
+        navigator.clipboard.writeText(terminal.getSelection())
+        terminal.clearSelection()
+        return false
+      }
+      return true
+    })
+
     const inputDisposable = terminal.onData((data) => {
       window.cccAPI.terminal.write(sessionId, data)
     })
