@@ -13,6 +13,10 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
   const createGroup = useSessionStore((s) => s.createGroup)
   const addSessionToGroup = useSessionStore((s) => s.addSessionToGroup)
   const removeSessionFromGroup = useSessionStore((s) => s.removeSessionFromGroup)
+  const toggleExcluded = useSessionStore(s => s.toggleExcluded)
+  const openInIde = useSessionStore(s => s.openInIde)
+  const ideCommand = useSessionStore(s => s.ideCommand)
+  const session = useSessionStore(s => s.sessions.find(sess => sess.id === sessionId))
   const [newGroupName, setNewGroupName] = useState('')
   const [showNew, setShowNew] = useState(false)
 
@@ -76,6 +80,22 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
             Move to &quot;{g.name}&quot;
           </button>
         ))}
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+        <button
+          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+          onClick={() => { toggleExcluded(sessionId); onClose() }}
+        >
+          {session?.isExcluded ? 'Include session' : 'Exclude session'}
+        </button>
+        {ideCommand && !session?.remoteHost && (
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+            onClick={() => { openInIde(sessionId); onClose() }}
+          >
+            Open in IDE
+          </button>
+        )}
 
         <div className="border-t my-1" style={{ borderColor: 'var(--bg-raised)' }} />
 
