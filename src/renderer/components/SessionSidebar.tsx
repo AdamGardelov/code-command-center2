@@ -255,6 +255,7 @@ export default function SessionSidebar(): React.JSX.Element {
   const geminiSessions = filtered.filter((s) => s.type === 'gemini')
   const shellSessions = filtered.filter((s) => s.type === 'shell')
   const runningCount = sessions.filter((s) => s.status === 'working' || s.status === 'idle' || s.status === 'waiting').length
+  const excludedCount = sessions.filter((s) => s.isExcluded).length
 
   const localSessions = filtered.filter((s) => !s.remoteHost)
 
@@ -426,6 +427,11 @@ export default function SessionSidebar(): React.JSX.Element {
         </div>
         <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
           {runningCount}/{sessions.length}
+          {excludedCount > 0 && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {' '}· {excludedCount} excluded
+            </span>
+          )}
         </span>
       </div>
     </div>

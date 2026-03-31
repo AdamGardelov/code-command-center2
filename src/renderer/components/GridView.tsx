@@ -68,8 +68,10 @@ export default function GridView(): React.JSX.Element {
     setViewMode('single')
   }, [setActiveSession, setViewMode])
 
+  const visibleSessions = sessions.filter((s) => !s.isExcluded)
+
   const orderedSessions = order
-    .map((id) => sessions.find((s) => s.id === id))
+    .map((id) => visibleSessions.find((s) => s.id === id))
     .filter(Boolean) as typeof sessions
 
   const cols = calcCols(orderedSessions.length)
