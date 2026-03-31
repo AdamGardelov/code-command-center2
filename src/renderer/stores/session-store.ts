@@ -18,6 +18,8 @@ interface SessionStore {
   sessionGroups: SessionGroup[]
   worktreeBasePath: string
   excludedSessions: string[]
+  mutedSessions: string[]
+  notificationsEnabled: boolean
   dangerouslySkipPermissions: boolean
   ideCommand: string
 
@@ -27,6 +29,8 @@ interface SessionStore {
   addSessionToGroup: (groupId: string, sessionId: string) => Promise<void>
   removeSessionFromGroup: (groupId: string, sessionId: string) => Promise<void>
   toggleExcluded: (sessionId: string) => Promise<void>
+  toggleMuted: (sessionId: string) => Promise<void>
+  setNotificationsEnabled: (value: boolean) => Promise<void>
   setDangerouslySkipPermissions: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
@@ -72,6 +76,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   sessionGroups: [],
   worktreeBasePath: '~/worktrees',
   excludedSessions: [],
+  mutedSessions: [],
+  notificationsEnabled: true,
   dangerouslySkipPermissions: false,
   ideCommand: '',
 
@@ -90,6 +96,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sessionGroups: config.sessionGroups ?? [],
       worktreeBasePath: config.worktreeBasePath ?? '~/worktrees',
       excludedSessions: config.excludedSessions ?? [],
+      mutedSessions: config.mutedSessions ?? [],
+      notificationsEnabled: config.notificationsEnabled !== false,
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
       ideCommand: config.ideCommand ?? '',
     })
@@ -230,6 +238,23 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           : g
       )
     }))
+  },
+
+  toggleMuted: async (sessionId: string) => {
+    const session = get().sessions.find(s => s.id === sessionId)
+    if (!session) return
+    await window.cccAPI.config.toggleMuted(session.name)
+    const isMuted = get().mutedSessions.includes(session.name)
+    set({
+      mutedSessions: isMuted
+        ? get().mutedSessions.filter(n => n !== session.name)
+        : [...get().mutedSessions, session.name]
+    })
+  },
+
+  setNotificationsEnabled: async (value: boolean) => {
+    await window.cccAPI.config.update({ notificationsEnabled: value })
+    set({ notificationsEnabled: value })
   },
 
   toggleExcluded: async (sessionId: string) => {
