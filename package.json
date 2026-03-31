@@ -2,6 +2,10 @@
   "name": "code-command-center",
   "version": "1.0.0",
   "description": "Code Command Center - Manage Claude Code sessions",
+  "author": {
+    "name": "Adam Gardelov",
+    "email": "adam@gardelov.com"
+  },
   "main": "./out/main/index.js",
   "scripts": {
     "format": "prettier --write .",
