@@ -16,6 +16,8 @@ export interface Session {
   repoPath?: string
   createdAt: number
   lastActiveAt: number
+  skipPermissions?: boolean
+  isExcluded?: boolean
 }
 
 export interface SessionCreate {
@@ -49,6 +51,11 @@ export interface SessionGroup {
   sessionIds: string[]
 }
 
+export interface ClaudeConfigRoute {
+  pathPrefix: string
+  configDir: string
+}
+
 export interface Worktree {
   path: string
   branch: string
@@ -66,6 +73,11 @@ export interface CccConfig {
   enabledProviders: AiProvider[]
   remoteHosts: RemoteHost[]
   sessionGroups: SessionGroup[]
+  dangerouslySkipPermissions: boolean
+  excludedSessions: string[]
+  ideCommand?: string
+  claudeConfigRoutes: ClaudeConfigRoute[]
+  defaultClaudeConfigDir?: string
 }
 
 export interface CccAPI {
@@ -80,6 +92,7 @@ export interface CccAPI {
     kill: (id: string) => Promise<void>
     attach: (id: string, cols?: number, rows?: number) => void
     detach: (id: string) => void
+    openInIde: (id: string) => Promise<void>
   }
   terminal: {
     write: (sessionId: string, data: string) => void
@@ -92,6 +105,7 @@ export interface CccAPI {
   config: {
     load: () => Promise<CccConfig>
     update: (partial: Partial<CccConfig>) => Promise<CccConfig>
+    toggleExcluded: (sessionName: string) => Promise<void>
   }
   host: {
     statuses: () => Promise<Record<string, boolean>>
