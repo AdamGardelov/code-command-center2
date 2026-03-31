@@ -7,6 +7,8 @@
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "allowArbitraryExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"]
