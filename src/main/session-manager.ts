@@ -248,6 +248,8 @@ export class SessionManager {
 
     if (isRemote) {
       // Remote session creation via SSH
+      const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === opts.remoteHost)
+      const remoteShell = hostConfig?.shell || '/bin/bash'
       const newArgs = ['new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`]
 
       const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
@@ -258,12 +260,10 @@ export class SessionManager {
       if (opts.type === 'claude') {
         const skipPerms = this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
-        const shell = process.env.SHELL || '/bin/bash'
-        newArgs.push('--', shell, '-ic', cmd)
+        newArgs.push('--', remoteShell, '-ic', cmd)
       }
       else if (opts.type === 'gemini') {
-        const shell = process.env.SHELL || '/bin/bash'
-        newArgs.push('--', shell, '-ic', 'gemini')
+        newArgs.push('--', remoteShell, '-ic', 'gemini')
       }
 
       this.tmuxCmd(opts.remoteHost, ...newArgs)

@@ -15,6 +15,7 @@ const DEFAULT_CONFIG: CccConfig = {
   remoteHosts: [],
   worktreeBasePath: '~/worktrees',
   sessionGroups: [],
+  zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
   excludedSessions: [],
   claudeConfigRoutes: []
@@ -45,6 +46,7 @@ export class ConfigService {
           remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : [],
           worktreeBasePath: typeof parsed.worktreeBasePath === 'string' ? parsed.worktreeBasePath : '~/worktrees',
           sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : [],
+          zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
           excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
@@ -87,6 +89,7 @@ export class ConfigService {
     if (partial.remoteHosts !== undefined) this.config.remoteHosts = partial.remoteHosts
     if (partial.worktreeBasePath !== undefined) this.config.worktreeBasePath = partial.worktreeBasePath
     if (partial.sessionGroups !== undefined) this.config.sessionGroups = partial.sessionGroups
+    if (partial.zoomFactor !== undefined) this.config.zoomFactor = partial.zoomFactor
     if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions
     if (partial.excludedSessions !== undefined) this.config.excludedSessions = partial.excludedSessions
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand

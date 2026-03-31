@@ -41,6 +41,7 @@ export interface FavoriteFolder {
 export interface RemoteHost {
   name: string
   host: string
+  shell?: string
   worktreeBasePath?: string
   favoriteFolders: FavoriteFolder[]
 }
@@ -73,6 +74,7 @@ export interface CccConfig {
   enabledProviders: AiProvider[]
   remoteHosts: RemoteHost[]
   sessionGroups: SessionGroup[]
+  zoomFactor: number
   dangerouslySkipPermissions: boolean
   excludedSessions: string[]
   ideCommand?: string
@@ -85,6 +87,7 @@ export interface CccAPI {
     minimize: () => void
     maximize: () => void
     close: () => void
+    setZoomFactor: (factor: number) => void
   }
   session: {
     list: () => Promise<Session[]>

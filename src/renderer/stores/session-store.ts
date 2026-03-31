@@ -78,6 +78,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
     document.documentElement.setAttribute('data-theme', config.theme)
+    if (config.zoomFactor && config.zoomFactor !== 1.0) {
+      window.cccAPI.window.setZoomFactor(config.zoomFactor)
+    }
     set({
       theme: config.theme,
       sidebarWidth: config.sidebarWidth,

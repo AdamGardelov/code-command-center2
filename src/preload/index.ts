@@ -1,11 +1,12 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup } from '../shared/types'
 
 const api: CccAPI = {
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
-    close: () => ipcRenderer.send('window:close')
+    close: () => ipcRenderer.send('window:close'),
+    setZoomFactor: (factor: number) => webFrame.setZoomFactor(factor)
   },
   session: {
     list: () => ipcRenderer.invoke('session:list'),

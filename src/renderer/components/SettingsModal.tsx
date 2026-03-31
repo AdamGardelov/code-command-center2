@@ -39,18 +39,20 @@ export default function SettingsModal(): React.JSX.Element {
 
   // Remote hosts state
   const [editRemoteIdx, setEditRemoteIdx] = useState<number | null>(null)
-  const [editRemoteForm, setEditRemoteForm] = useState<{ name: string; host: string }>({ name: '', host: '' })
+  const [editRemoteForm, setEditRemoteForm] = useState<{ name: string; host: string; shell: string }>({ name: '', host: '', shell: '' })
   const [addRemoteMode, setAddRemoteMode] = useState(false)
   const [expandedRemote, setExpandedRemote] = useState<number | null>(null)
   const [editRemoteFavIdx, setEditRemoteFavIdx] = useState<number | null>(null)
   const [editRemoteFavForm, setEditRemoteFavForm] = useState<FavoriteFolder>({ name: '', path: '', defaultBranch: 'main' })
   const [addRemoteFavMode, setAddRemoteFavMode] = useState(false)
+  const [zoomFactor, setZoomFactor] = useState(1.0)
 
   useEffect(() => {
     if (settingsOpen) {
       window.cccAPI.config.load().then((config) => {
         setClaudeConfigRoutes(config.claudeConfigRoutes ?? [])
         setDefaultClaudeConfigDir(config.defaultClaudeConfigDir ?? '')
+        setZoomFactor(config.zoomFactor ?? 1.0)
       })
     }
   }, [settingsOpen])
@@ -364,6 +366,14 @@ export default function SettingsModal(): React.JSX.Element {
                       className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
                       style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
                     />
+                    <input
+                      type="text"
+                      value={editRemoteForm.shell}
+                      onChange={(e) => setEditRemoteForm({ ...editRemoteForm, shell: e.target.value })}
+                      placeholder="Shell (default: /bin/bash)"
+                      className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+                      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                    />
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => setEditRemoteIdx(null)}
@@ -376,7 +386,7 @@ export default function SettingsModal(): React.JSX.Element {
                         onClick={() => {
                           if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
                           const updated = [...remoteHosts]
-                          updated[idx] = { ...updated[idx], name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim() }
+                          updated[idx] = { ...updated[idx], name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined }
                           saveRemoteHosts(updated)
                           setEditRemoteIdx(null)
                         }}
@@ -416,7 +426,7 @@ export default function SettingsModal(): React.JSX.Element {
                       <button
                         onClick={() => {
                           setEditRemoteIdx(idx)
-                          setEditRemoteForm({ name: rh.name, host: rh.host })
+                          setEditRemoteForm({ name: rh.name, host: rh.host, shell: rh.shell || '' })
                           setAddRemoteMode(false)
                         }}
                         className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
@@ -629,6 +639,14 @@ export default function SettingsModal(): React.JSX.Element {
                     className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
                     style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
                   />
+                  <input
+                    type="text"
+                    value={editRemoteForm.shell}
+                    onChange={(e) => setEditRemoteForm({ ...editRemoteForm, shell: e.target.value })}
+                    placeholder="Shell (default: /bin/bash)"
+                    className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+                    style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                  />
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => setAddRemoteMode(false)}
@@ -640,10 +658,10 @@ export default function SettingsModal(): React.JSX.Element {
                     <button
                       onClick={() => {
                         if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
-                        const updated = [...remoteHosts, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), favoriteFolders: [] }]
+                        const updated = [...remoteHosts, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined, favoriteFolders: [] }]
                         saveRemoteHosts(updated)
                         setAddRemoteMode(false)
-                        setEditRemoteForm({ name: '', host: '' })
+                        setEditRemoteForm({ name: '', host: '', shell: '' })
                       }}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors duration-100"
                       style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
@@ -658,7 +676,7 @@ export default function SettingsModal(): React.JSX.Element {
                   onClick={() => {
                     setAddRemoteMode(true)
                     setEditRemoteIdx(null)
-                    setEditRemoteForm({ name: '', host: '' })
+                    setEditRemoteForm({ name: '', host: '', shell: '' })
                   }}
                   className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg border border-dashed text-[11px] font-medium transition-colors duration-100 hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   style={{ borderColor: 'var(--bg-raised)', color: 'var(--text-muted)' }}
@@ -687,6 +705,34 @@ export default function SettingsModal(): React.JSX.Element {
                 >
                   Switch to {theme === 'dark' ? 'Light' : 'Dark'}
                 </button>
+              </div>
+
+              {/* Zoom Factor */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Zoom</div>
+                  <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {Math.round((zoomFactor ?? 1.0) * 100)}%
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.05"
+                  value={zoomFactor ?? 1.0}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value)
+                    setZoomFactor(val)
+                    window.cccAPI.window.setZoomFactor(val)
+                    void window.cccAPI.config.update({ zoomFactor: val })
+                  }}
+                  className="w-full accent-[var(--accent)]"
+                />
+                <div className="flex justify-between text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  <span>50%</span>
+                  <span>200%</span>
+                </div>
               </div>
 
               {/* Sidebar width reset */}
