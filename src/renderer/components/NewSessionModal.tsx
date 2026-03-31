@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, SquareTerminal, Server, Monitor, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import type { SessionType } from '../../shared/types'
+import type { SessionType, Worktree } from '../../shared/types'
 
 function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
   return (
@@ -34,10 +34,13 @@ export default function NewSessionModal(): React.JSX.Element {
   const [remoteHost, setRemoteHost] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [worktreeMode, setWorktreeMode] = useState(false)
+  const [mode, setMode] = useState<'repo' | 'existing' | 'new'>('repo')
   const [branch, setBranch] = useState('')
   const [branches, setBranches] = useState<string[]>([])
   const [loadingBranches, setLoadingBranches] = useState(false)
+  const [worktrees, setWorktrees] = useState<Worktree[]>([])
+  const [loadingWorktrees, setLoadingWorktrees] = useState(false)
+  const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
 
   if (!modalOpen) return <></>
 
@@ -53,6 +56,18 @@ export default function NewSessionModal(): React.JSX.Element {
     }
   }
 
+  const loadWorktrees = async (repoPath: string): Promise<void> => {
+    setLoadingWorktrees(true)
+    try {
+      const wts = await window.cccAPI.git.listWorktrees(repoPath, remoteHost)
+      setWorktrees(wts.filter(w => !w.isMain))
+    } catch {
+      setWorktrees([])
+    } finally {
+      setLoadingWorktrees(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!name.trim() || creating) return
@@ -64,7 +79,7 @@ export default function NewSessionModal(): React.JSX.Element {
     try {
       let dir = workingDirectory.trim() || '~'
 
-      if (worktreeMode && branch.trim()) {
+      if (mode === 'new' && branch.trim()) {
         const worktree = await window.cccAPI.git.addWorktree(
           workingDirectory.trim(),
           branch.trim(),
@@ -72,6 +87,8 @@ export default function NewSessionModal(): React.JSX.Element {
           remoteHost
         )
         dir = worktree.path
+      } else if (mode === 'existing' && selectedWorktree) {
+        dir = selectedWorktree
       }
 
       await createSession({
@@ -84,9 +101,11 @@ export default function NewSessionModal(): React.JSX.Element {
       setWorkingDirectory('')
       setType(enabledProviders[0] ?? 'claude')
       setRemoteHost(undefined)
-      setWorktreeMode(false)
+      setMode('repo')
       setBranch('')
       setBranches([])
+      setWorktrees([])
+      setSelectedWorktree(null)
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -292,36 +311,68 @@ export default function NewSessionModal(): React.JSX.Element {
                 Mode
               </label>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWorktreeMode(false)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                  style={{
-                    backgroundColor: !worktreeMode ? 'var(--accent-muted)' : 'transparent',
-                    borderColor: !worktreeMode ? 'var(--accent)' : 'var(--bg-raised)',
-                    color: !worktreeMode ? 'var(--accent)' : 'var(--text-muted)'
-                  }}
-                >
-                  Open in repo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWorktreeMode(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                  style={{
-                    backgroundColor: worktreeMode ? 'var(--accent-muted)' : 'transparent',
-                    borderColor: worktreeMode ? 'var(--accent)' : 'var(--bg-raised)',
-                    color: worktreeMode ? 'var(--accent)' : 'var(--text-muted)'
-                  }}
-                >
-                  <GitBranch size={12} />
-                  New worktree
-                </button>
+                {(['repo', 'existing', 'new'] as const).map((m) => {
+                  const labels = { repo: 'Open in repo', existing: 'Worktree', new: 'New worktree' }
+                  const icons = { repo: null, existing: <GitBranch size={12} />, new: <GitBranch size={12} /> }
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => {
+                        setMode(m)
+                        if (m === 'existing' && worktrees.length === 0) {
+                          void loadWorktrees(workingDirectory.trim())
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                      style={{
+                        backgroundColor: mode === m ? 'var(--accent-muted)' : 'transparent',
+                        borderColor: mode === m ? 'var(--accent)' : 'var(--bg-raised)',
+                        color: mode === m ? 'var(--accent)' : 'var(--text-muted)'
+                      }}
+                    >
+                      {icons[m]}
+                      {labels[m]}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
 
-          {worktreeMode && (
+          {mode === 'existing' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Worktree
+              </label>
+              {loadingWorktrees ? (
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Loading worktrees...</p>
+              ) : worktrees.length === 0 ? (
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>No worktrees found for this repo</p>
+              ) : (
+                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                  {worktrees.map((wt) => (
+                    <button
+                      key={wt.path}
+                      type="button"
+                      onClick={() => setSelectedWorktree(wt.path)}
+                      className="text-left px-3 py-2 rounded-lg text-xs border transition-colors duration-100"
+                      style={{
+                        backgroundColor: selectedWorktree === wt.path ? 'var(--accent-muted)' : 'var(--bg-primary)',
+                        borderColor: selectedWorktree === wt.path ? 'var(--accent)' : 'var(--bg-raised)',
+                        color: selectedWorktree === wt.path ? 'var(--accent)' : 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="font-medium">{wt.branch}</span>
+                      <span className="ml-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>{wt.path}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === 'new' && (
             <div>
               <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
                 Branch

@@ -97,10 +97,10 @@ export class SessionManager {
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
-      if (!hostConfig) return null
+      const sshHost = hostConfig?.host ?? remoteHost
       // Shell-escape each argument for remote execution
       const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
-      return this.sshService.exec(hostConfig.host, `tmux ${escaped}`)
+      return this.sshService.exec(sshHost, `tmux ${escaped}`)
     }
     return tmux(...args)
   }

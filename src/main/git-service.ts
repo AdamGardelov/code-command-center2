@@ -18,9 +18,9 @@ export class GitService {
   private exec(args: string[], remoteHost?: string): string | null {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
-      if (!hostConfig) return null
+      const sshHost = hostConfig?.host ?? remoteHost
       const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
-      return this.sshService.exec(hostConfig.host, `git ${escaped}`)
+      return this.sshService.exec(sshHost, `git ${escaped}`)
     }
     try {
       return execFileSync('git', args, {
