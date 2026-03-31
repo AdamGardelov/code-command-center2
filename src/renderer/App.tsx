@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import Layout from './components/Layout'
+import ToastContainer from './components/ToastContainer'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useSessionStore } from './stores/session-store'
 
@@ -35,5 +36,10 @@ export default function App(): React.JSX.Element {
     }
   }, [loadSessions, updateSessionStatus, loadHostStatuses, updateHostStatus])
 
-  return <Layout />
+  return (
+    <>
+      <Layout />
+      <ToastContainer />
+    </>
+  )
 }
