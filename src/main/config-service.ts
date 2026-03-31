@@ -18,6 +18,8 @@ const DEFAULT_CONFIG: CccConfig = {
   zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
   excludedSessions: [],
+  notificationsEnabled: true,
+  mutedSessions: [],
   claudeConfigRoutes: []
 }
 
@@ -49,6 +51,8 @@ export class ConfigService {
           zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
           excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
+          notificationsEnabled: parsed.notificationsEnabled !== false,
+          mutedSessions: Array.isArray(parsed.mutedSessions) ? parsed.mutedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
           defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined
@@ -92,6 +96,8 @@ export class ConfigService {
     if (partial.zoomFactor !== undefined) this.config.zoomFactor = partial.zoomFactor
     if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions
     if (partial.excludedSessions !== undefined) this.config.excludedSessions = partial.excludedSessions
+    if (partial.notificationsEnabled !== undefined) this.config.notificationsEnabled = partial.notificationsEnabled
+    if (partial.mutedSessions !== undefined) this.config.mutedSessions = partial.mutedSessions
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
     if (partial.claudeConfigRoutes !== undefined) this.config.claudeConfigRoutes = partial.claudeConfigRoutes
     if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
@@ -112,6 +118,16 @@ export class ConfigService {
       return this.config.defaultClaudeConfigDir.replace(/^~/, process.env.HOME ?? '')
     }
     return undefined
+  }
+
+  toggleMuted(sessionName: string): void {
+    const idx = this.config.mutedSessions.indexOf(sessionName)
+    if (idx >= 0) {
+      this.config.mutedSessions.splice(idx, 1)
+    } else {
+      this.config.mutedSessions.push(sessionName)
+    }
+    this.save(this.config)
   }
 
   toggleExcluded(sessionName: string): void {

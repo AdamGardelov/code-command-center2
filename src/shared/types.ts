@@ -25,6 +25,7 @@ export interface SessionCreate {
   workingDirectory: string
   type: SessionType
   remoteHost?: string
+  skipPermissions?: boolean
 }
 
 export type ViewMode = 'single' | 'grid'
@@ -77,6 +78,8 @@ export interface CccConfig {
   zoomFactor: number
   dangerouslySkipPermissions: boolean
   excludedSessions: string[]
+  notificationsEnabled: boolean
+  mutedSessions: string[]
   ideCommand?: string
   claudeConfigRoutes: ClaudeConfigRoute[]
   defaultClaudeConfigDir?: string
@@ -109,6 +112,11 @@ export interface CccAPI {
     load: () => Promise<CccConfig>
     update: (partial: Partial<CccConfig>) => Promise<CccConfig>
     toggleExcluded: (sessionName: string) => Promise<void>
+    toggleMuted: (sessionName: string) => Promise<void>
+  }
+  notification: {
+    onToast: (callback: (data: { sessionName: string; message: string; color: string }) => void) => () => void
+    onNavigate: (callback: (sessionName: string) => void) => () => void
   }
   host: {
     statuses: () => Promise<Record<string, boolean>>

@@ -14,4 +14,8 @@ export function registerConfigIpc(configService: ConfigService): void {
   ipcMain.handle('config:toggle-excluded', (_event, sessionName: string) => {
     configService.toggleExcluded(sessionName)
   })
+
+  ipcMain.handle('config:toggle-muted', (_event, sessionName: string) => {
+    configService.toggleMuted(sessionName)
+  })
 }
