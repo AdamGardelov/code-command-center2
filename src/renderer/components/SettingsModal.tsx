@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Pencil, Check, RotateCcw, Bot, Sparkles, Server, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Plus, Trash2, Pencil, Check, RotateCcw, Server, ChevronDown, ChevronRight } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { FavoriteFolder, AiProvider, RemoteHost, ClaudeConfigRoute } from '../../shared/types'
 

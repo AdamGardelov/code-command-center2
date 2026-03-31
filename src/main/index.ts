@@ -4,7 +4,7 @@ import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 if (process.platform === 'linux') {
   app.setName('code-command-center')
   app.commandLine.appendSwitch('class', 'code-command-center')
-  app.setDesktopName('code-command-center.desktop')
+  ;(app as unknown as { desktopName: string }).desktopName = 'code-command-center.desktop'
 }
 
 // Enable proper font rendering
