@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, SquareTerminal, Server, Monitor, GitBranch } from 'lucide-react'
+import { X, SquareTerminal, Server, Monitor, GitBranch, Zap } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType, Worktree } from '../../shared/types'
 import WorktreeCombobox from './WorktreeCombobox'
@@ -42,6 +42,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const [worktrees, setWorktrees] = useState<Worktree[]>([])
   const [loadingWorktrees, setLoadingWorktrees] = useState(false)
   const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
+  const [skipPermissions, setSkipPermissions] = useState(false)
 
   if (!modalOpen) return <></>
 
@@ -108,7 +109,8 @@ export default function NewSessionModal(): React.JSX.Element {
         name: name.trim(),
         workingDirectory: dir,
         type,
-        remoteHost
+        remoteHost,
+        skipPermissions: type === 'claude' ? skipPermissions : undefined
       })
       setName('')
       setWorkingDirectory('')
@@ -119,6 +121,7 @@ export default function NewSessionModal(): React.JSX.Element {
       setBranches([])
       setWorktrees([])
       setSelectedWorktree(null)
+      setSkipPermissions(false)
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -287,6 +290,34 @@ export default function NewSessionModal(): React.JSX.Element {
               ))}
             </div>
           </div>
+
+          {type === 'claude' && (
+            <label
+              className="flex items-center gap-2 cursor-pointer select-none"
+              style={{ color: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--text-muted)' }}
+            >
+              <input
+                type="checkbox"
+                checked={skipPermissions}
+                onChange={(e) => setSkipPermissions(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className="w-7 h-4 rounded-full relative transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)]"
+                style={{ backgroundColor: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--bg-raised)' }}
+              >
+                <div
+                  className="absolute top-0.5 w-3 h-3 rounded-full transition-transform duration-150"
+                  style={{
+                    backgroundColor: skipPermissions ? 'var(--bg-primary)' : 'var(--text-muted)',
+                    transform: skipPermissions ? 'translateX(14px)' : 'translateX(2px)'
+                  }}
+                />
+              </div>
+              <Zap size={12} />
+              <span className="text-xs">Skip permissions</span>
+            </label>
+          )}
 
           <div>
             <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>

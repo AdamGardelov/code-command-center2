@@ -258,7 +258,7 @@ export class SessionManager {
       }
 
       if (opts.type === 'claude') {
-        const skipPerms = this.configService?.get().dangerouslySkipPermissions
+        const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
         newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && ${cmd}`)
       }
@@ -295,7 +295,7 @@ export class SessionManager {
       }
 
       if (opts.type === 'claude') {
-        const skipPerms = this.configService?.get().dangerouslySkipPermissions
+        const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
         const shell = process.env.SHELL || '/bin/bash'
         args.push('--', shell, '-ic', cmd)
@@ -332,7 +332,7 @@ export class SessionManager {
       type: opts.type,
       color,
       remoteHost: opts.remoteHost,
-      skipPermissions: this.configService?.get().dangerouslySkipPermissions && opts.type === 'claude' ? true : undefined,
+      skipPermissions: (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions) && opts.type === 'claude' ? true : undefined,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
       createdAt: Date.now(),
