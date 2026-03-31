@@ -107,27 +107,25 @@ export function useTerminal(
     termRef.current = terminal
     fitRef.current = fitAddon
 
-    // Fit first, then attach — so tmux gets correct dimensions from the start
-    requestAnimationFrame(() => {
+    // Helper: fit terminal and sync pty size (skips if container has no area)
+    const fitAndResize = (): void => {
+      if (!container.offsetWidth || !container.offsetHeight) return
       fitAddon.fit()
       const { cols, rows } = terminal
       window.cccAPI.terminal.resize(sessionId, cols, rows)
+    }
+
+    // Fit first, then attach — so tmux gets correct dimensions from the start
+    requestAnimationFrame(() => {
+      fitAndResize()
 
       // Attach AFTER fit so tmux session uses our dimensions
-      window.cccAPI.session.attach(sessionId, cols, rows)
+      window.cccAPI.session.attach(sessionId, terminal.cols, terminal.rows)
 
-      // Re-fit after layout fully settles (grid mode)
-      setTimeout(() => {
-        fitAddon.fit()
-        const { cols: c, rows: r } = terminal
-        window.cccAPI.terminal.resize(sessionId, c, r)
-      }, 200)
-
-      setTimeout(() => {
-        fitAddon.fit()
-        const { cols: c, rows: r } = terminal
-        window.cccAPI.terminal.resize(sessionId, c, r)
-      }, 500)
+      // Re-fit after layout fully settles (grid mode, sidebar animations, etc.)
+      setTimeout(fitAndResize, 100)
+      setTimeout(fitAndResize, 300)
+      setTimeout(fitAndResize, 800)
     })
 
     terminal.attachCustomKeyEventHandler((e) => {
@@ -157,14 +155,15 @@ export function useTerminal(
     })
     unsubDataRef.current = unsubData
 
+    let resizeRaf = 0
     const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit()
-      const { cols, rows } = terminal
-      window.cccAPI.terminal.resize(sessionId, cols, rows)
+      cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(fitAndResize)
     })
     resizeObserver.observe(container)
 
     return () => {
+      cancelAnimationFrame(resizeRaf)
       resizeObserver.disconnect()
       inputDisposable.dispose()
       if (unsubDataRef.current) unsubDataRef.current()
