@@ -36,6 +36,8 @@ export default function SettingsModal(): React.JSX.Element {
   const setDangerouslySkipPermissions = useSessionStore(s => s.setDangerouslySkipPermissions)
   const ideCommand = useSessionStore(s => s.ideCommand)
   const setIdeCommand = useSessionStore(s => s.setIdeCommand)
+  const notificationsEnabled = useSessionStore((s) => s.notificationsEnabled)
+  const setNotificationsEnabled = useSessionStore((s) => s.setNotificationsEnabled)
 
   // Remote hosts state
   const [editRemoteIdx, setEditRemoteIdx] = useState<number | null>(null)
@@ -793,6 +795,25 @@ export default function SettingsModal(): React.JSX.Element {
                 />
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                   Command to open working directory in your editor (e.g. code, cursor, rider)
+                </p>
+              </div>
+
+              {/* Notifications */}
+              <div>
+                <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Notifications</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationsEnabled}
+                    onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                    Show notifications when sessions finish or need input
+                  </span>
+                </label>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  OS notifications when app is unfocused, in-app toasts when focused
                 </p>
               </div>
 
