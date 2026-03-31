@@ -260,10 +260,10 @@ export class SessionManager {
       if (opts.type === 'claude') {
         const skipPerms = this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
-        newArgs.push('--', remoteShell, '-ic', cmd)
+        newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && ${cmd}`)
       }
       else if (opts.type === 'gemini') {
-        newArgs.push('--', remoteShell, '-ic', 'gemini')
+        newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && gemini`)
       }
 
       this.tmuxCmd(opts.remoteHost, ...newArgs)

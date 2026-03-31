@@ -69,7 +69,7 @@ export class PtyManager {
       cols: c,
       rows: r,
       cwd: process.env.HOME,
-      env: { ...process.env, TERM: 'xterm-256color' }
+      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' }
     })
 
     ptyProcess.onData((data) => {
