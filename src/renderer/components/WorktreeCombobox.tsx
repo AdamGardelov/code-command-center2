@@ -11,6 +11,19 @@ interface WorktreeComboboxProps {
   onDelete: (path: string) => void
 }
 
+function HighlightMatch({ text, query }: { text: string; query: string }): React.JSX.Element {
+  if (!query) return <>{text}</>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span style={{ color: 'var(--accent)' }}>{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
 export default function WorktreeCombobox({
   worktrees,
   loading,
@@ -129,7 +142,175 @@ export default function WorktreeCombobox({
     )
   }
 
-  // --- Expanded state rendered in Task 2 ---
-  // Placeholder for now:
-  return <div ref={containerRef}>expanded placeholder</div>
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusIndex((prev) => Math.min(prev + 1, filtered.length - 1))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusIndex((prev) => Math.max(prev - 1, 0))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (filtered[focusIndex]) {
+          onSelect(filtered[focusIndex].path)
+          setOpen(false)
+          setFilter('')
+          setConfirmingDelete(null)
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setOpen(false)
+        setFilter('')
+        setConfirmingDelete(null)
+        break
+      case 'Backspace':
+        if (filter === '' && selected) {
+          onClear()
+        }
+        break
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Search input */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-t-lg text-xs border"
+        style={{
+          backgroundColor: 'var(--bg-primary)',
+          borderColor: 'var(--accent)'
+        }}
+      >
+        <Search size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <input
+          ref={inputRef}
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Filter worktrees..."
+          className="flex-1 bg-transparent outline-none text-xs"
+          style={{ color: 'var(--text-primary)' }}
+          role="combobox"
+          aria-expanded={true}
+          aria-activedescendant={filtered[focusIndex] ? `wt-option-${focusIndex}` : undefined}
+        />
+      </div>
+
+      {/* Dropdown list */}
+      <div
+        className="border border-t-0 rounded-b-lg overflow-y-auto"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--accent)',
+          maxHeight: '200px'
+        }}
+        role="listbox"
+      >
+        {filtered.length === 0 ? (
+          <p className="px-3 py-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            No worktrees match
+          </p>
+        ) : (
+          filtered.map((wt, i) => {
+            const isFocused = i === focusIndex
+            const isConfirming = confirmingDelete === wt.path
+
+            if (isConfirming) {
+              return (
+                <div
+                  key={wt.path}
+                  className="flex items-center justify-between px-3 py-2 text-xs"
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)' }}
+                >
+                  <span style={{ color: 'var(--error)' }}>Delete {wt.branch}?</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="px-2 py-0.5 rounded text-[10px] font-medium"
+                      style={{ backgroundColor: 'var(--error)', color: '#fff' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDelete(wt.path)
+                        setConfirmingDelete(null)
+                      }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-0.5 rounded text-[10px] font-medium"
+                      style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-secondary)' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmingDelete(null)
+                      }}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div
+                key={wt.path}
+                id={`wt-option-${i}`}
+                className="group flex items-center px-3 py-2 cursor-pointer transition-colors duration-75"
+                style={{
+                  backgroundColor: isFocused ? 'var(--accent-muted)' : 'transparent',
+                  borderLeft: isFocused ? '2px solid var(--accent)' : '2px solid transparent'
+                }}
+                onClick={() => {
+                  onSelect(wt.path)
+                  setOpen(false)
+                  setFilter('')
+                  setConfirmingDelete(null)
+                }}
+                onMouseEnter={() => setFocusIndex(i)}
+                role="option"
+                aria-selected={selected === wt.path}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <HighlightMatch text={wt.branch} query={filter} />
+                  </div>
+                  <div
+                    className="text-[10px] mt-0.5 truncate"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {wt.path}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="ml-2 p-1 rounded opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-muted)', flexShrink: 0 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setConfirmingDelete(wt.path)
+                  }}
+                  aria-label={`Delete worktree ${wt.branch}`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Keyboard hints */}
+      <div className="flex gap-3 mt-1.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        <span>↑↓ navigate</span>
+        <span>⏎ select</span>
+        <span>esc close</span>
+      </div>
+    </div>
+  )
 }
