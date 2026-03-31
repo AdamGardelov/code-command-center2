@@ -164,12 +164,15 @@ export default function WorktreeCombobox({
         break
       case 'Enter':
         e.preventDefault()
+        if (confirmingDelete) break
         if (filtered[focusIndex]) {
           onSelect(filtered[focusIndex].path)
           setOpen(false)
           setFilter('')
-          setConfirmingDelete(null)
         }
+        break
+      case 'Tab':
+        e.preventDefault()
         break
       case 'Escape':
         e.preventDefault()
@@ -235,6 +238,7 @@ export default function WorktreeCombobox({
               return (
                 <div
                   key={wt.path}
+                  id={`wt-option-${i}`}
                   className="flex items-center justify-between px-3 py-2 text-xs"
                   style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)' }}
                 >
