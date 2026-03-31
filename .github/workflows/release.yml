@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      skipped: ${{ steps.bump.outputs.skipped }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if version was manually bumped
+        id: check
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          # Check if tag already exists for this version
+          if git rev-parse "v${CURRENT}" >/dev/null 2>&1; then
+            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          CURRENT=$(node -p "require('./package.json').version")
+
+          if [ "${{ steps.check.outputs.needs_bump }}" = "true" ]; then
+            # Auto-increment patch
+            IFS='.' read -r major minor patch <<< "$CURRENT"
+            patch=$((patch + 1))
+            VERSION="${major}.${minor}.${patch}"
+            npm version "$VERSION" --no-git-tag-version
+          else
+            # Version was manually set and not yet tagged — use as-is
+            VERSION="$CURRENT"
+          fi
+
+          # Check if this is a CI-triggered push (avoid infinite loop)
+          LAST_AUTHOR=$(git log -1 --format='%an')
+          if [ "$LAST_AUTHOR" = "github-actions[bot]" ]; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping: last commit was from CI"
+            exit 0
+          fi
+
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "${{ steps.check.outputs.needs_bump }}" = "true" ]; then
+            git add package.json package-lock.json
+            git commit -m "release: v${VERSION}"
+          fi
+
+          git tag "v${VERSION}"
+          git push origin main --tags
+
+  build:
+    needs: version
+    if: needs.version.outputs.skipped != 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package and publish
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
