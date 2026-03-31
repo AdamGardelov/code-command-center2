@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { useSessionStore } from '../stores/session-store'
 
@@ -71,8 +72,8 @@ export function useTerminal(
     if (!container || !sessionId) return
 
     const terminal = new Terminal({
-      fontFamily: "'JetBrains Mono', monospace",
-      fontSize: 13,
+      fontFamily: 'monospace',
+      fontSize: 12,
       scrollback: 10000,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -94,6 +95,8 @@ export function useTerminal(
     } catch {
       // WebGL not available — canvas fallback
     }
+
+    terminal.loadAddon(new WebLinksAddon())
 
     // Set all parent backgrounds to match xterm exactly (avoids fractional pixel gaps)
     const bg = getTerminalTheme(theme).background
