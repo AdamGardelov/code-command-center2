@@ -132,7 +132,7 @@ export function useTerminal(
       if (e.type !== 'keydown') return true
       if (e.ctrlKey && e.key === 'v') {
         navigator.clipboard.readText().then((text) => {
-          window.cccAPI.terminal.write(sessionId, text)
+          terminal.paste(text)
         })
         return false
       }
