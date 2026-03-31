@@ -1,5 +1,5 @@
 appId: com.ccc.code-command-center
-productName: Code Command Center
+productName: code-command-center
 directories:
   buildResources: build
   output: dist
