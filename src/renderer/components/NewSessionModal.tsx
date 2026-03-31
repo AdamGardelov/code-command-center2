@@ -154,6 +154,56 @@ export default function NewSessionModal(): React.JSX.Element {
           </button>
         </div>
 
+        {remoteHosts.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+              Where
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setRemoteHost(undefined)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                style={{
+                  backgroundColor: remoteHost === undefined ? 'var(--accent-muted)' : 'transparent',
+                  borderColor: remoteHost === undefined ? 'var(--accent)' : 'var(--bg-raised)',
+                  color: remoteHost === undefined ? 'var(--accent)' : 'var(--text-muted)'
+                }}
+              >
+                <Monitor size={12} />
+                Local
+              </button>
+              {remoteHosts.map((rh) => {
+                const online = hostStatuses[rh.name] ?? false
+                return (
+                  <button
+                    key={rh.name}
+                    type="button"
+                    onClick={() => online && setRemoteHost(rh.name)}
+                    disabled={!online}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
+                    style={{
+                      backgroundColor: remoteHost === rh.name ? 'var(--accent-muted)' : 'transparent',
+                      borderColor: remoteHost === rh.name ? 'var(--accent)' : 'var(--bg-raised)',
+                      color: remoteHost === rh.name ? 'var(--accent)' : 'var(--text-muted)',
+                      opacity: online ? 1 : 0.4,
+                      cursor: online ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    <Server size={12} />
+                    {rh.name}
+                    {!online && (
+                      <span className="text-[8px] px-1 py-px rounded" style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-muted)' }}>
+                        offline
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {(() => {
           const activeFavorites = remoteHost
             ? remoteHosts.find(h => h.name === remoteHost)?.favoriteFolders ?? []
@@ -200,55 +250,6 @@ export default function NewSessionModal(): React.JSX.Element {
         })()}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {remoteHosts.length > 0 && (
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
-                Where
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setRemoteHost(undefined)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                  style={{
-                    backgroundColor: remoteHost === undefined ? 'var(--accent-muted)' : 'transparent',
-                    borderColor: remoteHost === undefined ? 'var(--accent)' : 'var(--bg-raised)',
-                    color: remoteHost === undefined ? 'var(--accent)' : 'var(--text-muted)'
-                  }}
-                >
-                  <Monitor size={12} />
-                  Local
-                </button>
-                {remoteHosts.map((rh) => {
-                  const online = hostStatuses[rh.name] ?? false
-                  return (
-                    <button
-                      key={rh.name}
-                      type="button"
-                      onClick={() => online && setRemoteHost(rh.name)}
-                      disabled={!online}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors duration-100"
-                      style={{
-                        backgroundColor: remoteHost === rh.name ? 'var(--accent-muted)' : 'transparent',
-                        borderColor: remoteHost === rh.name ? 'var(--accent)' : 'var(--bg-raised)',
-                        color: remoteHost === rh.name ? 'var(--accent)' : 'var(--text-muted)',
-                        opacity: online ? 1 : 0.4,
-                        cursor: online ? 'pointer' : 'not-allowed'
-                      }}
-                    >
-                      <Server size={12} />
-                      {rh.name}
-                      {!online && (
-                        <span className="text-[8px] px-1 py-px rounded" style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-muted)' }}>
-                          offline
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
           <div>
             <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>

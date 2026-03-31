@@ -42,17 +42,33 @@ export class PtyManager {
     const c = cols ?? 120
     const r = rows ?? 30
 
-    // Set tmux to follow client size before attaching
+    // Ensure tmux server supports truecolor (affects all sessions, idempotent)
     if (remoteHost) {
       const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
       const sshBase = `ssh -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 -o BatchMode=yes`
       try {
-        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set-option -t '=${tmuxSessionName}' window-size latest 2>/dev/null; tmux set-option -t '=${tmuxSessionName}' aggressive-resize on 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set -g default-terminal 'xterm-256color' 2>/dev/null; tmux set -ga terminal-overrides ',xterm-256color:Tc' 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+      } catch { /* ignore */ }
+    } else {
+      try {
+        execFileSync('tmux', ['set', '-g', 'default-terminal', 'xterm-256color'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', ['set', '-ga', 'terminal-overrides', ',xterm-256color:Tc'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+      } catch { /* ignore */ }
+    }
+
+    // Set tmux options and environment before attaching
+    if (remoteHost) {
+      const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
+      const sshBase = `ssh -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 -o BatchMode=yes`
+      try {
+        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set-option -t '=${tmuxSessionName}' window-size latest 2>/dev/null; tmux set-option -t '=${tmuxSessionName}' aggressive-resize on 2>/dev/null; tmux set-environment -t '=${tmuxSessionName}' COLORTERM truecolor 2>/dev/null; tmux set-environment -t '=${tmuxSessionName}' TERM xterm-256color 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     } else {
       try {
         execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'window-size', 'latest'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
         execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'aggressive-resize', 'on'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', ['set-environment', '-t', `=${tmuxSessionName}`, 'COLORTERM', 'truecolor'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', ['set-environment', '-t', `=${tmuxSessionName}`, 'TERM', 'xterm-256color'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     }
 

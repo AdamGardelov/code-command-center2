@@ -269,6 +269,8 @@ export class SessionManager {
       this.tmuxCmd(opts.remoteHost, ...newArgs)
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'window-size', 'latest')
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'aggressive-resize', 'on')
+      this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
+      this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
 
       const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', tmuxName)
       if (check === null) {
@@ -305,6 +307,8 @@ export class SessionManager {
       tmux(...args)
       tmux('set-option', '-t', tmuxName, 'window-size', 'latest')
       tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
+      tmux('set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
+      tmux('set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
 
       const check = tmux('has-session', '-t', `=${tmuxName}`)
       if (check === null) {
