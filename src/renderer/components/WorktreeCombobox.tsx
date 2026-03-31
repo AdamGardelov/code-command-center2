@@ -38,6 +38,7 @@ export default function WorktreeCombobox({
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   const selectedWorktree = worktrees.find((wt) => wt.path === selected)
 
@@ -70,6 +71,15 @@ export default function WorktreeCombobox({
   useEffect(() => {
     setFocusIndex(0)
   }, [filter])
+
+  // Scroll focused item into view
+  useEffect(() => {
+    if (!open || !listRef.current) return
+    const item = listRef.current.querySelector(`#wt-option-${focusIndex}`)
+    if (item) {
+      item.scrollIntoView({ block: 'nearest' })
+    }
+  }, [focusIndex, open])
 
   if (loading) {
     return (
@@ -203,6 +213,7 @@ export default function WorktreeCombobox({
 
       {/* Dropdown list */}
       <div
+        ref={listRef}
         className="border border-t-0 rounded-b-lg overflow-y-auto"
         style={{
           backgroundColor: 'var(--bg-surface)',
