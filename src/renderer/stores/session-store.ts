@@ -34,6 +34,7 @@ interface SessionStore {
   setDangerouslySkipPermissions: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
+  openFolder: (sessionId: string) => Promise<void>
   getGroupedSessions: () => {
     groups: Array<{ group: SessionGroup | { id: string; name: string; auto: true }; sessionIds: string[] }>
     ungrouped: string[]
@@ -283,6 +284,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   openInIde: async (sessionId: string) => {
     await window.cccAPI.session.openInIde(sessionId)
+  },
+
+  openFolder: async (sessionId: string) => {
+    await window.cccAPI.session.openFolder(sessionId)
   },
 
   getGroupedSessions: () => {

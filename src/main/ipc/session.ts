@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import type { SessionManager } from '../session-manager'
 import type { SessionCreate } from '../../shared/types'
 
@@ -17,5 +17,14 @@ export function registerSessionIpc(sessionManager: SessionManager): void {
 
   ipcMain.handle('session:open-ide', async (_event, id: string) => {
     sessionManager.openInIde(id)
+  })
+
+  ipcMain.handle('session:open-folder', async (_event, id: string) => {
+    const sessions = await sessionManager.list()
+    const session = sessions.find(s => s.id === id)
+    if (session?.workingDirectory) {
+      const dir = session.workingDirectory.replace(/^~/, process.env.HOME ?? '')
+      await shell.openPath(dir)
+    }
   })
 }

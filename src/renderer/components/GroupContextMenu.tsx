@@ -17,6 +17,7 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
   const toggleMuted = useSessionStore(s => s.toggleMuted)
   const mutedSessions = useSessionStore(s => s.mutedSessions)
   const openInIde = useSessionStore(s => s.openInIde)
+  const openFolder = useSessionStore(s => s.openFolder)
   const ideCommand = useSessionStore(s => s.ideCommand)
   const session = useSessionStore(s => s.sessions.find(sess => sess.id === sessionId))
   const [newGroupName, setNewGroupName] = useState('')
@@ -96,6 +97,14 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
         >
           {session && mutedSessions.includes(session.name) ? 'Unmute notifications' : 'Mute notifications'}
         </button>
+        {!session?.remoteHost && (
+          <button
+            className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+            onClick={() => { openFolder(sessionId); onClose() }}
+          >
+            Open folder
+          </button>
+        )}
         {ideCommand && !session?.remoteHost && (
           <button
             className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"

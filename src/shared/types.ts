@@ -99,6 +99,7 @@ export interface CccAPI {
     attach: (id: string, cols?: number, rows?: number) => void
     detach: (id: string) => void
     openInIde: (id: string) => Promise<void>
+    openFolder: (id: string) => Promise<void>
   }
   terminal: {
     write: (sessionId: string, data: string) => void

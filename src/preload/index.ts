@@ -14,7 +14,8 @@ const api: CccAPI = {
     kill: (id: string) => ipcRenderer.invoke('session:kill', id),
     attach: (id: string, cols?: number, rows?: number) => ipcRenderer.send('session:attach', id, cols, rows),
     detach: (id: string) => ipcRenderer.send('session:detach', id),
-    openInIde: (id: string): Promise<void> => ipcRenderer.invoke('session:open-ide', id)
+    openInIde: (id: string): Promise<void> => ipcRenderer.invoke('session:open-ide', id),
+    openFolder: (id: string): Promise<void> => ipcRenderer.invoke('session:open-folder', id)
   },
   terminal: {
     write: (sessionId: string, data: string) =>
