@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GitBranch, Trash2, Folder, Zap } from 'lucide-react'
+import { GitBranch, Trash2, Folder, Zap, Box } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
@@ -92,6 +92,19 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
               style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
               {session.remoteHost}
             </span>
+          )}
+          {session.isContainer && (
+            <>
+              <span title={`Container: ${session.containerName}`} style={{ color: 'var(--container)' }}>
+                <Box size={12} />
+              </span>
+              {session.containerName && (
+                <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"
+                  style={{ color: 'var(--container)', backgroundColor: 'color-mix(in srgb, var(--container) 15%, var(--bg-raised))' }}>
+                  {session.containerName}
+                </span>
+              )}
+            </>
           )}
           {session.skipPermissions && (
             <span title="Skip Permissions enabled" style={{ color: 'var(--warning, #f59e0b)' }}>
