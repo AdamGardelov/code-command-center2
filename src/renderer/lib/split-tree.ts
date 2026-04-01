@@ -20,12 +20,19 @@ export function snapRatio(ratio: number, threshold = 0.04): number {
  * Returns null if no sessions.
  */
 export function buildAutoGrid(sessionIds: string[]): SplitNode | null {
+  return buildAutoGridInner(sessionIds, 0)
+}
+
+function buildAutoGridInner(sessionIds: string[], depth: number): SplitNode | null {
   if (sessionIds.length === 0) return null
   if (sessionIds.length === 1) return { type: 'leaf', sessionId: sessionIds[0] }
+
+  const direction: SplitDirection = depth % 2 === 0 ? 'vertical' : 'horizontal'
+
   if (sessionIds.length === 2) {
     return {
       type: 'split',
-      direction: 'horizontal',
+      direction,
       ratio: 0.5,
       children: [
         { type: 'leaf', sessionId: sessionIds[0] },
@@ -33,36 +40,18 @@ export function buildAutoGrid(sessionIds: string[]): SplitNode | null {
       ]
     }
   }
-  if (sessionIds.length === 3) {
-    return {
-      type: 'split',
-      direction: 'horizontal',
-      ratio: 0.5,
-      children: [
-        { type: 'leaf', sessionId: sessionIds[0] },
-        {
-          type: 'split',
-          direction: 'vertical',
-          ratio: 0.5,
-          children: [
-            { type: 'leaf', sessionId: sessionIds[1] },
-            { type: 'leaf', sessionId: sessionIds[2] }
-          ]
-        }
-      ]
-    }
-  }
-  // 4+ sessions: split in half recursively
+
+  // 3+ sessions: split in half recursively, alternating direction by depth
   const mid = Math.ceil(sessionIds.length / 2)
   const left = sessionIds.slice(0, mid)
   const right = sessionIds.slice(mid)
   return {
     type: 'split',
-    direction: 'horizontal',
+    direction,
     ratio: 0.5,
     children: [
-      buildAutoGrid(left)!,
-      buildAutoGrid(right)!
+      buildAutoGridInner(left, depth + 1)!,
+      buildAutoGridInner(right, depth + 1)!
     ]
   }
 }
