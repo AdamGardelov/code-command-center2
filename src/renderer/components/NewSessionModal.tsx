@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { X, SquareTerminal, Server, Monitor, GitBranch, Zap } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, SquareTerminal, Server, Monitor, GitBranch, Zap, Box } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import type { SessionType, Worktree } from '../../shared/types'
+import type { SessionType, Worktree, ContainerConfig } from '../../shared/types'
 import WorktreeCombobox from './WorktreeCombobox'
 
 function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
@@ -27,6 +27,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const favorites = useSessionStore((s) => s.favorites)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const enabledProviders = useSessionStore((s) => s.enabledProviders)
+  const enableContainers = useSessionStore((s) => s.enableContainers)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [name, setName] = useState('')
@@ -43,6 +44,24 @@ export default function NewSessionModal(): React.JSX.Element {
   const [loadingWorktrees, setLoadingWorktrees] = useState(false)
   const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
   const [skipPermissions, setSkipPermissions] = useState(false)
+  const [runningContainers, setRunningContainers] = useState<ContainerConfig[]>([])
+  const [selectedContainer, setSelectedContainer] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!modalOpen || !enableContainers) {
+      setRunningContainers([])
+      setSelectedContainer(undefined)
+      return
+    }
+    void window.cccAPI.container.listRunning(remoteHost).then((containers) => {
+      setRunningContainers(containers)
+      if (containers.length > 0) {
+        setSelectedContainer(containers[0].name)
+      } else {
+        setSelectedContainer(undefined)
+      }
+    })
+  }, [modalOpen, enableContainers, remoteHost])
 
   if (!modalOpen) return <></>
 
@@ -110,7 +129,8 @@ export default function NewSessionModal(): React.JSX.Element {
         workingDirectory: dir,
         type,
         remoteHost,
-        skipPermissions: type === 'claude' ? skipPermissions : undefined
+        skipPermissions: type === 'claude' ? skipPermissions : undefined,
+        containerName: selectedContainer
       })
       setName('')
       setWorkingDirectory('')
@@ -122,6 +142,8 @@ export default function NewSessionModal(): React.JSX.Element {
       setWorktrees([])
       setSelectedWorktree(null)
       setSkipPermissions(false)
+      setRunningContainers([])
+      setSelectedContainer(undefined)
       toggleModal()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
@@ -423,6 +445,28 @@ export default function NewSessionModal(): React.JSX.Element {
               {loadingBranches && (
                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Loading branches...</p>
               )}
+            </div>
+          )}
+
+          {enableContainers && runningContainers.length > 0 && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+                Container
+              </label>
+              <div className="relative">
+                <Box size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--container-color, var(--text-muted))' }} />
+                <select
+                  className="w-full pl-7 pr-3 py-2 rounded-lg text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)] appearance-none"
+                  style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                  value={selectedContainer ?? ''}
+                  onChange={(e) => setSelectedContainer(e.target.value || undefined)}
+                >
+                  <option value="">No container (run on host)</option>
+                  {runningContainers.map((c) => (
+                    <option key={c.name} value={c.name}>{c.label || c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 
