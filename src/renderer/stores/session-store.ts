@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig, ContainerConfig } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -25,6 +25,8 @@ interface SessionStore {
   ideCommand: string
   activeView: ActiveView
   features: FeaturesConfig
+  containers: ContainerConfig[]
+  enableContainers: boolean
   setActiveView: (view: ActiveView) => void
 
   loadConfig: () => Promise<void>
@@ -56,6 +58,8 @@ interface SessionStore {
   setFavorites: (favoriteFolders: FavoriteFolder[]) => Promise<void>
   setRemoteHosts: (remoteHosts: RemoteHost[]) => Promise<void>
   setEnabledProviders: (providers: AiProvider[]) => Promise<void>
+  setContainers: (containers: ContainerConfig[]) => Promise<void>
+  setEnableContainers: (value: boolean) => Promise<void>
   persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   loadHostStatuses: () => Promise<void>
@@ -88,6 +92,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ideCommand: '',
   activeView: 'sessions' as ActiveView,
   features: { pullRequests: false } as FeaturesConfig,
+  containers: [],
+  enableContainers: false,
 
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
@@ -110,6 +116,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
       ideCommand: config.ideCommand ?? '',
       features: config.features ?? { pullRequests: false },
+      containers: config.containers ?? [],
+      enableContainers: config.features?.containers ?? false,
     })
   },
 
@@ -174,6 +182,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setEnabledProviders: async (providers) => {
     await window.cccAPI.config.update({ enabledProviders: providers })
     set({ enabledProviders: providers })
+  },
+  setContainers: async (containers) => {
+    await window.cccAPI.config.update({ containers })
+    set({ containers })
+  },
+  setEnableContainers: async (value) => {
+    const features = { ...get().features, containers: value }
+    await window.cccAPI.config.update({ features })
+    set({ features, enableContainers: value })
   },
   persistSidebarWidth: async () => {
     const { sidebarWidth } = get()
