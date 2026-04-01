@@ -184,12 +184,17 @@ export class SessionManager {
       tmuxSessions.add(name)
       const existing = this.findByTmuxName(name)
 
+      const containerSessions = this.configService?.get().containerSessions ?? {}
       if (existing) {
         existing.workingDirectory = currentPath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
         existing.gitBranch = getGitBranch(existing.workingDirectory)
         existing.repoPath = getRepoRoot(existing.workingDirectory)
         if (existing.status === 'error') existing.status = 'idle'
+        if (containerSessions[existing.name]) {
+          existing.isContainer = true
+          existing.containerName = containerSessions[existing.name]
+        }
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
         const sessionName = name.slice(PREFIX.length)
@@ -207,6 +212,10 @@ export class SessionManager {
           repoPath: getRepoRoot(currentPath || '~'),
           createdAt: created,
           lastActiveAt: Date.now()
+        }
+        if (containerSessions[sessionName]) {
+          session.isContainer = true
+          session.containerName = containerSessions[sessionName]
         }
         this.sessions.set(session.id, session)
       }
