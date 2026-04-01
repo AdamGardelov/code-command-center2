@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Pencil, Check, RotateCcw, Server, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Plus, Trash2, Pencil, Check, RotateCcw, Server, ChevronDown, ChevronRight, Box } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import type { FavoriteFolder, AiProvider, RemoteHost, ClaudeConfigRoute } from '../../shared/types'
+import type { FavoriteFolder, AiProvider, RemoteHost, ClaudeConfigRoute, ContainerConfig } from '../../shared/types'
 
-type Tab = 'providers' | 'favorites' | 'appearance' | 'remotes' | 'worktrees' | 'advanced' | 'features'
+type Tab = 'providers' | 'favorites' | 'appearance' | 'remotes' | 'worktrees' | 'advanced' | 'features' | 'containers'
 
 export default function SettingsModal(): React.JSX.Element {
   const settingsOpen = useSessionStore((s) => s.settingsOpen)
@@ -39,6 +39,10 @@ export default function SettingsModal(): React.JSX.Element {
   const setIdeCommand = useSessionStore(s => s.setIdeCommand)
   const notificationsEnabled = useSessionStore((s) => s.notificationsEnabled)
   const setNotificationsEnabled = useSessionStore((s) => s.setNotificationsEnabled)
+  const containers = useSessionStore((s) => s.containers)
+  const setContainers = useSessionStore((s) => s.setContainers)
+  const enableContainers = useSessionStore((s) => s.enableContainers)
+  const setEnableContainers = useSessionStore((s) => s.setEnableContainers)
 
   // Remote hosts state
   const [editRemoteIdx, setEditRemoteIdx] = useState<number | null>(null)
@@ -50,8 +54,13 @@ export default function SettingsModal(): React.JSX.Element {
   const [addRemoteFavMode, setAddRemoteFavMode] = useState(false)
   const [zoomFactor, setZoomFactor] = useState(1.0)
 
+  // Container tab state
+  const [addContainerMode, setAddContainerMode] = useState(false)
+  const [newContainer, setNewContainer] = useState<ContainerConfig>({ name: '' })
+  const [editContainerIdx, setEditContainerIdx] = useState<number | null>(null)
+
   // Features tab state
-  const [featuresConfig, setFeaturesConfig] = useState({ pullRequests: false })
+  const [featuresConfig, setFeaturesConfig] = useState({ pullRequests: false, containers: false })
   const [prOrg, setPrOrg] = useState('')
   const [prRepos, setPrRepos] = useState('')
   const [prMembers, setPrMembers] = useState('')
@@ -65,7 +74,7 @@ export default function SettingsModal(): React.JSX.Element {
         setClaudeConfigRoutes(config.claudeConfigRoutes ?? [])
         setDefaultClaudeConfigDir(config.defaultClaudeConfigDir ?? '')
         setZoomFactor(config.zoomFactor ?? 1.0)
-        setFeaturesConfig(config.features ?? { pullRequests: false })
+        setFeaturesConfig(config.features ?? { pullRequests: false, containers: false })
         if (config.prConfig) {
           setPrOrg(config.prConfig.githubOrg ?? '')
           setPrRepos(config.prConfig.pinnedRepos?.join(', ') ?? '')
@@ -82,7 +91,7 @@ export default function SettingsModal(): React.JSX.Element {
     void setRemoteHosts(updated)
   }
 
-  const saveFeatures = (features: { pullRequests: boolean }): void => {
+  const saveFeatures = (features: { pullRequests: boolean; containers: boolean }): void => {
     setFeaturesConfig(features)
     void window.cccAPI.config.update({ features })
     void useSessionStore.getState().loadConfig()
@@ -237,7 +246,7 @@ export default function SettingsModal(): React.JSX.Element {
 
         {/* Tabs */}
         <div className="flex gap-0 px-6 border-b" style={{ borderColor: 'var(--bg-raised)' }}>
-          {(['providers', 'favorites', 'remotes', 'appearance', 'worktrees', 'advanced', 'features'] as Tab[]).map((t) => (
+          {(['providers', 'favorites', 'remotes', 'appearance', 'worktrees', 'advanced', 'containers', 'features'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -247,7 +256,7 @@ export default function SettingsModal(): React.JSX.Element {
                 color: tab === t ? 'var(--accent)' : 'var(--text-muted)'
               }}
             >
-              {t === 'remotes' ? 'Remote Hosts' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'remotes' ? 'Remote Hosts' : t === 'containers' ? 'Containers' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -1022,6 +1031,140 @@ export default function SettingsModal(): React.JSX.Element {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {tab === 'containers' && (
+            <div className="space-y-4">
+              {/* Feature flag toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableContainers}
+                  onChange={(e) => void setEnableContainers(e.target.checked)}
+                  className="accent-[var(--accent)]"
+                />
+                <span className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Enable container sessions
+                </span>
+              </label>
+
+              {enableContainers && (
+                <>
+                  {/* Container list */}
+                  {containers.map((container, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded"
+                      style={{ backgroundColor: 'var(--bg-primary)' }}
+                    >
+                      <Box size={12} style={{ color: 'var(--container)' }} />
+                      {editContainerIdx === idx ? (
+                        <>
+                          <input
+                            className="flex-1 text-[11px] px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                            value={containers[idx].label ?? containers[idx].name}
+                            onChange={(e) => {
+                              const updated = [...containers]
+                              updated[idx] = { ...updated[idx], label: e.target.value || undefined }
+                              void setContainers(updated)
+                            }}
+                            placeholder="Label"
+                          />
+                          <button onClick={() => setEditContainerIdx(null)}>
+                            <Check size={12} style={{ color: 'var(--success)' }} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[11px] font-medium flex-1" style={{ color: 'var(--text-primary)' }}>
+                            {container.label || container.name}
+                          </span>
+                          <span className="text-[9px] px-1 py-px rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
+                            {container.name}
+                          </span>
+                          {container.remoteHost && (
+                            <span className="text-[9px] px-1 py-px rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
+                              @{container.remoteHost}
+                            </span>
+                          )}
+                          <button onClick={() => setEditContainerIdx(idx)}>
+                            <Pencil size={12} style={{ color: 'var(--text-muted)' }} />
+                          </button>
+                          <button onClick={() => {
+                            void setContainers(containers.filter((_, i) => i !== idx))
+                          }}>
+                            <Trash2 size={12} style={{ color: 'var(--error)' }} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Add container form */}
+                  {addContainerMode ? (
+                    <div className="space-y-2 p-2 rounded" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                      <input
+                        className="w-full text-[11px] px-2 py-1 rounded"
+                        style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                        placeholder="Container name (required)"
+                        value={newContainer.name}
+                        onChange={(e) => setNewContainer({ ...newContainer, name: e.target.value })}
+                        autoFocus
+                      />
+                      <input
+                        className="w-full text-[11px] px-2 py-1 rounded"
+                        style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                        placeholder="Label (optional)"
+                        value={newContainer.label ?? ''}
+                        onChange={(e) => setNewContainer({ ...newContainer, label: e.target.value || undefined })}
+                      />
+                      <select
+                        className="w-full text-[11px] px-2 py-1 rounded"
+                        style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                        value={newContainer.remoteHost ?? ''}
+                        onChange={(e) => setNewContainer({ ...newContainer, remoteHost: e.target.value || undefined })}
+                      >
+                        <option value="">Local</option>
+                        {remoteHosts.map(h => (
+                          <option key={h.name} value={h.name}>{h.name}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <button
+                          className="text-[11px] px-2 py-1 rounded font-medium"
+                          style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
+                          onClick={() => {
+                            if (newContainer.name.trim()) {
+                              void setContainers([...containers, { ...newContainer, name: newContainer.name.trim() }])
+                              setNewContainer({ name: '' })
+                              setAddContainerMode(false)
+                            }
+                          }}
+                        >
+                          Add
+                        </button>
+                        <button
+                          className="text-[11px] px-2 py-1 rounded"
+                          style={{ color: 'var(--text-muted)' }}
+                          onClick={() => { setAddContainerMode(false); setNewContainer({ name: '' }) }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded"
+                      style={{ color: 'var(--accent)' }}
+                      onClick={() => setAddContainerMode(true)}
+                    >
+                      <Plus size={12} /> Add container
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           )}
 
