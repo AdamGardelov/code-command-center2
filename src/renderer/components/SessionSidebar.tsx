@@ -300,14 +300,16 @@ export default function SessionSidebar(): React.JSX.Element {
       <div className="flex-1 overflow-y-auto px-1.5 py-0.5 min-h-0">
         {hasRemoteHosts ? (
           <>
-            <MachineGroup
-              name="Local"
-              online={true}
-              isLocal
-              sessions={localSessions}
-              activeSessionId={activeSessionId}
-              onSelect={setActiveSession}
-            />
+            {localSessions.length > 0 && (
+              <MachineGroup
+                name="Local"
+                online={true}
+                isLocal
+                sessions={localSessions}
+                activeSessionId={activeSessionId}
+                onSelect={setActiveSession}
+              />
+            )}
             {remoteHosts
               .filter((rh) => hostStatuses[rh.name] !== false)
               .filter((rh) => filtered.some((s) => s.remoteHost === rh.name))
