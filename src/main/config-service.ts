@@ -25,6 +25,7 @@ const DEFAULT_CONFIG: CccConfig = {
   features: { pullRequests: false, containers: false },
   containers: [],
   containerSessions: {},
+  gridLayout: null,
 }
 
 export class ConfigService {
@@ -66,6 +67,7 @@ export class ConfigService {
             : { pullRequests: false, containers: false },
           containers: Array.isArray(parsed.containers) ? parsed.containers : [],
           containerSessions: parsed.containerSessions && typeof parsed.containerSessions === 'object' ? parsed.containerSessions : {},
+          gridLayout: parsed.gridLayout ?? null,
           prConfig: parsed.prConfig && typeof parsed.prConfig === 'object'
             ? {
                 githubOrg: typeof parsed.prConfig.githubOrg === 'string' ? parsed.prConfig.githubOrg : '',
@@ -136,6 +138,7 @@ export class ConfigService {
     if (partial.prConfig !== undefined) this.config.prConfig = partial.prConfig
     if (partial.containers !== undefined) this.config.containers = partial.containers
     if (partial.containerSessions !== undefined) this.config.containerSessions = { ...this.config.containerSessions, ...partial.containerSessions }
+    if (partial.gridLayout !== undefined) this.config.gridLayout = partial.gridLayout
 
     this.save(this.config)
     return this.config

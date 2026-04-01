@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig, ContainerConfig } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig, ContainerConfig, SplitNode } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -28,6 +28,10 @@ interface SessionStore {
   containers: ContainerConfig[]
   enableContainers: boolean
   platform: string
+  gridLayout: SplitNode | null
+  setGridLayout: (layout: SplitNode | null) => void
+  persistGridLayout: () => Promise<void>
+  resetGridLayout: () => void
   setActiveView: (view: ActiveView) => void
 
   loadConfig: () => Promise<void>
@@ -96,6 +100,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   containers: [],
   enableContainers: false,
   platform: '',
+  gridLayout: null,
 
   loadConfig: async () => {
     const platform = await window.cccAPI.app.platform()
@@ -122,6 +127,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
+      gridLayout: config.gridLayout ?? null,
     })
   },
 
@@ -310,6 +316,18 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setIdeCommand: async (value: string) => {
     await window.cccAPI.config.update({ ideCommand: value || undefined })
     set({ ideCommand: value })
+  },
+
+  setGridLayout: (layout) => set({ gridLayout: layout }),
+
+  persistGridLayout: async () => {
+    const { gridLayout } = get()
+    await window.cccAPI.config.update({ gridLayout: gridLayout ?? undefined })
+  },
+
+  resetGridLayout: () => {
+    set({ gridLayout: null })
+    void window.cccAPI.config.update({ gridLayout: null })
   },
 
   setActiveView: (view) => set({ activeView: view }),
