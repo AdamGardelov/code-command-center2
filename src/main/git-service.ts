@@ -38,11 +38,19 @@ export class GitService {
     const paths = this.configService?.get().worktreeSyncPaths ?? []
     if (paths.length === 0) return
 
+    const esc = (s: string): string => s.replace(/'/g, "'\\''")
+
     for (const syncPath of paths) {
       if (remoteHost && this.sshService) {
         const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
         const sshHost = hostConfig?.host ?? remoteHost
-        this.sshService.exec(sshHost, `test -e '${repoPath}/${syncPath}' && mkdir -p '${worktreePath}/${dirname(syncPath)}' && cp -r '${repoPath}/${syncPath}' '${worktreePath}/${syncPath}'`)
+        const src = `'${esc(repoPath)}/${esc(syncPath)}'`
+        const dest = `'${esc(worktreePath)}/${esc(syncPath)}'`
+        const destDir = `'${esc(worktreePath)}/${esc(dirname(syncPath))}'`
+        const result = this.sshService.exec(sshHost, `test -e ${src} && mkdir -p ${destDir} && cp -r ${src} ${dest}`)
+        if (result === null) {
+          console.warn(`Failed to sync ${syncPath} to remote worktree`)
+        }
         continue
       }
 
