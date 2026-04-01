@@ -1,7 +1,11 @@
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import type { ContainerConfig } from '../shared/types'
 import type { SshService } from './ssh-service'
 import type { ConfigService } from './config-service'
+
+function isValidContainerName(name: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name)
+}
 
 interface CacheEntry {
   running: boolean
@@ -24,6 +28,7 @@ export class ContainerService {
   }
 
   isRunning(containerName: string, remoteHost?: string): boolean {
+    if (!isValidContainerName(containerName)) return false
     const cacheKey = `${remoteHost ?? 'local'}:${containerName}`
     const cached = this.cache.get(cacheKey)
     if (cached && Date.now() < cached.expiresAt) {
@@ -38,7 +43,7 @@ export class ContainerService {
         const result = this.sshService.exec(sshHost, `docker inspect --format={{.State.Running}} ${containerName}`)
         running = result?.trim() === 'true'
       } else {
-        const result = execSync(`docker inspect --format={{.State.Running}} ${containerName}`, {
+        const result = execFileSync('docker', ['inspect', '--format={{.State.Running}}', containerName], {
           timeout: 5000,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe']

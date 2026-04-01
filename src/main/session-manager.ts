@@ -78,6 +78,10 @@ function generateId(): string {
   return `ccc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function isValidContainerName(name: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name)
+}
+
 const PREFIX = 'ccc-'
 
 export class SessionManager {
@@ -251,6 +255,9 @@ export class SessionManager {
   }
 
   async create(opts: SessionCreate): Promise<Session> {
+    if (opts.containerName && !isValidContainerName(opts.containerName)) {
+      throw new Error(`Invalid container name: ${opts.containerName}`)
+    }
     const tmuxName = PREFIX + opts.name
     const expandedDir = opts.workingDirectory.replace(/^~/, process.env.HOME ?? '')
     const isRemote = !!opts.remoteHost
