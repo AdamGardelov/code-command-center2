@@ -1,6 +1,6 @@
-import { Sun, Zap, Monitor, Folder, GitBranch, Server, Box, Settings } from 'lucide-react'
+import { Sun, Zap, LayoutGrid, Monitor, Folder, GitBranch, Server, Box, Settings } from 'lucide-react'
 
-export type Tab = 'appearance' | 'features' | 'providers' | 'favorites' | 'worktrees' | 'remotes' | 'containers' | 'advanced'
+export type Tab = 'appearance' | 'grid' | 'features' | 'providers' | 'favorites' | 'worktrees' | 'remotes' | 'containers' | 'advanced'
 
 interface NavItem {
   id: Tab
@@ -18,6 +18,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'General',
     items: [
       { id: 'appearance', label: 'Appearance', icon: Sun },
+      { id: 'grid', label: 'Grid', icon: LayoutGrid },
       { id: 'features', label: 'Features', icon: Zap },
     ],
   },

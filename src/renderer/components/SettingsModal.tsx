@@ -10,9 +10,11 @@ import WorktreesSettings from './settings/WorktreesSettings'
 import RemotesSettings from './settings/RemotesSettings'
 import ContainersSettings from './settings/ContainersSettings'
 import AdvancedSettings from './settings/AdvancedSettings'
+import GridSettings from './settings/GridSettings'
 
 const TAB_TITLES: Record<Tab, string> = {
   appearance: 'Appearance',
+  grid: 'Grid',
   features: 'Features',
   providers: 'AI Providers',
   favorites: 'Favorites',
@@ -24,6 +26,7 @@ const TAB_TITLES: Record<Tab, string> = {
 
 const TAB_COMPONENTS: Record<Tab, React.ComponentType> = {
   appearance: AppearanceSettings,
+  grid: GridSettings,
   features: FeaturesSettings,
   providers: ProvidersSettings,
   favorites: FavoritesSettings,
