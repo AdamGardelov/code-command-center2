@@ -17,6 +17,7 @@ interface SessionStore {
   remoteHosts: RemoteHost[]
   sessionGroups: SessionGroup[]
   worktreeBasePath: string
+  worktreeSyncPaths: string[]
   excludedSessions: string[]
   mutedSessions: string[]
   notificationsEnabled: boolean
@@ -79,6 +80,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   remoteHosts: [],
   sessionGroups: [],
   worktreeBasePath: '~/worktrees',
+  worktreeSyncPaths: ['.claude', 'CLAUDE.md'],
   excludedSessions: [],
   mutedSessions: [],
   notificationsEnabled: true,
@@ -101,6 +103,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       remoteHosts: config.remoteHosts ?? [],
       sessionGroups: config.sessionGroups ?? [],
       worktreeBasePath: config.worktreeBasePath ?? '~/worktrees',
+      worktreeSyncPaths: config.worktreeSyncPaths ?? ['.claude', 'CLAUDE.md'],
       excludedSessions: config.excludedSessions ?? [],
       mutedSessions: config.mutedSessions ?? [],
       notificationsEnabled: config.notificationsEnabled !== false,
