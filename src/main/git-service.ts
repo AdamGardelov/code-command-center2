@@ -1,5 +1,6 @@
 import { execFileSync } from 'child_process'
-import { basename } from 'path'
+import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
+import { basename, dirname, join } from 'path'
 import type { Worktree, CccConfig } from '../shared/types'
 import type { SshService } from './ssh-service'
 
@@ -30,6 +31,30 @@ export class GitService {
       }).trim()
     } catch {
       return null
+    }
+  }
+
+  private syncPaths(repoPath: string, worktreePath: string, remoteHost?: string): void {
+    const paths = this.configService?.get().worktreeSyncPaths ?? []
+    if (paths.length === 0) return
+
+    for (const syncPath of paths) {
+      if (remoteHost && this.sshService) {
+        const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+        const sshHost = hostConfig?.host ?? remoteHost
+        this.sshService.exec(sshHost, `test -e '${repoPath}/${syncPath}' && mkdir -p '${worktreePath}/${dirname(syncPath)}' && cp -r '${repoPath}/${syncPath}' '${worktreePath}/${syncPath}'`)
+        continue
+      }
+
+      const src = join(repoPath, syncPath)
+      const dest = join(worktreePath, syncPath)
+      try {
+        if (!existsSync(src)) continue
+        mkdirSync(dirname(dest), { recursive: true })
+        cpSync(src, dest, { recursive: statSync(src).isDirectory() })
+      } catch (err) {
+        console.warn(`Failed to sync ${syncPath} to worktree:`, err)
+      }
     }
   }
 
@@ -77,6 +102,8 @@ export class GitService {
     if (result === null) {
       throw new Error(`Failed to create worktree for branch "${branch}" at ${targetPath}`)
     }
+
+    this.syncPaths(expanded, expandedTarget, remoteHost)
 
     return {
       path: expandedTarget,
