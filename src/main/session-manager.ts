@@ -145,10 +145,16 @@ export class SessionManager {
       const sessionName = name.slice(PREFIX.length)
       // Check if we already track this remote session
       const existing = this.findByTmuxNameAndHost(sessionName, hostName)
+      const containerSessions = this.configService?.get().containerSessions ?? {}
       if (existing) {
         existing.workingDirectory = currentPath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
         if (existing.status === 'error') existing.status = 'idle'
+        const containerName = containerSessions[existing.name]
+        if (containerName) {
+          existing.isContainer = true
+          existing.containerName = containerName
+        }
         sessions.push(existing)
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
@@ -163,6 +169,11 @@ export class SessionManager {
           remoteHost: hostName,
           createdAt: created,
           lastActiveAt: Date.now()
+        }
+        const containerName = containerSessions[sessionName]
+        if (containerName) {
+          session.isContainer = true
+          session.containerName = containerName
         }
         this.sessions.set(session.id, session)
         sessions.push(session)
