@@ -58,6 +58,7 @@ export default function SettingsModal(): React.JSX.Element {
   const [addContainerMode, setAddContainerMode] = useState(false)
   const [newContainer, setNewContainer] = useState<ContainerConfig>({ name: '' })
   const [editContainerIdx, setEditContainerIdx] = useState<number | null>(null)
+  const [editContainerLabel, setEditContainerLabel] = useState('')
 
   // Features tab state
   const [featuresConfig, setFeaturesConfig] = useState({ pullRequests: false, containers: false })
@@ -1064,15 +1065,16 @@ export default function SettingsModal(): React.JSX.Element {
                           <input
                             className="flex-1 text-[11px] px-1.5 py-0.5 rounded"
                             style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
-                            value={containers[idx].label ?? containers[idx].name}
-                            onChange={(e) => {
-                              const updated = [...containers]
-                              updated[idx] = { ...updated[idx], label: e.target.value || undefined }
-                              void setContainers(updated)
-                            }}
+                            value={editContainerLabel}
+                            onChange={(e) => setEditContainerLabel(e.target.value)}
                             placeholder="Label"
                           />
-                          <button onClick={() => setEditContainerIdx(null)}>
+                          <button onClick={() => {
+                            const updated = [...containers]
+                            updated[editContainerIdx!] = { ...updated[editContainerIdx!], label: editContainerLabel || undefined }
+                            void setContainers(updated)
+                            setEditContainerIdx(null)
+                          }}>
                             <Check size={12} style={{ color: 'var(--success)' }} />
                           </button>
                         </>
@@ -1089,7 +1091,10 @@ export default function SettingsModal(): React.JSX.Element {
                               @{container.remoteHost}
                             </span>
                           )}
-                          <button onClick={() => setEditContainerIdx(idx)}>
+                          <button onClick={() => {
+                            setEditContainerIdx(idx)
+                            setEditContainerLabel(containers[idx].label ?? containers[idx].name)
+                          }}>
                             <Pencil size={12} style={{ color: 'var(--text-muted)' }} />
                           </button>
                           <button onClick={() => {
