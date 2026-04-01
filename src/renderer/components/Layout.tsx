@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TitleBar from './TitleBar'
 import SessionTopBar from './SessionTopBar'
@@ -19,7 +18,6 @@ export default function Layout(): React.JSX.Element {
   const sidebarOpen = useSessionStore((s) => s.sidebarOpen)
   const sidebarWidth = useSessionStore((s) => s.sidebarWidth)
   const viewMode = useSessionStore((s) => s.viewMode)
-  const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
   const setSidebarWidth = useSessionStore((s) => s.setSidebarWidth)
   const persistSidebarWidth = useSessionStore((s) => s.persistSidebarWidth)
   const activeSession = sessions.find((s) => s.id === activeSessionId)
@@ -87,12 +85,10 @@ export default function Layout(): React.JSX.Element {
       <TitleBar />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Activity Bar — always visible when features exist */}
-        {features.pullRequests && (
-          <ActivityBar hasAttention={hasAttention} />
-        )}
+        {/* Activity Bar — always visible */}
+        <ActivityBar hasAttention={hasAttention} />
 
-        {sidebarOpen ? (
+        {sidebarOpen && (
           <>
             {/* Open sidebar */}
             <div
@@ -102,20 +98,6 @@ export default function Layout(): React.JSX.Element {
                 transition: dragging.current ? 'none' : 'width 200ms ease-in-out'
               }}
             >
-              {/* Shared sidebar header with collapse button */}
-              <div
-                className="px-2 pt-2 pb-1 flex items-center flex-shrink-0"
-                style={{ width: sidebarWidth, backgroundColor: 'var(--bg-surface)' }}
-              >
-                <button
-                  onClick={toggleSidebar}
-                  className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-                  style={{ color: 'var(--text-muted)' }}
-                  title="Collapse sidebar (Ctrl+B)"
-                >
-                  <PanelLeftClose size={13} />
-                </button>
-              </div>
               <div className="flex-1 min-h-0" style={{ width: sidebarWidth }}>
                 {activeView === 'sessions' ? <SessionSidebar /> : <PrSidebar />}
               </div>
@@ -128,24 +110,6 @@ export default function Layout(): React.JSX.Element {
               onMouseDown={handleDragStart}
             />
           </>
-        ) : (
-          /* Collapsed sidebar — narrow strip with expand button */
-          <div
-            className="w-8 flex-shrink-0 flex flex-col items-center pt-2 border-r"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--bg-raised)'
-            }}
-          >
-            <button
-              onClick={toggleSidebar}
-              className="p-1.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-              style={{ color: 'var(--text-muted)' }}
-              title="Expand sidebar (Ctrl+B)"
-            >
-              <PanelLeftOpen size={14} />
-            </button>
-          </div>
         )}
 
         {/* Main area */}

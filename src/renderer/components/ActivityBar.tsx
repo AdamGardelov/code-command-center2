@@ -1,4 +1,4 @@
-import { SquareTerminal, GitPullRequestArrow } from 'lucide-react'
+import { SquareTerminal, GitPullRequestArrow, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { ActiveView } from '../../shared/types'
 
@@ -44,17 +44,45 @@ function ActivityBarItem({ icon, active, onClick, badge, tooltip }: ActivityBarI
 export default function ActivityBar({ hasAttention }: { hasAttention: boolean }): React.JSX.Element {
   const activeView = useSessionStore((s) => s.activeView)
   const features = useSessionStore((s) => s.features)
+  const sidebarOpen = useSessionStore((s) => s.sidebarOpen)
+  const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
   const setActiveView = useSessionStore((s) => s.setActiveView)
 
   return (
     <div
-      className="flex flex-col items-center pt-2.5 gap-1 flex-shrink-0"
+      className="flex flex-col items-center pt-2 gap-1 flex-shrink-0"
       style={{
         width: 36,
         backgroundColor: 'var(--bg-primary)',
         borderRight: '1px solid var(--bg-raised)',
       }}
     >
+      {/* Sidebar toggle */}
+      <button
+        onClick={toggleSidebar}
+        title={sidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
+        className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+        style={{
+          width: 28,
+          height: 28,
+          color: 'var(--text-muted)',
+        }}
+      >
+        {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+      </button>
+
+      {/* Separator */}
+      <div
+        style={{
+          width: 18,
+          height: 1,
+          backgroundColor: 'var(--bg-raised)',
+          marginTop: 2,
+          marginBottom: 2,
+        }}
+      />
+
+      {/* Nav items */}
       <ActivityBarItem
         icon={<SquareTerminal size={16} />}
         view="sessions"
