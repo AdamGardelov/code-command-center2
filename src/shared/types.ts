@@ -33,6 +33,17 @@ export interface SessionCreate {
 
 export type ViewMode = 'single' | 'grid'
 
+export type SplitDirection = 'horizontal' | 'vertical'
+
+export type SplitNode =
+  | { type: 'leaf'; sessionId: string }
+  | {
+      type: 'split'
+      direction: SplitDirection
+      ratio: number
+      children: [SplitNode, SplitNode]
+    }
+
 export type Theme = 'dark' | 'light'
 
 export interface FavoriteFolder {
@@ -160,6 +171,7 @@ export interface CccConfig {
   prConfig?: PrConfig
   containers: ContainerConfig[]
   containerSessions: Record<string, string>
+  gridLayout?: SplitNode | null
 }
 
 export interface CccAPI {
