@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, LayoutGrid, Monitor, PanelLeftClose, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 import type { Session } from '../../shared/types'
@@ -239,7 +239,6 @@ export default function SessionSidebar(): React.JSX.Element {
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
   const toggleModal = useSessionStore((s) => s.toggleModal)
-  const toggleSidebar = useSessionStore((s) => s.toggleSidebar)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
@@ -268,15 +267,7 @@ export default function SessionSidebar(): React.JSX.Element {
       }}
     >
       {/* Header */}
-      <div className="px-2 pt-2 pb-1 flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={toggleSidebar}
-          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-          style={{ color: 'var(--text-muted)' }}
-          title="Collapse sidebar (Ctrl+B)"
-        >
-          <PanelLeftClose size={13} />
-        </button>
+      <div className="px-2 pb-1 flex items-center gap-1 flex-shrink-0">
         <span className="flex-1" />
         <button
           onClick={toggleModal}

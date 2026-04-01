@@ -135,6 +135,10 @@ ipcMain.on('pr:refresh', () => {
   void prService.refresh()
 })
 
+ipcMain.handle('pr:get-state', () => {
+  return prService.getState()
+})
+
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()
 

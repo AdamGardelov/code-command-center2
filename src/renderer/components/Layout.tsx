@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { PanelLeftOpen } from 'lucide-react'
+import { PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TitleBar from './TitleBar'
 import SessionTopBar from './SessionTopBar'
@@ -29,6 +29,11 @@ export default function Layout(): React.JSX.Element {
 
   useEffect(() => {
     if (!features.pullRequests) return
+    window.cccAPI.pr.getState().then((state) => {
+      if (state?.attentionItems) {
+        setHasAttention(state.attentionItems.length > 0)
+      }
+    })
     const unsubState = window.cccAPI.pr.onState((state) => {
       if (state.attentionItems) {
         setHasAttention(state.attentionItems.length > 0)
@@ -91,13 +96,27 @@ export default function Layout(): React.JSX.Element {
           <>
             {/* Open sidebar */}
             <div
-              className="overflow-hidden flex-shrink-0"
+              className="overflow-hidden flex-shrink-0 flex flex-col"
               style={{
                 width: sidebarWidth,
                 transition: dragging.current ? 'none' : 'width 200ms ease-in-out'
               }}
             >
-              <div className="h-full" style={{ width: sidebarWidth }}>
+              {/* Shared sidebar header with collapse button */}
+              <div
+                className="px-2 pt-2 pb-1 flex items-center flex-shrink-0"
+                style={{ width: sidebarWidth, backgroundColor: 'var(--bg-surface)' }}
+              >
+                <button
+                  onClick={toggleSidebar}
+                  className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+                  style={{ color: 'var(--text-muted)' }}
+                  title="Collapse sidebar (Ctrl+B)"
+                >
+                  <PanelLeftClose size={13} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0" style={{ width: sidebarWidth }}>
                 {activeView === 'sessions' ? <SessionSidebar /> : <PrSidebar />}
               </div>
             </div>

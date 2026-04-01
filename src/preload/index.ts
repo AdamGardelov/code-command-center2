@@ -108,6 +108,8 @@ const api: CccAPI = {
       ipcRenderer.invoke('group:remove-session', groupId, sessionId)
   },
   pr: {
+    getState: (): Promise<Partial<import('../shared/types').PrState>> =>
+      ipcRenderer.invoke('pr:get-state'),
     onState: (callback) => {
       const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof callback>[0]): void => {
         callback(state)

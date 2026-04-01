@@ -201,6 +201,7 @@ export interface CccAPI {
     removeSession: (groupId: string, sessionId: string) => Promise<void>
   }
   pr: {
+    getState: () => Promise<Partial<PrState>>
     onState: (callback: (state: PrState) => void) => () => void
     refresh: () => void
     onNavigate: (callback: () => void) => () => void

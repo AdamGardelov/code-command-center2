@@ -34,6 +34,7 @@ export class PrService {
   private currentUser = ''
   private previousPrs: PullRequest[] = []
   private isFirstPoll = true
+  private lastState: Partial<PrState> = {}
 
   constructor(configService: ConfigService) {
     this.configService = configService
@@ -308,7 +309,12 @@ export class PrService {
     }
   }
 
+  getState(): Partial<PrState> {
+    return this.lastState
+  }
+
   private sendState(partial: Partial<PrState>): void {
+    this.lastState = { ...this.lastState, ...partial }
     if (!this.window || this.window.isDestroyed()) return
     this.window.webContents.send('pr:state', partial)
   }

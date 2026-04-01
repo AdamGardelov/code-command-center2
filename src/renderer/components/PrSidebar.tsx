@@ -29,6 +29,13 @@ export default function PrSidebar(): React.JSX.Element {
   const [attentionOpen, setAttentionOpen] = useState(true)
 
   useEffect(() => {
+    // Fetch current state to avoid race condition where initial poll
+    // completed before this component mounted
+    window.cccAPI.pr.getState().then((state) => {
+      if (state && Object.keys(state).length > 0) {
+        setPrState((prev) => ({ ...prev, ...state }))
+      }
+    })
     const unsub = window.cccAPI.pr.onState((state) => {
       setPrState((prev) => ({ ...prev, ...state }))
     })
