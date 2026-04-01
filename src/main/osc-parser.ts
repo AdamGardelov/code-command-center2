@@ -19,14 +19,20 @@ const BRAILLE_END = 0x28ff
 const IDLE_CHAR = 0x2733 // ✳
 
 export type OscCallback = (sessionId: string, status: SessionStatus, title?: string) => void
+export type ClipboardCallback = (text: string) => void
 
 export class OscParser {
   private callback: OscCallback
+  private clipboardCallback: ClipboardCallback | null = null
   // Track per-session state to avoid duplicate emissions
   private lastStatus: Map<string, SessionStatus> = new Map()
 
   constructor(callback: OscCallback) {
     this.callback = callback
+  }
+
+  setClipboardCallback(cb: ClipboardCallback): void {
+    this.clipboardCallback = cb
   }
 
   /**
@@ -78,6 +84,9 @@ export class OscParser {
       } else if (code === '9') {
         // OSC 9: iTerm2 notification
         this.handleNotification(sessionId, value)
+      } else if (code === '52') {
+        // OSC 52: Clipboard set — format: selection;base64data
+        this.handleClipboard(value)
       }
     }
   }
@@ -108,6 +117,22 @@ export class OscParser {
     // Claude Code sends these when it needs permission
     if (payload.toLowerCase().includes('permission') || payload.toLowerCase().includes('approve')) {
       this.emitIfChanged(sessionId, 'waiting')
+    }
+  }
+
+  private handleClipboard(payload: string): void {
+    if (!this.clipboardCallback) return
+    // Format: <selection>;<base64-data>  (selection is typically 'c', 'p', 's', etc.)
+    const semi = payload.indexOf(';')
+    if (semi === -1) return
+    const b64 = payload.slice(semi + 1)
+    // '?' means query — ignore, we only handle set
+    if (!b64 || b64 === '?') return
+    try {
+      const text = Buffer.from(b64, 'base64').toString('utf-8')
+      if (text) this.clipboardCallback(text)
+    } catch {
+      // Invalid base64 — ignore
     }
   }
 
