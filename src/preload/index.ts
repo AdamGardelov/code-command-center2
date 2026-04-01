@@ -106,6 +106,23 @@ const api: CccAPI = {
       ipcRenderer.invoke('group:add-session', groupId, sessionId),
     removeSession: (groupId: string, sessionId: string): Promise<void> =>
       ipcRenderer.invoke('group:remove-session', groupId, sessionId)
+  },
+  pr: {
+    onState: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: Parameters<typeof callback>[0]): void => {
+        callback(state)
+      }
+      ipcRenderer.on('pr:state', handler)
+      return () => ipcRenderer.removeListener('pr:state', handler)
+    },
+    refresh: () => ipcRenderer.send('pr:refresh'),
+    onNavigate: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent): void => {
+        callback()
+      }
+      ipcRenderer.on('pr:navigate', handler)
+      return () => ipcRenderer.removeListener('pr:navigate', handler)
+    }
   }
 }
 

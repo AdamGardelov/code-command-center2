@@ -65,6 +65,68 @@ export interface Worktree {
   repoPath: string
 }
 
+export interface PrReviewer {
+  login: string
+  state: 'pending' | 'approved' | 'changes_requested'
+}
+
+export interface PullRequest {
+  id: string
+  number: number
+  title: string
+  url: string
+  repo: string
+  author: string
+  isDraft: boolean
+  additions: number
+  deletions: number
+  reviewDecision: 'approved' | 'changes_requested' | 'review_required' | 'none'
+  reviewers: PrReviewer[]
+  checksStatus: 'passing' | 'failing' | 'pending' | 'none'
+  commentCount: number
+  unresolvedThreads: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PrNotificationConfig {
+  approved: boolean
+  changesRequested: boolean
+  newComment: boolean
+  newReviewer: boolean
+  newPr: boolean
+}
+
+export interface PrConfig {
+  githubOrg: string
+  pinnedRepos: string[]
+  teamMembers: string[]
+  pollInterval: number
+  showMyDrafts: boolean
+  showOthersDrafts: boolean
+  notifications: PrNotificationConfig
+  dismissedAttention: string[]
+}
+
+export interface FeaturesConfig {
+  pullRequests: boolean
+}
+
+export type PrTab = 'mine' | 'team' | 'reviews'
+
+export type ActiveView = 'sessions' | 'pullRequests'
+
+export interface PrState {
+  myPrs: PullRequest[]
+  teamPrs: PullRequest[]
+  reviewPrs: PullRequest[]
+  attentionItems: Array<{ pr: PullRequest; reason: 'ready_to_merge' | 'changes_requested' }>
+  currentUser: string
+  lastUpdated: string | null
+  isLoading: boolean
+  error: string | null
+}
+
 export interface CccConfig {
   theme: Theme
   sidebarWidth: number
@@ -83,6 +145,8 @@ export interface CccConfig {
   ideCommand?: string
   claudeConfigRoutes: ClaudeConfigRoute[]
   defaultClaudeConfigDir?: string
+  features: FeaturesConfig
+  prConfig?: PrConfig
 }
 
 export interface CccAPI {
@@ -134,5 +198,10 @@ export interface CccAPI {
     delete: (groupId: string) => Promise<void>
     addSession: (groupId: string, sessionId: string) => Promise<void>
     removeSession: (groupId: string, sessionId: string) => Promise<void>
+  }
+  pr: {
+    onState: (callback: (state: PrState) => void) => () => void
+    refresh: () => void
+    onNavigate: (callback: () => void) => () => void
   }
 }

@@ -20,7 +20,8 @@ const DEFAULT_CONFIG: CccConfig = {
   excludedSessions: [],
   notificationsEnabled: true,
   mutedSessions: [],
-  claudeConfigRoutes: []
+  claudeConfigRoutes: [],
+  features: { pullRequests: false },
 }
 
 export class ConfigService {
@@ -55,7 +56,30 @@ export class ConfigService {
           mutedSessions: Array.isArray(parsed.mutedSessions) ? parsed.mutedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
-          defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined
+          defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined,
+          features: parsed.features && typeof parsed.features === 'object'
+            ? { pullRequests: parsed.features.pullRequests === true }
+            : { pullRequests: false },
+          prConfig: parsed.prConfig && typeof parsed.prConfig === 'object'
+            ? {
+                githubOrg: typeof parsed.prConfig.githubOrg === 'string' ? parsed.prConfig.githubOrg : '',
+                pinnedRepos: Array.isArray(parsed.prConfig.pinnedRepos) ? parsed.prConfig.pinnedRepos : [],
+                teamMembers: Array.isArray(parsed.prConfig.teamMembers) ? parsed.prConfig.teamMembers : [],
+                pollInterval: typeof parsed.prConfig.pollInterval === 'number' ? parsed.prConfig.pollInterval : 120,
+                showMyDrafts: parsed.prConfig.showMyDrafts !== false,
+                showOthersDrafts: parsed.prConfig.showOthersDrafts === true,
+                notifications: parsed.prConfig.notifications && typeof parsed.prConfig.notifications === 'object'
+                  ? {
+                      approved: parsed.prConfig.notifications.approved !== false,
+                      changesRequested: parsed.prConfig.notifications.changesRequested !== false,
+                      newComment: parsed.prConfig.notifications.newComment !== false,
+                      newReviewer: parsed.prConfig.notifications.newReviewer !== false,
+                      newPr: parsed.prConfig.notifications.newPr !== false,
+                    }
+                  : { approved: true, changesRequested: true, newComment: true, newReviewer: true, newPr: true },
+                dismissedAttention: Array.isArray(parsed.prConfig.dismissedAttention) ? parsed.prConfig.dismissedAttention : [],
+              }
+            : undefined,
         }
       } else {
         this.config = { ...DEFAULT_CONFIG }
@@ -101,6 +125,8 @@ export class ConfigService {
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
     if (partial.claudeConfigRoutes !== undefined) this.config.claudeConfigRoutes = partial.claudeConfigRoutes
     if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
+    if (partial.features !== undefined) this.config.features = partial.features
+    if (partial.prConfig !== undefined) this.config.prConfig = partial.prConfig
 
     this.save(this.config)
     return this.config
