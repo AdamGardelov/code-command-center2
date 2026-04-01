@@ -13,6 +13,7 @@
   --accent-muted: rgba(233, 200, 128, 0.12);
   --success: #c2c97a;
   --error: #d98a88;
+  --container: #7ec8c8;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --modal-backdrop: rgba(0, 0, 0, 0.6);
@@ -30,6 +31,7 @@
   --accent-muted: rgba(180, 95, 4, 0.1);
   --success: #047857;
   --error: #b91c1c;
+  --container: #0d7377;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --modal-backdrop: rgba(0, 0, 0, 0.3);
