@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Box } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TerminalPanel from './TerminalPanel'
 
@@ -123,6 +124,9 @@ export default function GridView(): React.JSX.Element {
             >
               {session.name}
             </span>
+            {session.isContainer && (
+              <Box size={10} className="ml-1 flex-shrink-0" style={{ color: 'var(--container)' }} />
+            )}
             {session.type === 'claude' && (
               <span
                 className="text-[8px] font-semibold uppercase tracking-wide ml-2 flex-shrink-0"
