@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, LayoutGrid, Monitor, Settings, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 import type { Session } from '../../shared/types'
@@ -239,7 +239,6 @@ export default function SessionSidebar(): React.JSX.Element {
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
   const toggleModal = useSessionStore((s) => s.toggleModal)
-  const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [searchQuery, setSearchQuery] = useState('')
@@ -276,14 +275,6 @@ export default function SessionSidebar(): React.JSX.Element {
           title="New Session (Ctrl+N)"
         >
           <Plus size={14} />
-        </button>
-        <button
-          onClick={toggleSettings}
-          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-          style={{ color: 'var(--text-muted)' }}
-          title="Settings"
-        >
-          <Settings size={13} />
         </button>
       </div>
 

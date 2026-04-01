@@ -214,7 +214,7 @@ export default function SettingsModal(): React.JSX.Element {
       onClick={handleBackdropClick}
     >
       <div
-        className="w-[560px] max-h-[80vh] flex flex-col rounded-xl border"
+        className="w-[560px] h-[80vh] flex flex-col rounded-xl border"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--bg-raised)',

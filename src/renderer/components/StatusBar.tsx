@@ -1,5 +1,7 @@
 import { useSessionStore } from '../stores/session-store'
 
+declare const __APP_VERSION__: string
+
 export default function StatusBar(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
   const viewMode = useSessionStore((s) => s.viewMode)
@@ -15,7 +17,7 @@ export default function StatusBar(): React.JSX.Element {
       }}
     >
       <span>{runningCount} running · {sessions.length} total</span>
-      <span>{viewMode === 'grid' ? 'Grid' : 'Single'}</span>
+      <span>v{__APP_VERSION__} · {viewMode === 'grid' ? 'Grid' : 'Single'}</span>
     </div>
   )
 }
