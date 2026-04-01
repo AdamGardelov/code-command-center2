@@ -18,6 +18,8 @@ export interface Session {
   lastActiveAt: number
   skipPermissions?: boolean
   isExcluded?: boolean
+  isContainer?: boolean
+  containerName?: string
 }
 
 export interface SessionCreate {
@@ -26,6 +28,7 @@ export interface SessionCreate {
   type: SessionType
   remoteHost?: string
   skipPermissions?: boolean
+  containerName?: string
 }
 
 export type ViewMode = 'single' | 'grid'
@@ -45,6 +48,12 @@ export interface RemoteHost {
   shell?: string
   worktreeBasePath?: string
   favoriteFolders: FavoriteFolder[]
+}
+
+export interface ContainerConfig {
+  name: string
+  label?: string
+  remoteHost?: string
 }
 
 export interface SessionGroup {
@@ -110,6 +119,7 @@ export interface PrConfig {
 
 export interface FeaturesConfig {
   pullRequests: boolean
+  containers: boolean
 }
 
 export type PrTab = 'mine' | 'team' | 'reviews'
@@ -148,6 +158,8 @@ export interface CccConfig {
   defaultClaudeConfigDir?: string
   features: FeaturesConfig
   prConfig?: PrConfig
+  containers: ContainerConfig[]
+  containerSessions: Record<string, string>
 }
 
 export interface CccAPI {
@@ -211,5 +223,8 @@ export interface CccAPI {
   }
   shell: {
     openExternal: (url: string) => void
+  }
+  container: {
+    listRunning: (remoteHost?: string) => Promise<ContainerConfig[]>
   }
 }
