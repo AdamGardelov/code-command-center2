@@ -16,10 +16,20 @@ export function snapRatio(ratio: number, threshold = 0.04): number {
 }
 
 /**
- * Build an auto equal-split tree from a list of session IDs.
- * Returns null if no sessions.
+ * Build a grid layout from presets config, falling back to recursive split.
  */
-export function buildAutoGrid(sessionIds: string[]): SplitNode | null {
+export function buildAutoGrid(sessionIds: string[], presets?: Record<string, string>): SplitNode | null {
+  if (sessionIds.length === 0) return null
+  if (sessionIds.length === 1) return { type: 'leaf', sessionId: sessionIds[0] }
+
+  const count = String(sessionIds.length)
+  const presetId = presets?.[count] ?? DEFAULT_GRID_PRESETS[count]
+  if (presetId) {
+    const result = buildPresetGrid(presetId, sessionIds)
+    if (result) return result
+  }
+
+  // Fallback for counts > 8 or unknown presets
   return buildAutoGridInner(sessionIds, 0)
 }
 

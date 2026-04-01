@@ -13,6 +13,7 @@ export default function GridView(): React.JSX.Element {
   const setGridLayout = useSessionStore((s) => s.setGridLayout)
   const persistGridLayout = useSessionStore((s) => s.persistGridLayout)
   const resetGridLayout = useSessionStore((s) => s.resetGridLayout)
+  const gridPresets = useSessionStore((s) => s.gridPresets)
 
   const visibleSessions = sessions.filter((s) => !s.isExcluded)
   const visibleIds = new Set(visibleSessions.map((s) => s.id))
@@ -29,7 +30,7 @@ export default function GridView(): React.JSX.Element {
 
     // No layout yet — build auto grid
     if (gridLayout === null) {
-      setGridLayout(buildAutoGrid(visibleSessions.map((s) => s.id)))
+      setGridLayout(buildAutoGrid(visibleSessions.map((s) => s.id), gridPresets))
       return
     }
 
