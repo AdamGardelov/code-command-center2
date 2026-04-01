@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig, ContainerConfig, SplitNode } from '../../shared/types'
+import { removeSession as removeFromTree } from '../lib/split-tree'
 
 interface SessionStore {
   sessions: Session[]
@@ -159,14 +160,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     await window.cccAPI.session.kill(id)
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== id)
+      const gridLayout = state.gridLayout ? removeFromTree(state.gridLayout, id) : null
       return {
         sessions,
+        gridLayout,
         activeSessionId:
           state.activeSessionId === id
             ? sessions[0]?.id ?? null
             : state.activeSessionId
       }
     })
+    void get().persistGridLayout()
   },
 
   setActiveSession: (id) => set({ activeSessionId: id }),
