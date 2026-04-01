@@ -76,6 +76,45 @@ body {
   width: 2px;
 }
 
+/* Split pane drag handles */
+.split-drag-handle {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.split-drag-handle-h {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.split-drag-handle-v {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.split-drag-handle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.split-drag-handle-h::before {
+  left: -3px;
+  right: -3px;
+}
+
+.split-drag-handle-v::before {
+  top: -3px;
+  bottom: -3px;
+}
+
+.split-drag-handle:hover {
+  background-color: var(--accent);
+  opacity: 0.7;
+}
+
 /* xterm.js container — all layers must share same bg to hide pixel gaps */
 .xterm-container {
   width: 100%;
