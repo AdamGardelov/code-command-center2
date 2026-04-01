@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
-import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig } from '../shared/types'
 
 const api: CccAPI = {
   window: {
@@ -131,6 +131,10 @@ const api: CccAPI = {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.send('shell:open-external', url)
+  },
+  container: {
+    listRunning: (remoteHost?: string): Promise<ContainerConfig[]> =>
+      ipcRenderer.invoke('container:list-running', remoteHost)
   }
 }
 
