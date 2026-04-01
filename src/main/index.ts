@@ -30,6 +30,7 @@ import { GitService } from './git-service'
 import { registerGitIpc } from './ipc/git'
 import { registerGroupIpc } from './ipc/group'
 import { NotificationService } from './notification-service'
+import { PrService } from './pr-service'
 import { initUpdater } from './updater'
 
 const configService = new ConfigService()
@@ -47,6 +48,7 @@ sessionManager.setSshService(sshService)
 const ptyManager = new PtyManager()
 const stateDetector = new StateDetector()
 const notificationService = new NotificationService(configService)
+const prService = new PrService(configService)
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -70,6 +72,10 @@ function createWindow(): void {
   ptyManager.setWindow(mainWindow)
   stateDetector.setWindow(mainWindow)
   notificationService.setWindow(mainWindow)
+  prService.setWindow(mainWindow)
+  if (configService.get().features.pullRequests) {
+    prService.start()
+  }
   sshService.setWindow(mainWindow)
 
   const remoteHosts = configService.get().remoteHosts ?? []
@@ -121,6 +127,10 @@ registerHostIpc(sshService)
 registerGitIpc(gitService)
 registerGroupIpc(configService)
 
+ipcMain.on('pr:refresh', () => {
+  void prService.refresh()
+})
+
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()
 
@@ -145,5 +155,6 @@ app.on('window-all-closed', () => {
   sshService.stopMonitoring()
   stateDetector.stop()
   ptyManager.detachAll()
+  prService.stop()
   if (process.platform !== 'darwin') app.quit()
 })
