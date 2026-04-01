@@ -30,6 +30,7 @@ import { GitService } from './git-service'
 import { registerGitIpc } from './ipc/git'
 import { registerGroupIpc } from './ipc/group'
 import { registerClipboardIpc } from './ipc/clipboard'
+import { registerShellIpc } from './ipc/shell'
 import { NotificationService } from './notification-service'
 import { PrService } from './pr-service'
 import { initUpdater } from './updater'
@@ -128,6 +129,7 @@ registerHostIpc(sshService)
 registerGitIpc(gitService)
 registerGroupIpc(configService)
 registerClipboardIpc()
+registerShellIpc()
 
 ipcMain.on('pr:refresh', () => {
   void prService.refresh()
