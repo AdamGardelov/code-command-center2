@@ -1,6 +1,7 @@
 import { ipcMain, shell } from 'electron'
 import type { SessionManager } from '../session-manager'
 import type { SessionCreate } from '../../shared/types'
+import { log } from '../log-service'
 
 export function registerSessionIpc(sessionManager: SessionManager): void {
   ipcMain.handle('session:list', async () => {
@@ -8,7 +9,15 @@ export function registerSessionIpc(sessionManager: SessionManager): void {
   })
 
   ipcMain.handle('session:create', async (_event, opts: SessionCreate) => {
-    return sessionManager.create(opts)
+    try {
+      log.info(`Creating session: ${opts.name} (${opts.type}) at ${opts.workingDirectory}`)
+      const session = await sessionManager.create(opts)
+      log.info(`Session created: ${opts.name}`)
+      return session
+    } catch (err) {
+      log.error(`Session create failed: ${opts.name} — ${err instanceof Error ? err.message : err}`)
+      throw err
+    }
   })
 
   ipcMain.handle('session:kill', async (_event, id: string) => {

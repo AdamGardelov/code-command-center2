@@ -1,5 +1,15 @@
 import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 
+// macOS GUI apps don't inherit shell PATH — add common Homebrew paths
+if (process.platform === 'darwin') {
+  const extra = ['/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin']
+  const current = process.env.PATH ?? ''
+  const missing = extra.filter(p => !current.split(':').includes(p))
+  if (missing.length) {
+    process.env.PATH = [...missing, current].join(':')
+  }
+}
+
 // Set WM_CLASS (X11) and app_id (Wayland) for Linux taskbar icon mapping
 if (process.platform === 'linux') {
   app.setName('code-command-center')
@@ -35,6 +45,7 @@ import { NotificationService } from './notification-service'
 import { PrService } from './pr-service'
 import { ContainerService } from './container-service'
 import { initUpdater } from './updater'
+import { log, readLogs, getLogPath } from './log-service'
 
 const configService = new ConfigService()
 configService.load()
@@ -57,6 +68,8 @@ const containerService = new ContainerService()
 containerService.setSshService(sshService)
 containerService.setConfigService(configService)
 
+const isMac = process.platform === 'darwin'
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1400,
@@ -64,7 +77,8 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     frame: false,
-    titleBarStyle: 'hidden',
+    titleBarStyle: 'hiddenInset',
+    ...(isMac ? { trafficLightPosition: { x: 12, y: 10 } } : {}),
     backgroundColor: '#0a0a0f',
     icon: nativeImage.createFromPath(join(__dirname, '../../build/icon.png')),
     show: false,
@@ -148,13 +162,25 @@ ipcMain.handle('pr:get-state', () => {
   return prService.getState()
 })
 
+ipcMain.handle('app:platform', () => process.platform)
+
+ipcMain.handle('app:logs', (_event, lines?: number) => readLogs(lines))
+
+ipcMain.handle('app:log-path', () => getLogPath())
+
 // Hook-based detection as secondary source (overrides OSC if configured)
 stateDetector.start()
 
 app.whenReady().then(() => {
+  log.info(`CCC starting on ${process.platform} (${process.arch})`)
+
   const deps = sessionManager.checkDependencies()
   if (!deps.tmux) {
-    console.error('tmux is not installed. Install with: sudo apt install tmux')
+    const installHint = isMac
+      ? 'brew install tmux'
+      : 'sudo apt install tmux'
+    log.error(`tmux is not installed. Install with: ${installHint}`)
+    console.error(`tmux is not installed. Install with: ${installHint}`)
   }
 
   createWindow()

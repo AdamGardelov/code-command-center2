@@ -84,6 +84,11 @@ function isValidContainerName(name: string): boolean {
 
 const PREFIX = 'ccc-'
 
+/** Tmux replaces dots with underscores in session names, so we must do the same */
+function tmuxSessionName(name: string): string {
+  return PREFIX + name.replace(/\./g, '_')
+}
+
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
@@ -239,7 +244,7 @@ export class SessionManager {
     // Mark stopped local sessions
     for (const session of this.sessions.values()) {
       if (session.remoteHost) continue
-      const tmuxName = PREFIX + session.name
+      const tmuxName = tmuxSessionName(session.name)
       if (!tmuxSessions.has(tmuxName) && session.status !== 'stopped') {
         session.status = 'stopped'
       }
@@ -269,7 +274,7 @@ export class SessionManager {
     if (opts.containerName && !isValidContainerName(opts.containerName)) {
       throw new Error(`Invalid container name: ${opts.containerName}`)
     }
-    const tmuxName = PREFIX + opts.name
+    const tmuxName = tmuxSessionName(opts.name)
     const expandedDir = opts.workingDirectory.replace(/^~/, process.env.HOME ?? '')
     const isRemote = !!opts.remoteHost
 
@@ -399,7 +404,7 @@ export class SessionManager {
     const session = this.sessions.get(id)
     if (!session) return
 
-    const tmuxName = PREFIX + session.name
+    const tmuxName = tmuxSessionName(session.name)
     this.tmuxCmd(session.remoteHost, 'kill-session', '-t', `=${tmuxName}`)
     session.status = 'stopped'
     this.sessions.delete(id)
@@ -418,7 +423,7 @@ export class SessionManager {
 
   getTmuxName(id: string): string | undefined {
     const session = this.sessions.get(id)
-    return session ? PREFIX + session.name : undefined
+    return session ? tmuxSessionName(session.name) : undefined
   }
 
   updateStatus(sessionName: string, status: Session['status']): void {
@@ -437,7 +442,7 @@ export class SessionManager {
       ? this.configService?.get().remoteHosts?.find(h => h.name === session.remoteHost)
       : undefined
     return {
-      tmuxName: PREFIX + session.name,
+      tmuxName: tmuxSessionName(session.name),
       remoteHost: hostConfig?.host
     }
   }
@@ -456,16 +461,15 @@ export class SessionManager {
   }
 
   private findByTmuxName(tmuxName: string): Session | undefined {
-    const name = tmuxName.slice(PREFIX.length)
     for (const session of this.sessions.values()) {
-      if (session.name === name && !session.remoteHost) return session
+      if (tmuxSessionName(session.name) === tmuxName && !session.remoteHost) return session
     }
     return undefined
   }
 
   private findByTmuxNameAndHost(sessionName: string, hostName: string): Session | undefined {
     for (const session of this.sessions.values()) {
-      if (session.name === sessionName && session.remoteHost === hostName) return session
+      if (session.name.replace(/\./g, '_') === sessionName && session.remoteHost === hostName) return session
     }
     return undefined
   }

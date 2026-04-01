@@ -27,6 +27,7 @@ interface SessionStore {
   features: FeaturesConfig
   containers: ContainerConfig[]
   enableContainers: boolean
+  platform: string
   setActiveView: (view: ActiveView) => void
 
   loadConfig: () => Promise<void>
@@ -94,8 +95,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
   enableContainers: false,
+  platform: '',
 
   loadConfig: async () => {
+    const platform = await window.cccAPI.app.platform()
+    set({ platform })
     const config = await window.cccAPI.config.load()
     document.documentElement.setAttribute('data-theme', config.theme)
     if (config.zoomFactor && config.zoomFactor !== 1.0) {

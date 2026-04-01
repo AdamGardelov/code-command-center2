@@ -5,13 +5,17 @@ import logoSrc from '../assets/logo.png'
 export default function TitleBar(): React.JSX.Element {
   const theme = useSessionStore((s) => s.theme)
   const toggleTheme = useSessionStore((s) => s.toggleTheme)
+  const platform = useSessionStore((s) => s.platform)
+  const isMac = platform === 'darwin'
 
   return (
     <div
-      className="h-8 flex items-center justify-between px-3 select-none flex-shrink-0"
+      className="h-8 flex items-center justify-between select-none flex-shrink-0"
       style={{
         backgroundColor: 'var(--bg-primary)',
-        WebkitAppRegion: 'drag'
+        WebkitAppRegion: 'drag',
+        paddingLeft: isMac ? '78px' : '12px',
+        paddingRight: '12px'
       } as React.CSSProperties}
     >
       <div className="flex items-center gap-1.5">
@@ -33,27 +37,31 @@ export default function TitleBar(): React.JSX.Element {
         >
           {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
         </button>
-        <button
-          onClick={() => window.cccAPI.window.minimize()}
-          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          <Minus size={12} />
-        </button>
-        <button
-          onClick={() => window.cccAPI.window.maximize()}
-          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          <Square size={10} />
-        </button>
-        <button
-          onClick={() => window.cccAPI.window.close()}
-          className="p-1 rounded transition-colors duration-100 hover:bg-red-500/20 hover:text-red-400"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          <X size={12} />
-        </button>
+        {!isMac && (
+          <>
+            <button
+              onClick={() => window.cccAPI.window.minimize()}
+              className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <Minus size={12} />
+            </button>
+            <button
+              onClick={() => window.cccAPI.window.maximize()}
+              className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <Square size={10} />
+            </button>
+            <button
+              onClick={() => window.cccAPI.window.close()}
+              className="p-1 rounded transition-colors duration-100 hover:bg-red-500/20 hover:text-red-400"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X size={12} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

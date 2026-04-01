@@ -135,6 +135,11 @@ const api: CccAPI = {
   container: {
     listRunning: (remoteHost?: string): Promise<ContainerConfig[]> =>
       ipcRenderer.invoke('container:list-running', remoteHost)
+  },
+  app: {
+    platform: (): Promise<string> => ipcRenderer.invoke('app:platform'),
+    logs: (lines?: number): Promise<string> => ipcRenderer.invoke('app:logs', lines),
+    logPath: (): Promise<string> => ipcRenderer.invoke('app:log-path')
   }
 }
 

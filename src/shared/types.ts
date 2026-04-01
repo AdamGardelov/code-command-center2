@@ -227,4 +227,9 @@ export interface CccAPI {
   container: {
     listRunning: (remoteHost?: string) => Promise<ContainerConfig[]>
   }
+  app: {
+    platform: () => Promise<string>
+    logs: (lines?: number) => Promise<string>
+    logPath: () => Promise<string>
+  }
 }
