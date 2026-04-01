@@ -1,9 +1,11 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import TitleBar from './TitleBar'
 import SessionTopBar from './SessionTopBar'
 import SessionSidebar from './SessionSidebar'
+import ActivityBar from './ActivityBar'
+import PrSidebar from './PrSidebar'
 import TerminalPanel from './TerminalPanel'
 import EmptyState from './EmptyState'
 import GridView from './GridView'
@@ -21,6 +23,25 @@ export default function Layout(): React.JSX.Element {
   const setSidebarWidth = useSessionStore((s) => s.setSidebarWidth)
   const persistSidebarWidth = useSessionStore((s) => s.persistSidebarWidth)
   const activeSession = sessions.find((s) => s.id === activeSessionId)
+  const activeView = useSessionStore((s) => s.activeView)
+  const features = useSessionStore((s) => s.features)
+  const [hasAttention, setHasAttention] = useState(false)
+
+  useEffect(() => {
+    if (!features.pullRequests) return
+    const unsubState = window.cccAPI.pr.onState((state) => {
+      if (state.attentionItems) {
+        setHasAttention(state.attentionItems.length > 0)
+      }
+    })
+    const unsubNav = window.cccAPI.pr.onNavigate(() => {
+      useSessionStore.getState().setActiveView('pullRequests')
+    })
+    return () => {
+      unsubState()
+      unsubNav()
+    }
+  }, [features.pullRequests])
 
   const dragging = useRef(false)
   const startX = useRef(0)
@@ -61,6 +82,11 @@ export default function Layout(): React.JSX.Element {
       <TitleBar />
 
       <div className="flex-1 flex overflow-hidden">
+        {/* Activity Bar — always visible when features exist */}
+        {features.pullRequests && (
+          <ActivityBar hasAttention={hasAttention} />
+        )}
+
         {sidebarOpen ? (
           <>
             {/* Open sidebar */}
@@ -72,7 +98,7 @@ export default function Layout(): React.JSX.Element {
               }}
             >
               <div className="h-full" style={{ width: sidebarWidth }}>
-                <SessionSidebar />
+                {activeView === 'sessions' ? <SessionSidebar /> : <PrSidebar />}
               </div>
             </div>
 

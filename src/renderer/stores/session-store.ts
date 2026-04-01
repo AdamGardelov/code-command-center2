@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup } from '../../shared/types'
+import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig } from '../../shared/types'
 
 interface SessionStore {
   sessions: Session[]
@@ -22,6 +22,9 @@ interface SessionStore {
   notificationsEnabled: boolean
   dangerouslySkipPermissions: boolean
   ideCommand: string
+  activeView: ActiveView
+  features: FeaturesConfig
+  setActiveView: (view: ActiveView) => void
 
   loadConfig: () => Promise<void>
   createGroup: (name: string) => Promise<SessionGroup>
@@ -81,6 +84,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   notificationsEnabled: true,
   dangerouslySkipPermissions: false,
   ideCommand: '',
+  activeView: 'sessions' as ActiveView,
+  features: { pullRequests: false } as FeaturesConfig,
 
   loadConfig: async () => {
     const config = await window.cccAPI.config.load()
@@ -101,6 +106,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       notificationsEnabled: config.notificationsEnabled !== false,
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
       ideCommand: config.ideCommand ?? '',
+      features: config.features ?? { pullRequests: false },
     })
   },
 
@@ -281,6 +287,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     await window.cccAPI.config.update({ ideCommand: value || undefined })
     set({ ideCommand: value })
   },
+
+  setActiveView: (view) => set({ activeView: view }),
 
   openInIde: async (sessionId: string) => {
     await window.cccAPI.session.openInIde(sessionId)
