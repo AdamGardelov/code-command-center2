@@ -33,6 +33,7 @@ import { registerClipboardIpc } from './ipc/clipboard'
 import { registerShellIpc } from './ipc/shell'
 import { NotificationService } from './notification-service'
 import { PrService } from './pr-service'
+import { ContainerService } from './container-service'
 import { initUpdater } from './updater'
 
 const configService = new ConfigService()
@@ -51,6 +52,10 @@ const ptyManager = new PtyManager()
 const stateDetector = new StateDetector()
 const notificationService = new NotificationService(configService)
 const prService = new PrService(configService)
+
+const containerService = new ContainerService()
+containerService.setSshService(sshService)
+containerService.setConfigService(configService)
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -130,6 +135,10 @@ registerGitIpc(gitService)
 registerGroupIpc(configService)
 registerClipboardIpc()
 registerShellIpc()
+
+ipcMain.handle('container:list-running', (_event, remoteHost?: string) => {
+  return containerService.listRunning(remoteHost)
+})
 
 ipcMain.on('pr:refresh', () => {
   void prService.refresh()
