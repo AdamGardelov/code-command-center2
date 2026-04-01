@@ -159,11 +159,15 @@ export class SessionManager {
         if (containerName) {
           existing.isContainer = true
           existing.containerName = containerName
+        } else {
+          existing.isContainer = false
+          existing.containerName = undefined
         }
         sessions.push(existing)
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
         const color = this.getColorForSession(sessionName)
+        const remoteContainerName = containerSessions[sessionName]
         const session: Session = {
           id: generateId(),
           name: sessionName,
@@ -172,13 +176,10 @@ export class SessionManager {
           type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           remoteHost: hostName,
+          isContainer: !!remoteContainerName,
+          containerName: remoteContainerName,
           createdAt: created,
           lastActiveAt: Date.now()
-        }
-        const containerName = containerSessions[sessionName]
-        if (containerName) {
-          session.isContainer = true
-          session.containerName = containerName
         }
         this.sessions.set(session.id, session)
         sessions.push(session)
@@ -214,6 +215,9 @@ export class SessionManager {
         if (containerSessions[existing.name]) {
           existing.isContainer = true
           existing.containerName = containerSessions[existing.name]
+        } else {
+          existing.isContainer = false
+          existing.containerName = undefined
         }
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
@@ -221,6 +225,7 @@ export class SessionManager {
         const color = this.getColorForSession(sessionName)
         this.applyTmuxColor(name, color)
         this.configService?.update({ sessionColors: { [sessionName]: color } })
+        const containerName = containerSessions[sessionName]
         const session: Session = {
           id: generateId(),
           name: sessionName,
@@ -228,14 +233,12 @@ export class SessionManager {
           status: 'idle',
           type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
+          isContainer: !!containerName,
+          containerName,
           gitBranch: getGitBranch(currentPath || '~'),
           repoPath: getRepoRoot(currentPath || '~'),
           createdAt: created,
           lastActiveAt: Date.now()
-        }
-        if (containerSessions[sessionName]) {
-          session.isContainer = true
-          session.containerName = containerSessions[sessionName]
         }
         this.sessions.set(session.id, session)
       }
@@ -277,6 +280,14 @@ export class SessionManager {
     const tmuxName = tmuxSessionName(opts.name)
     const expandedDir = opts.workingDirectory.replace(/^~/, process.env.HOME ?? '')
     const isRemote = !!opts.remoteHost
+
+    // Check for duplicate session name
+    const existingTmux = isRemote
+      ? this.tmuxCmd(opts.remoteHost, 'has-session', '-t', `=${tmuxName}`)
+      : tmux('has-session', '-t', `=${tmuxName}`)
+    if (existingTmux !== null) {
+      throw new Error(`Session "${opts.name}" already exists`)
+    }
 
     if (isRemote) {
       // Remote session creation via SSH
