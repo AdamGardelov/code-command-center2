@@ -310,6 +310,7 @@ export default function SessionSidebar(): React.JSX.Element {
             />
             {remoteHosts
               .filter((rh) => hostStatuses[rh.name] !== false)
+              .filter((rh) => filtered.some((s) => s.remoteHost === rh.name))
               .map((rh) => {
                 const hostSessions = filtered.filter((s) => s.remoteHost === rh.name)
                 return (
