@@ -1,4 +1,4 @@
-import { GitBranch, Folder } from 'lucide-react'
+import { GitBranch, Folder, Box } from 'lucide-react'
 import type { Session } from '../../shared/types'
 
 interface SessionTopBarProps {
@@ -50,6 +50,21 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
         >
           {session.remoteHost}
         </span>
+      )}
+
+      {/* Container badge */}
+      {session.isContainer && (
+        <div className="flex items-center gap-1">
+          <Box size={11} style={{ color: 'var(--container)' }} />
+          {session.containerName && (
+            <span
+              className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+              style={{ color: 'var(--container)', backgroundColor: 'color-mix(in srgb, var(--container) 15%, var(--bg-raised))' }}
+            >
+              {session.containerName}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Status (AI sessions only) */}
