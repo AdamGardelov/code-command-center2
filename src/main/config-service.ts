@@ -135,7 +135,7 @@ export class ConfigService {
     if (partial.features !== undefined) this.config.features = partial.features
     if (partial.prConfig !== undefined) this.config.prConfig = partial.prConfig
     if (partial.containers !== undefined) this.config.containers = partial.containers
-    if (partial.containerSessions !== undefined) this.config.containerSessions = { ...this.config.containerSessions, ...partial.containerSessions }
+    if (partial.containerSessions !== undefined) this.config.containerSessions = partial.containerSessions
 
     this.save(this.config)
     return this.config

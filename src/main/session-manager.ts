@@ -385,6 +385,13 @@ export class SessionManager {
     this.tmuxCmd(session.remoteHost, 'kill-session', '-t', `=${tmuxName}`)
     session.status = 'stopped'
     this.sessions.delete(id)
+
+    const config = this.configService?.get()
+    if (config?.containerSessions?.[session.name]) {
+      const containerSessions = { ...config.containerSessions }
+      delete containerSessions[session.name]
+      this.configService?.update({ containerSessions })
+    }
   }
 
   getById(id: string): Session | undefined {
