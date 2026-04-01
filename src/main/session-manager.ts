@@ -83,10 +83,10 @@ const PREFIX = 'ccc-'
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
   private sshService: SshService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
     this.configService = service
   }
 
@@ -252,12 +252,21 @@ export class SessionManager {
       const remoteShell = hostConfig?.shell || '/bin/bash'
       const newArgs = ['new-session', '-d', '-s', tmuxName, '-c', opts.workingDirectory, '-e', `CCC_SESSION_NAME=${opts.name}`]
 
-      const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
-      if (claudeConfigDir) {
-        newArgs.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+      if (!opts.containerName) {
+        const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
+        if (claudeConfigDir) {
+          newArgs.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+        }
       }
 
-      if (opts.type === 'claude') {
+      if (opts.containerName) {
+        const cmd = opts.type === 'claude'
+          ? (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
+            ? 'claude --dangerously-skip-permissions' : 'claude')
+          : opts.type === 'gemini' ? 'gemini' : ''
+        const dockerCmd = `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${opts.workingDirectory} ${opts.containerName} zsh -lic '${cmd || 'exec zsh'}'`
+        newArgs.push('--', remoteShell, '-ic', dockerCmd)
+      } else if (opts.type === 'claude') {
         const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
         newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && ${cmd}`)
@@ -289,12 +298,21 @@ export class SessionManager {
         `CCC_SESSION_NAME=${opts.name}`
       ]
 
-      const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
-      if (claudeConfigDir) {
-        args.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+      if (!opts.containerName) {
+        const claudeConfigDir = this.configService?.resolveClaudeConfigDir(opts.workingDirectory)
+        if (claudeConfigDir) {
+          args.push('-e', `CLAUDE_CONFIG_DIR=${claudeConfigDir}`)
+        }
       }
 
-      if (opts.type === 'claude') {
+      if (opts.containerName) {
+        const cmd = opts.type === 'claude'
+          ? (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
+            ? 'claude --dangerously-skip-permissions' : 'claude')
+          : opts.type === 'gemini' ? 'gemini' : ''
+        const shell = process.env.SHELL || '/bin/bash'
+        args.push('--', shell, '-ic', `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${expandedDir} ${opts.containerName} zsh -lic '${cmd || "exec zsh"}'`)
+      } else if (opts.type === 'claude') {
         const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
         const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
         const shell = process.env.SHELL || '/bin/bash'
@@ -324,6 +342,11 @@ export class SessionManager {
       sessionTypes: { [opts.name]: opts.type }
     })
 
+    if (opts.containerName) {
+      const containerSessions = { ...this.configService?.get().containerSessions, [opts.name]: opts.containerName }
+      this.configService?.update({ containerSessions })
+    }
+
     const session: Session = {
       id: generateId(),
       name: opts.name,
@@ -332,6 +355,8 @@ export class SessionManager {
       type: opts.type,
       color,
       remoteHost: opts.remoteHost,
+      isContainer: !!opts.containerName,
+      containerName: opts.containerName,
       skipPermissions: (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions) && opts.type === 'claude' ? true : undefined,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
