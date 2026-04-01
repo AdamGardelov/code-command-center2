@@ -14,6 +14,7 @@ const DEFAULT_CONFIG: CccConfig = {
   enabledProviders: ['claude'],
   remoteHosts: [],
   worktreeBasePath: '~/worktrees',
+  worktreeSyncPaths: ['.claude', 'CLAUDE.md'],
   sessionGroups: [],
   zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
@@ -48,6 +49,7 @@ export class ConfigService {
           enabledProviders: Array.isArray(parsed.enabledProviders) ? parsed.enabledProviders : ['claude'],
           remoteHosts: Array.isArray(parsed.remoteHosts) ? parsed.remoteHosts : [],
           worktreeBasePath: typeof parsed.worktreeBasePath === 'string' ? parsed.worktreeBasePath : '~/worktrees',
+          worktreeSyncPaths: Array.isArray(parsed.worktreeSyncPaths) ? parsed.worktreeSyncPaths : ['.claude', 'CLAUDE.md'],
           sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : [],
           zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
@@ -116,6 +118,7 @@ export class ConfigService {
     if (partial.favoriteFolders !== undefined) this.config.favoriteFolders = partial.favoriteFolders
     if (partial.remoteHosts !== undefined) this.config.remoteHosts = partial.remoteHosts
     if (partial.worktreeBasePath !== undefined) this.config.worktreeBasePath = partial.worktreeBasePath
+    if (partial.worktreeSyncPaths !== undefined) this.config.worktreeSyncPaths = partial.worktreeSyncPaths
     if (partial.sessionGroups !== undefined) this.config.sessionGroups = partial.sessionGroups
     if (partial.zoomFactor !== undefined) this.config.zoomFactor = partial.zoomFactor
     if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions

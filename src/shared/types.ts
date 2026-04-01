@@ -131,6 +131,7 @@ export interface CccConfig {
   theme: Theme
   sidebarWidth: number
   worktreeBasePath: string
+  worktreeSyncPaths: string[]
   favoriteFolders: FavoriteFolder[]
   sessionColors: Record<string, string>
   sessionTypes: Record<string, SessionType>
