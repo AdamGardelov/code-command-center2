@@ -96,7 +96,9 @@ export function useTerminal(
       // WebGL not available — canvas fallback
     }
 
-    terminal.loadAddon(new WebLinksAddon())
+    terminal.loadAddon(new WebLinksAddon((_event, uri) => {
+      window.cccAPI.shell.openExternal(uri)
+    }))
 
     // Set all parent backgrounds to match xterm exactly (avoids fractional pixel gaps)
     const bg = getTerminalTheme(theme).background
@@ -128,25 +130,10 @@ export function useTerminal(
       setTimeout(fitAndResize, 800)
     })
 
-    terminal.attachCustomKeyEventHandler((e) => {
-      if (e.type !== 'keydown') return true
-      if (e.ctrlKey && e.key === 'v') {
-        navigator.clipboard.readText().then((text) => {
-          terminal.paste(text)
-        })
-        return false
-      }
-      if (e.ctrlKey && e.key === 'c' && terminal.hasSelection()) {
-        terminal.clearSelection()
-        return false
-      }
-      return true
-    })
-
     const selectionDisposable = terminal.onSelectionChange(() => {
       const selection = terminal.getSelection()
       if (selection) {
-        navigator.clipboard.writeText(selection)
+        window.cccAPI.clipboard.writeText(selection)
       }
     })
 
