@@ -67,6 +67,7 @@ interface PullRequest {
     state: 'pending' | 'approved' | 'changes_requested'
   }>
   checksStatus: 'passing' | 'failing' | 'pending' | 'none'
+  commentCount: number
   unresolvedThreads: number
   createdAt: string
   updatedAt: string
