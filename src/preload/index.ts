@@ -123,6 +123,12 @@ const api: CccAPI = {
       ipcRenderer.on('pr:navigate', handler)
       return () => ipcRenderer.removeListener('pr:navigate', handler)
     }
+  },
+  clipboard: {
+    writeText: (text: string) => ipcRenderer.send('clipboard:write-text', text)
+  },
+  shell: {
+    openExternal: (url: string) => ipcRenderer.send('shell:open-external', url)
   }
 }
 

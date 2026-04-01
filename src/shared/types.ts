@@ -204,4 +204,10 @@ export interface CccAPI {
     refresh: () => void
     onNavigate: (callback: () => void) => () => void
   }
+  clipboard: {
+    writeText: (text: string) => void
+  }
+  shell: {
+    openExternal: (url: string) => void
+  }
 }
