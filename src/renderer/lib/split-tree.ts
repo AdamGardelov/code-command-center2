@@ -171,3 +171,173 @@ export function updateRatio(node: SplitNode, path: number[], newRatio: number): 
   newChildren[head] = updateRatio(node.children[head], rest, newRatio)
   return { ...node, children: newChildren }
 }
+
+/**
+ * Default preset for each session count.
+ */
+export const DEFAULT_GRID_PRESETS: Record<string, string> = {
+  '2': 'side-by-side',
+  '3': '2top-1bottom',
+  '4': '2x2',
+  '5': '3top-2bottom',
+  '6': '3x2',
+  '7': '3top-4bottom',
+  '8': '4x2',
+}
+
+/**
+ * Available preset IDs per session count.
+ */
+export const GRID_PRESET_OPTIONS: Record<number, string[]> = {
+  2: ['side-by-side', 'stacked'],
+  3: ['2top-1bottom', '1top-2bottom', '1left-2right', '2left-1right', '3cols'],
+  4: ['2x2', '3top-1bottom', '1top-3bottom', '4cols'],
+  5: ['3top-2bottom', '2top-3bottom'],
+  6: ['3x2', '2x3'],
+  7: ['3top-4bottom', '4top-3bottom'],
+  8: ['4x2', '3-3-2'],
+}
+
+/**
+ * Human-readable labels for preset IDs.
+ */
+export const GRID_PRESET_LABELS: Record<string, string> = {
+  'side-by-side': 'Side by side',
+  'stacked': 'Stacked',
+  '2top-1bottom': '2 top + 1 bottom',
+  '1top-2bottom': '1 top + 2 bottom',
+  '1left-2right': '1 left + 2 right',
+  '2left-1right': '2 left + 1 right',
+  '3cols': '3 columns',
+  '2x2': '2×2 grid',
+  '3top-1bottom': '3 top + 1 bottom',
+  '1top-3bottom': '1 top + 3 bottom',
+  '4cols': '4 columns',
+  '3top-2bottom': '3 top + 2 bottom',
+  '2top-3bottom': '2 top + 3 bottom',
+  '3x2': '3×2 grid',
+  '2x3': '2×3 grid',
+  '3top-4bottom': '3 top + 4 bottom',
+  '4top-3bottom': '4 top + 3 bottom',
+  '4x2': '4×2 grid',
+  '3-3-2': '3 + 3 + 2 rows',
+}
+
+/** Helper: horizontal split (side by side) */
+function hSplit(left: SplitNode, right: SplitNode, ratio = 0.5): SplitNode {
+  return { type: 'split', direction: 'horizontal', ratio, children: [left, right] }
+}
+
+/** Helper: vertical split (top/bottom) */
+function vSplit(top: SplitNode, bottom: SplitNode, ratio = 0.5): SplitNode {
+  return { type: 'split', direction: 'vertical', ratio, children: [top, bottom] }
+}
+
+/** Helper: leaf node */
+function leaf(id: string): SplitNode {
+  return { type: 'leaf', sessionId: id }
+}
+
+/** Helper: build a row of N equal leaves (horizontal splits) */
+function hRow(ids: string[]): SplitNode {
+  if (ids.length === 1) return leaf(ids[0])
+  if (ids.length === 2) return hSplit(leaf(ids[0]), leaf(ids[1]))
+  // Split first from rest, with ratio = 1/N
+  return hSplit(leaf(ids[0]), hRow(ids.slice(1)), 1 / ids.length)
+}
+
+/** Helper: build a column of N equal leaves (vertical splits) */
+function vCol(ids: string[]): SplitNode {
+  if (ids.length === 1) return leaf(ids[0])
+  if (ids.length === 2) return vSplit(leaf(ids[0]), leaf(ids[1]))
+  return vSplit(leaf(ids[0]), vCol(ids.slice(1)), 1 / ids.length)
+}
+
+/**
+ * Build a split tree from a preset ID and session IDs.
+ * Returns null if preset is unknown or session count doesn't match.
+ */
+export function buildPresetGrid(presetId: string, sessionIds: string[]): SplitNode | null {
+  const s = sessionIds
+  switch (presetId) {
+    // 2 sessions
+    case 'side-by-side':
+      if (s.length !== 2) return null
+      return hSplit(leaf(s[0]), leaf(s[1]))
+    case 'stacked':
+      if (s.length !== 2) return null
+      return vSplit(leaf(s[0]), leaf(s[1]))
+
+    // 3 sessions
+    case '2top-1bottom':
+      if (s.length !== 3) return null
+      return vSplit(hSplit(leaf(s[0]), leaf(s[1])), leaf(s[2]))
+    case '1top-2bottom':
+      if (s.length !== 3) return null
+      return vSplit(leaf(s[0]), hSplit(leaf(s[1]), leaf(s[2])))
+    case '1left-2right':
+      if (s.length !== 3) return null
+      return hSplit(leaf(s[0]), vSplit(leaf(s[1]), leaf(s[2])))
+    case '2left-1right':
+      if (s.length !== 3) return null
+      return hSplit(vSplit(leaf(s[0]), leaf(s[1])), leaf(s[2]))
+    case '3cols':
+      if (s.length !== 3) return null
+      return hSplit(leaf(s[0]), hSplit(leaf(s[1]), leaf(s[2])), 1 / 3)
+
+    // 4 sessions
+    case '2x2':
+      if (s.length !== 4) return null
+      return vSplit(hSplit(leaf(s[0]), leaf(s[1])), hSplit(leaf(s[2]), leaf(s[3])))
+    case '3top-1bottom':
+      if (s.length !== 4) return null
+      return vSplit(hRow(s.slice(0, 3)), leaf(s[3]))
+    case '1top-3bottom':
+      if (s.length !== 4) return null
+      return vSplit(leaf(s[0]), hRow(s.slice(1)))
+    case '4cols':
+      if (s.length !== 4) return null
+      return hSplit(hSplit(leaf(s[0]), leaf(s[1])), hSplit(leaf(s[2]), leaf(s[3])))
+
+    // 5 sessions
+    case '3top-2bottom':
+      if (s.length !== 5) return null
+      return vSplit(hRow(s.slice(0, 3)), hSplit(leaf(s[3]), leaf(s[4])))
+    case '2top-3bottom':
+      if (s.length !== 5) return null
+      return vSplit(hSplit(leaf(s[0]), leaf(s[1])), hRow(s.slice(2)))
+
+    // 6 sessions
+    case '3x2':
+      if (s.length !== 6) return null
+      return vSplit(hRow(s.slice(0, 3)), hRow(s.slice(3)))
+    case '2x3':
+      if (s.length !== 6) return null
+      return hSplit(vCol(s.slice(0, 3)), vCol(s.slice(3)))
+
+    // 7 sessions
+    case '3top-4bottom':
+      if (s.length !== 7) return null
+      return vSplit(hRow(s.slice(0, 3)), hSplit(hSplit(leaf(s[3]), leaf(s[4])), hSplit(leaf(s[5]), leaf(s[6]))))
+    case '4top-3bottom':
+      if (s.length !== 7) return null
+      return vSplit(hSplit(hSplit(leaf(s[0]), leaf(s[1])), hSplit(leaf(s[2]), leaf(s[3]))), hRow(s.slice(4)))
+
+    // 8 sessions
+    case '4x2':
+      if (s.length !== 8) return null
+      return vSplit(
+        hSplit(hSplit(leaf(s[0]), leaf(s[1])), hSplit(leaf(s[2]), leaf(s[3]))),
+        hSplit(hSplit(leaf(s[4]), leaf(s[5])), hSplit(leaf(s[6]), leaf(s[7])))
+      )
+    case '3-3-2':
+      if (s.length !== 8) return null
+      return vSplit(
+        hRow(s.slice(0, 3)),
+        vSplit(hRow(s.slice(3, 6)), hSplit(leaf(s[6]), leaf(s[7])))
+      )
+
+    default:
+      return null
+  }
+}
