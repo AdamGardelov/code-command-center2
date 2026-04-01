@@ -22,7 +22,9 @@ const DEFAULT_CONFIG: CccConfig = {
   notificationsEnabled: true,
   mutedSessions: [],
   claudeConfigRoutes: [],
-  features: { pullRequests: false },
+  features: { pullRequests: false, containers: false },
+  containers: [],
+  containerSessions: {},
 }
 
 export class ConfigService {
@@ -60,8 +62,10 @@ export class ConfigService {
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
           defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined,
           features: parsed.features && typeof parsed.features === 'object'
-            ? { pullRequests: parsed.features.pullRequests === true }
-            : { pullRequests: false },
+            ? { pullRequests: parsed.features.pullRequests === true, containers: parsed.features.containers === true }
+            : { pullRequests: false, containers: false },
+          containers: Array.isArray(parsed.containers) ? parsed.containers : [],
+          containerSessions: parsed.containerSessions && typeof parsed.containerSessions === 'object' ? parsed.containerSessions : {},
           prConfig: parsed.prConfig && typeof parsed.prConfig === 'object'
             ? {
                 githubOrg: typeof parsed.prConfig.githubOrg === 'string' ? parsed.prConfig.githubOrg : '',
@@ -130,6 +134,8 @@ export class ConfigService {
     if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
     if (partial.features !== undefined) this.config.features = partial.features
     if (partial.prConfig !== undefined) this.config.prConfig = partial.prConfig
+    if (partial.containers !== undefined) this.config.containers = partial.containers
+    if (partial.containerSessions !== undefined) this.config.containerSessions = { ...this.config.containerSessions, ...partial.containerSessions }
 
     this.save(this.config)
     return this.config
