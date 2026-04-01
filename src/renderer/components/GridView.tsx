@@ -1,151 +1,118 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Box } from 'lucide-react'
+import { useCallback, useEffect, useRef } from 'react'
+import { RotateCcw } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import TerminalPanel from './TerminalPanel'
-
-function calcCols(count: number): number {
-  if (count <= 1) return 1
-  if (count <= 4) return 2
-  if (count <= 9) return 3
-  return 4
-}
+import { buildAutoGrid, updateRatio, collectSessionIds, removeSession, addSession } from '../lib/split-tree'
+import SplitPane from './SplitPane'
 
 export default function GridView(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const setActiveSession = useSessionStore((s) => s.setActiveSession)
   const setViewMode = useSessionStore((s) => s.setViewMode)
-
-  const [order, setOrder] = useState<string[]>([])
-  const [dragId, setDragId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-
-  useEffect(() => {
-    setOrder((prev) => {
-      const ids = new Set(sessions.map((s) => s.id))
-      const kept = prev.filter((id) => ids.has(id))
-      const newIds = sessions.map((s) => s.id).filter((id) => !kept.includes(id))
-      return [...kept, ...newIds]
-    })
-  }, [sessions])
-
-  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
-    setDragId(id)
-    e.dataTransfer.effectAllowed = 'move'
-  }, [])
-
-  const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverId(id)
-  }, [])
-
-  const handleDrop = useCallback((targetId: string) => {
-    if (!dragId || dragId === targetId) {
-      setDragId(null)
-      setDragOverId(null)
-      return
-    }
-    setOrder((prev) => {
-      const arr = [...prev]
-      const fromIdx = arr.indexOf(dragId)
-      const toIdx = arr.indexOf(targetId)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      arr.splice(fromIdx, 1)
-      arr.splice(toIdx, 0, dragId)
-      return arr
-    })
-    setDragId(null)
-    setDragOverId(null)
-  }, [dragId])
-
-  const handleDragEnd = useCallback(() => {
-    setDragId(null)
-    setDragOverId(null)
-  }, [])
-
-  const handleDoubleClick = useCallback((id: string) => {
-    setActiveSession(id)
-    setViewMode('single')
-  }, [setActiveSession, setViewMode])
+  const gridLayout = useSessionStore((s) => s.gridLayout)
+  const setGridLayout = useSessionStore((s) => s.setGridLayout)
+  const persistGridLayout = useSessionStore((s) => s.persistGridLayout)
+  const resetGridLayout = useSessionStore((s) => s.resetGridLayout)
 
   const visibleSessions = sessions.filter((s) => !s.isExcluded)
+  const visibleIds = new Set(visibleSessions.map((s) => s.id))
+  const prevVisibleIdsRef = useRef<Set<string>>(visibleIds)
 
-  const orderedSessions = order
-    .map((id) => visibleSessions.find((s) => s.id === id))
-    .filter(Boolean) as typeof sessions
+  // Sync layout with session changes
+  useEffect(() => {
+    prevVisibleIdsRef.current = visibleIds
 
-  const cols = calcCols(orderedSessions.length)
-  const rows = Math.ceil(orderedSessions.length / cols)
+    if (visibleSessions.length === 0) {
+      if (gridLayout !== null) setGridLayout(null)
+      return
+    }
+
+    // No layout yet — build auto grid
+    if (gridLayout === null) {
+      setGridLayout(buildAutoGrid(visibleSessions.map((s) => s.id)))
+      return
+    }
+
+    const treeIds = new Set(collectSessionIds(gridLayout))
+
+    // Find added and removed sessions
+    const added = visibleSessions.filter((s) => !treeIds.has(s.id))
+    const removedIds = [...treeIds].filter((id) => !visibleIds.has(id))
+
+    if (added.length === 0 && removedIds.length === 0) return
+
+    let newLayout = gridLayout
+    // Remove sessions that are no longer visible
+    for (const id of removedIds) {
+      const result = removeSession(newLayout, id)
+      if (result === null) {
+        setGridLayout(null)
+        return
+      }
+      newLayout = result
+    }
+    // Add new sessions
+    for (const s of added) {
+      newLayout = addSession(newLayout, s.id)
+    }
+    setGridLayout(newLayout)
+  }, [visibleSessions.length, ...visibleSessions.map((s) => s.id)])
+
+  const handleRatioChange = useCallback(
+    (path: number[], ratio: number) => {
+      if (!gridLayout || gridLayout.type !== 'split') return
+      const newLayout = updateRatio(gridLayout, path, ratio)
+      setGridLayout(newLayout)
+    },
+    [gridLayout, setGridLayout]
+  )
+
+  const handleDragEnd = useCallback(() => {
+    void persistGridLayout()
+  }, [persistGridLayout])
+
+  const handleDoubleClick = useCallback(
+    (id: string) => {
+      setActiveSession(id)
+      setViewMode('single')
+    },
+    [setActiveSession, setViewMode]
+  )
+
+  if (!gridLayout || visibleSessions.length === 0) {
+    return <div className="flex-1" style={{ backgroundColor: 'var(--bg-primary)' }} />
+  }
 
   return (
-    <div
-      className="grid-view flex-1"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`
-      }}
-    >
-      {orderedSessions.map((session) => (
-        <div
-          key={session.id}
-          className={`grid-card ${dragId === session.id ? 'dragging' : ''} ${dragOverId === session.id ? 'drag-over' : ''}`}
-          draggable
-          onDragStart={(e) => handleDragStart(e, session.id)}
-          onDragOver={(e) => handleDragOver(e, session.id)}
-          onDrop={() => handleDrop(session.id)}
-          onDragEnd={handleDragEnd}
-          onClick={() => setActiveSession(session.id)}
-          onDoubleClick={() => handleDoubleClick(session.id)}
+    <div className="flex-1 flex flex-col min-h-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* Toolbar */}
+      <div
+        className="h-7 flex items-center justify-end px-2 flex-shrink-0"
+        style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--bg-raised)' }}
+      >
+        <button
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:opacity-80"
+          style={{ color: 'var(--text-muted)' }}
+          onClick={resetGridLayout}
+          title="Reset layout"
         >
-          <div
-            className="h-6 flex items-center px-2 cursor-grab active:cursor-grabbing flex-shrink-0"
-            style={{ backgroundColor: 'var(--bg-surface)' }}
-          >
-            <span className="mr-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              &#x2807;
-            </span>
-            <span
-              className={`w-[6px] h-[6px] rounded-full flex-shrink-0 mr-1.5 ${session.type === 'claude' && (session.status === 'working' || session.status === 'waiting') ? 'status-pulse' : ''}`}
-              style={{
-                backgroundColor: session.type === 'claude'
-                  ? session.status === 'idle' ? 'var(--success)'
-                  : session.status === 'working' ? 'var(--accent)'
-                  : session.status === 'waiting' ? 'var(--error)'
-                  : 'var(--text-muted)'
-                  : 'var(--text-muted)'
-              }}
-            />
-            <span
-              className="text-[10px] font-medium truncate flex-1"
-              style={{
-                color: session.id === activeSessionId ? session.color : 'var(--text-secondary)'
-              }}
-            >
-              {session.name}
-            </span>
-            {session.isContainer && (
-              <Box size={10} className="ml-1 flex-shrink-0" style={{ color: 'var(--container)' }} />
-            )}
-            {session.type === 'claude' && (
-              <span
-                className="text-[8px] font-semibold uppercase tracking-wide ml-2 flex-shrink-0"
-                style={{
-                  color: session.status === 'idle' ? 'var(--success)'
-                    : session.status === 'working' ? 'var(--accent)'
-                    : session.status === 'waiting' ? 'var(--error)'
-                    : 'var(--text-muted)'
-                }}
-              >
-                {session.status === 'idle' ? 'idle' : session.status === 'working' ? 'working' : session.status === 'waiting' ? 'input' : session.status}
-              </span>
-            )}
-          </div>
-          <div className="flex-1 min-h-0 min-w-0 flex">
-            <TerminalPanel session={session} />
-          </div>
-        </div>
-      ))}
+          <RotateCcw size={10} />
+          Reset
+        </button>
+      </div>
+      {/* Split tree */}
+      <div className="flex-1 min-h-0 flex">
+        <SplitPane
+          node={gridLayout}
+          sessions={visibleSessions}
+          path={[]}
+          onRatioChange={handleRatioChange}
+          onDragEnd={handleDragEnd}
+          onActivate={setActiveSession}
+          onDoubleClick={handleDoubleClick}
+          activeSessionId={activeSessionId}
+        />
+      </div>
     </div>
   )
 }
