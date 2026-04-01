@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Session, SessionCreate, ViewMode, Theme, SessionStatus, FavoriteFolder, AiProvider, RemoteHost, SessionGroup, ActiveView, FeaturesConfig, ContainerConfig, SplitNode } from '../../shared/types'
-import { removeSession as removeFromTree } from '../lib/split-tree'
+import { removeSession as removeFromTree, buildAutoGrid } from '../lib/split-tree'
 
 interface SessionStore {
   sessions: Session[]
@@ -339,7 +339,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   resetGridLayout: () => {
-    set({ gridLayout: null })
+    const { sessions, excludedSessions, gridPresets } = get()
+    const visibleIds = sessions.filter((s) => !excludedSessions.includes(s.name)).map((s) => s.id)
+    const newLayout = visibleIds.length > 0 ? buildAutoGrid(visibleIds, gridPresets) : null
+    set({ gridLayout: newLayout })
     void window.cccAPI.config.update({ gridLayout: null })
   },
 
