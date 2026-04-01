@@ -30,7 +30,9 @@ interface SessionStore {
   enableContainers: boolean
   platform: string
   gridLayout: SplitNode | null
+  gridPresets: Record<string, string>
   setGridLayout: (layout: SplitNode | null) => void
+  setGridPresets: (presets: Record<string, string>) => void
   persistGridLayout: () => Promise<void>
   resetGridLayout: () => void
   setActiveView: (view: ActiveView) => void
@@ -102,6 +104,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   enableContainers: false,
   platform: '',
   gridLayout: null,
+  gridPresets: {},
 
   loadConfig: async () => {
     const platform = await window.cccAPI.app.platform()
@@ -129,6 +132,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
       gridLayout: config.gridLayout ?? null,
+      gridPresets: config.gridPresets ?? {},
     })
   },
 
@@ -323,6 +327,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   setGridLayout: (layout) => set({ gridLayout: layout }),
+
+  setGridPresets: (presets) => {
+    set({ gridPresets: presets })
+    void window.cccAPI.config.update({ gridPresets: presets })
+  },
 
   persistGridLayout: async () => {
     const { gridLayout } = get()

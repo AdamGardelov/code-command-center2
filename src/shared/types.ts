@@ -172,6 +172,7 @@ export interface CccConfig {
   containers: ContainerConfig[]
   containerSessions: Record<string, string>
   gridLayout?: SplitNode | null
+  gridPresets?: Record<string, string>
 }
 
 export interface CccAPI {
