@@ -85,7 +85,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
             className="text-[12px] font-semibold truncate flex-1"
             style={{ color: isActive ? session.color : 'var(--text-primary)' }}
           >
-            {session.name}
+            {session.displayName || session.name}
           </span>
           {session.remoteHost && (
             <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"

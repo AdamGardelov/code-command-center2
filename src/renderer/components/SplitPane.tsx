@@ -66,7 +66,7 @@ export default function SplitPane({
               color: session.id === activeSessionId ? session.color : 'var(--text-secondary)'
             }}
           >
-            {session.name}
+            {session.displayName || session.name}
           </span>
           {session.isContainer && (
             <Box size={10} className="ml-1 flex-shrink-0" style={{ color: 'var(--container)' }} />

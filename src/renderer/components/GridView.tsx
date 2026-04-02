@@ -15,7 +15,7 @@ export default function GridView(): React.JSX.Element {
   const resetGridLayout = useSessionStore((s) => s.resetGridLayout)
   const gridPresets = useSessionStore((s) => s.gridPresets)
 
-  const visibleSessions = sessions.filter((s) => !s.isExcluded)
+  const visibleSessions = sessions.filter((s) => !s.isExcluded && !s.isArchived)
   const visibleIds = new Set(visibleSessions.map((s) => s.id))
   const prevVisibleIdsRef = useRef<Set<string>>(visibleIds)
 
