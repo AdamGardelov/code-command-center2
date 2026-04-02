@@ -18,6 +18,8 @@ export interface Session {
   lastActiveAt: number
   skipPermissions?: boolean
   isExcluded?: boolean
+  isArchived?: boolean
+  displayName?: string
   isContainer?: boolean
   containerName?: string
 }
@@ -162,6 +164,8 @@ export interface CccConfig {
   zoomFactor: number
   dangerouslySkipPermissions: boolean
   excludedSessions: string[]
+  archivedSessions: string[]
+  sessionDisplayNames: Record<string, string>
   notificationsEnabled: boolean
   mutedSessions: string[]
   ideCommand?: string
@@ -204,6 +208,8 @@ export interface CccAPI {
     update: (partial: Partial<CccConfig>) => Promise<CccConfig>
     toggleExcluded: (sessionName: string) => Promise<void>
     toggleMuted: (sessionName: string) => Promise<void>
+    toggleArchived: (sessionName: string) => Promise<void>
+    setDisplayName: (sessionName: string, displayName: string) => Promise<void>
   }
   notification: {
     onToast: (callback: (data: { sessionName: string; message: string; color: string }) => void) => () => void
