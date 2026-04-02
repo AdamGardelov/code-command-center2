@@ -28,7 +28,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const enabledProviders = useSessionStore((s) => s.enabledProviders)
   const enableContainers = useSessionStore((s) => s.enableContainers)
-  const enableAutoModeFeature = useSessionStore((s) => s.enableAutoModeFeature)
+
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [name, setName] = useState('')
@@ -319,8 +319,7 @@ export default function NewSessionModal(): React.JSX.Element {
 
           {type === 'claude' && (
             <div className="flex flex-col gap-2">
-              {enableAutoModeFeature && (
-                <label
+              <label
                   className="flex items-center gap-2 cursor-pointer select-none"
                   style={{ color: enableAutoMode ? 'var(--accent)' : 'var(--text-muted)' }}
                 >
@@ -345,7 +344,6 @@ export default function NewSessionModal(): React.JSX.Element {
                   <Bot size={12} />
                   <span className="text-xs">Auto mode</span>
                 </label>
-              )}
               <label
                 className="flex items-center gap-2 cursor-pointer select-none"
                 style={{ color: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--text-muted)' }}

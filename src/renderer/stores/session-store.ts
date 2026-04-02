@@ -30,7 +30,7 @@ interface SessionStore {
   features: FeaturesConfig
   containers: ContainerConfig[]
   enableContainers: boolean
-  enableAutoModeFeature: boolean
+
   platform: string
   gridLayout: SplitNode | null
   gridPresets: Record<string, string>
@@ -113,7 +113,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
   enableContainers: false,
-  enableAutoModeFeature: false,
   platform: '',
   gridLayout: null,
   gridPresets: {},
@@ -145,7 +144,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
-      enableAutoModeFeature: config.features?.autoMode ?? false,
       gridLayout: config.gridLayout ?? null,
       gridPresets: config.gridPresets ?? {},
     })

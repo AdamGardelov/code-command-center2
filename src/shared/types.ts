@@ -135,7 +135,6 @@ export interface PrConfig {
 export interface FeaturesConfig {
   pullRequests: boolean
   containers: boolean
-  autoMode: boolean
 }
 
 export type PrTab = 'mine' | 'team' | 'reviews'

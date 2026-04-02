@@ -10,7 +10,6 @@ export default function ProvidersSettings(): React.JSX.Element {
   const setDangerouslySkipPermissions = useSessionStore(s => s.setDangerouslySkipPermissions)
   const enableAutoMode = useSessionStore(s => s.enableAutoMode)
   const setEnableAutoMode = useSessionStore(s => s.setEnableAutoMode)
-  const enableAutoModeFeature = useSessionStore(s => s.enableAutoModeFeature)
 
   const [claudeSettingsOpen, setClaudeSettingsOpen] = useState(false)
   const [editRouteIdx, setEditRouteIdx] = useState<number | null>(null)
@@ -82,7 +81,6 @@ export default function ProvidersSettings(): React.JSX.Element {
             style={{ borderColor: 'var(--bg-raised)' }}
           >
             {/* Auto Mode Default */}
-            {enableAutoModeFeature && (
               <div>
                 <h3 className="text-xs font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Auto Mode</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -100,7 +98,6 @@ export default function ProvidersSettings(): React.JSX.Element {
                   Passes --enable-auto-mode to Claude on session start
                 </p>
               </div>
-            )}
 
             {/* Skip Permissions Default */}
             <div>
