@@ -84,6 +84,9 @@ function isValidContainerName(name: string): boolean {
 
 const PREFIX = 'ccc-'
 
+/** Separator used in tmux list-sessions format strings — must not appear in session names or paths */
+const SEP = '|||'
+
 /** Tmux replaces dots with underscores in session names, so we must do the same */
 function tmuxSessionName(name: string): string {
   return PREFIX + name.replace(/\./g, '_')
@@ -138,13 +141,13 @@ export class SessionManager {
     if (!this.sshService) return []
     const output = this.sshService.exec(
       sshHost,
-      'tmux list-sessions -F "#{session_name}\t#{session_created}\t#{pane_current_path}"'
+      `tmux list-sessions -F "#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}"`
     )
     if (!output) return []
 
     const sessions: Session[] = []
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath] = line.split('\t')
+      const [name, createdStr, currentPath] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       const sessionName = name.slice(PREFIX.length)
@@ -192,14 +195,14 @@ export class SessionManager {
     const output = tmux(
       'list-sessions',
       '-F',
-      '#{session_name}\t#{session_created}\t#{pane_current_path}'
+      `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}`
     )
     if (!output) return Array.from(this.sessions.values()).filter((s) => s.status !== 'stopped')
 
     const tmuxSessions = new Set<string>()
 
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath] = line.split('\t')
+      const [name, createdStr, currentPath] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       tmuxSessions.add(name)
