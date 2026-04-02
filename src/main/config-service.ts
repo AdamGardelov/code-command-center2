@@ -19,6 +19,8 @@ const DEFAULT_CONFIG: CccConfig = {
   zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
   excludedSessions: [],
+  archivedSessions: [],
+  sessionDisplayNames: {},
   notificationsEnabled: true,
   mutedSessions: [],
   claudeConfigRoutes: [],
@@ -58,6 +60,10 @@ export class ConfigService {
           zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
           excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
+          archivedSessions: Array.isArray(parsed.archivedSessions) ? parsed.archivedSessions : [],
+          sessionDisplayNames: parsed.sessionDisplayNames && typeof parsed.sessionDisplayNames === 'object'
+            ? parsed.sessionDisplayNames
+            : {},
           notificationsEnabled: parsed.notificationsEnabled !== false,
           mutedSessions: Array.isArray(parsed.mutedSessions) ? parsed.mutedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
@@ -131,6 +137,8 @@ export class ConfigService {
     if (partial.zoomFactor !== undefined) this.config.zoomFactor = partial.zoomFactor
     if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions
     if (partial.excludedSessions !== undefined) this.config.excludedSessions = partial.excludedSessions
+    if (partial.archivedSessions !== undefined) this.config.archivedSessions = partial.archivedSessions
+    if (partial.sessionDisplayNames !== undefined) this.config.sessionDisplayNames = { ...this.config.sessionDisplayNames, ...partial.sessionDisplayNames }
     if (partial.notificationsEnabled !== undefined) this.config.notificationsEnabled = partial.notificationsEnabled
     if (partial.mutedSessions !== undefined) this.config.mutedSessions = partial.mutedSessions
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
@@ -177,6 +185,29 @@ export class ConfigService {
       this.config.excludedSessions.splice(idx, 1)
     } else {
       this.config.excludedSessions.push(sessionName)
+    }
+    this.save(this.config)
+  }
+
+  toggleArchived(sessionName: string): void {
+    const idx = this.config.archivedSessions.indexOf(sessionName)
+    if (idx >= 0) {
+      this.config.archivedSessions.splice(idx, 1)
+    } else {
+      this.config.archivedSessions.push(sessionName)
+      const exIdx = this.config.excludedSessions.indexOf(sessionName)
+      if (exIdx >= 0) {
+        this.config.excludedSessions.splice(exIdx, 1)
+      }
+    }
+    this.save(this.config)
+  }
+
+  setDisplayName(sessionName: string, displayName: string): void {
+    if (displayName.trim() === '') {
+      delete this.config.sessionDisplayNames[sessionName]
+    } else {
+      this.config.sessionDisplayNames[sessionName] = displayName.trim()
     }
     this.save(this.config)
   }
