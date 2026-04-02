@@ -247,12 +247,17 @@ export class SessionManager {
       }
     }
 
-    // Mark stopped local sessions
+    // Mark stopped local sessions and clean up container mappings
     for (const session of this.sessions.values()) {
       if (session.remoteHost) continue
       const tmuxName = tmuxSessionName(session.name)
       if (!tmuxSessions.has(tmuxName) && session.status !== 'stopped') {
         session.status = 'stopped'
+        if (this.configService?.get().containerSessions?.[session.name]) {
+          const containerSessions = { ...this.configService?.get().containerSessions }
+          delete containerSessions[session.name]
+          this.configService?.update({ containerSessions })
+        }
       }
     }
 
@@ -390,6 +395,11 @@ export class SessionManager {
 
     if (opts.containerName) {
       const containerSessions = { ...this.configService?.get().containerSessions, [opts.name]: opts.containerName }
+      this.configService?.update({ containerSessions })
+    } else if (this.configService?.get().containerSessions?.[opts.name]) {
+      // Clean up stale container mapping from a previous session with the same name
+      const containerSessions = { ...this.configService?.get().containerSessions }
+      delete containerSessions[opts.name]
       this.configService?.update({ containerSessions })
     }
 
