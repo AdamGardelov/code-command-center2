@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GitBranch, Trash2, Folder, Zap, Box } from 'lucide-react'
+import { GitBranch, Trash2, Folder, Zap, Bot, Box } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
@@ -146,6 +146,11 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
                 </span>
               )}
             </>
+          )}
+          {session.enableAutoMode && (
+            <span title="Auto mode enabled" style={{ color: 'var(--accent)' }}>
+              <Bot size={12} />
+            </span>
           )}
           {session.skipPermissions && (
             <span title="Skip Permissions enabled" style={{ color: 'var(--warning, #f59e0b)' }}>

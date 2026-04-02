@@ -24,11 +24,13 @@ interface SessionStore {
   mutedSessions: string[]
   notificationsEnabled: boolean
   dangerouslySkipPermissions: boolean
+  enableAutoMode: boolean
   ideCommand: string
   activeView: ActiveView
   features: FeaturesConfig
   containers: ContainerConfig[]
   enableContainers: boolean
+  enableAutoModeFeature: boolean
   platform: string
   gridLayout: SplitNode | null
   gridPresets: Record<string, string>
@@ -51,6 +53,7 @@ interface SessionStore {
   setRenamingSessionId: (id: string | null) => void
   setNotificationsEnabled: (value: boolean) => Promise<void>
   setDangerouslySkipPermissions: (value: boolean) => Promise<void>
+  setEnableAutoMode: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
   openFolder: (sessionId: string) => Promise<void>
@@ -104,11 +107,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   renamingSessionId: null,
   notificationsEnabled: true,
   dangerouslySkipPermissions: false,
+  enableAutoMode: false,
   ideCommand: '',
   activeView: 'sessions' as ActiveView,
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
   enableContainers: false,
+  enableAutoModeFeature: false,
   platform: '',
   gridLayout: null,
   gridPresets: {},
@@ -135,10 +140,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       mutedSessions: config.mutedSessions ?? [],
       notificationsEnabled: config.notificationsEnabled !== false,
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
+      enableAutoMode: config.enableAutoMode ?? false,
       ideCommand: config.ideCommand ?? '',
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
+      enableAutoModeFeature: config.features?.autoMode ?? false,
       gridLayout: config.gridLayout ?? null,
       gridPresets: config.gridPresets ?? {},
     })
@@ -370,6 +377,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setDangerouslySkipPermissions: async (value: boolean) => {
     await window.cccAPI.config.update({ dangerouslySkipPermissions: value })
     set({ dangerouslySkipPermissions: value })
+  },
+
+  setEnableAutoMode: async (value: boolean) => {
+    await window.cccAPI.config.update({ enableAutoMode: value })
+    set({ enableAutoMode: value })
   },
 
   setIdeCommand: async (value: string) => {

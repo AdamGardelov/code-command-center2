@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSessionStore } from '../../stores/session-store'
 
 export default function FeaturesSettings(): React.JSX.Element {
-  const [featuresConfig, setFeaturesConfig] = useState({ pullRequests: false, containers: false })
+  const [featuresConfig, setFeaturesConfig] = useState({ pullRequests: false, containers: false, autoMode: false })
   const [prOrg, setPrOrg] = useState('')
   const [prRepos, setPrRepos] = useState('')
   const [prMembers, setPrMembers] = useState('')
@@ -12,7 +12,7 @@ export default function FeaturesSettings(): React.JSX.Element {
 
   useEffect(() => {
     window.cccAPI.config.load().then((config) => {
-      setFeaturesConfig(config.features ?? { pullRequests: false, containers: false })
+      setFeaturesConfig(config.features ?? { pullRequests: false, containers: false, autoMode: false })
       if (config.prConfig) {
         setPrOrg(config.prConfig.githubOrg ?? '')
         setPrRepos(config.prConfig.pinnedRepos?.join(', ') ?? '')
@@ -24,7 +24,7 @@ export default function FeaturesSettings(): React.JSX.Element {
     })
   }, [])
 
-  const saveFeatures = (features: { pullRequests: boolean; containers: boolean }): void => {
+  const saveFeatures = (features: { pullRequests: boolean; containers: boolean; autoMode: boolean }): void => {
     setFeaturesConfig(features)
     void window.cccAPI.config.update({ features })
     void useSessionStore.getState().loadConfig()
@@ -57,6 +57,19 @@ export default function FeaturesSettings(): React.JSX.Element {
           type="checkbox"
           checked={featuresConfig.pullRequests}
           onChange={(e) => saveFeatures({ ...featuresConfig, pullRequests: e.target.checked })}
+          className="accent-[var(--accent)]"
+        />
+      </label>
+
+      <label className="flex items-center justify-between">
+        <div>
+          <span className="text-xs" style={{ color: 'var(--text-primary)' }}>Auto Mode</span>
+          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Enable auto mode option for Claude sessions (--enable-auto-mode)</p>
+        </div>
+        <input
+          type="checkbox"
+          checked={featuresConfig.autoMode}
+          onChange={(e) => saveFeatures({ ...featuresConfig, autoMode: e.target.checked })}
           className="accent-[var(--accent)]"
         />
       </label>

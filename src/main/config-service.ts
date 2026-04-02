@@ -18,13 +18,14 @@ const DEFAULT_CONFIG: CccConfig = {
   sessionGroups: [],
   zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
+  enableAutoMode: false,
   excludedSessions: [],
   archivedSessions: [],
   sessionDisplayNames: {},
   notificationsEnabled: true,
   mutedSessions: [],
   claudeConfigRoutes: [],
-  features: { pullRequests: false, containers: false },
+  features: { pullRequests: false, containers: false, autoMode: false },
   containers: [],
   containerSessions: {},
   gridLayout: null,
@@ -59,6 +60,7 @@ export class ConfigService {
           sessionGroups: Array.isArray(parsed.sessionGroups) ? parsed.sessionGroups : [],
           zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
+          enableAutoMode: parsed.enableAutoMode === true,
           excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
           archivedSessions: Array.isArray(parsed.archivedSessions) ? parsed.archivedSessions : [],
           sessionDisplayNames: parsed.sessionDisplayNames && typeof parsed.sessionDisplayNames === 'object'
@@ -70,8 +72,8 @@ export class ConfigService {
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
           defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined,
           features: parsed.features && typeof parsed.features === 'object'
-            ? { pullRequests: parsed.features.pullRequests === true, containers: parsed.features.containers === true }
-            : { pullRequests: false, containers: false },
+            ? { pullRequests: parsed.features.pullRequests === true, containers: parsed.features.containers === true, autoMode: parsed.features.autoMode === true }
+            : { pullRequests: false, containers: false, autoMode: false },
           containers: Array.isArray(parsed.containers) ? parsed.containers : [],
           containerSessions: parsed.containerSessions && typeof parsed.containerSessions === 'object' ? parsed.containerSessions : {},
           gridLayout: parsed.gridLayout ?? null,
@@ -136,6 +138,7 @@ export class ConfigService {
     if (partial.sessionGroups !== undefined) this.config.sessionGroups = partial.sessionGroups
     if (partial.zoomFactor !== undefined) this.config.zoomFactor = partial.zoomFactor
     if (partial.dangerouslySkipPermissions !== undefined) this.config.dangerouslySkipPermissions = partial.dangerouslySkipPermissions
+    if (partial.enableAutoMode !== undefined) this.config.enableAutoMode = partial.enableAutoMode
     if (partial.excludedSessions !== undefined) this.config.excludedSessions = partial.excludedSessions
     if (partial.archivedSessions !== undefined) this.config.archivedSessions = partial.archivedSessions
     if (partial.sessionDisplayNames !== undefined) this.config.sessionDisplayNames = { ...this.config.sessionDisplayNames, ...partial.sessionDisplayNames }

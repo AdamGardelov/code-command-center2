@@ -2,6 +2,13 @@ import { execFileSync, spawn } from 'child_process'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
 
+function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
+  let cmd = 'claude'
+  if (autoMode) cmd += ' --enable-auto-mode'
+  if (skipPerms) cmd += ' --dangerously-skip-permissions'
+  return cmd
+}
+
 // Muted, distinguishable palette that works on dark backgrounds
 const SESSION_COLORS = [
   '#88a1bb', // blue
@@ -95,10 +102,10 @@ function tmuxSessionName(name: string): string {
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
   private sshService: SshService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
     this.configService = service
   }
 
@@ -311,15 +318,21 @@ export class SessionManager {
       }
 
       if (opts.containerName) {
+        const cfg = this.configService?.get()
         const cmd = opts.type === 'claude'
-          ? (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
-            ? 'claude --dangerously-skip-permissions' : 'claude')
+          ? buildClaudeCmd(
+              opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
+              opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
+            )
           : opts.type === 'gemini' ? 'gemini' : ''
         const dockerCmd = `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${opts.workingDirectory} ${opts.containerName} zsh -lic '${cmd || 'exec zsh'}'`
         newArgs.push('--', remoteShell, '-ic', dockerCmd)
       } else if (opts.type === 'claude') {
-        const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
-        const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
+        const cfg = this.configService?.get()
+        const cmd = buildClaudeCmd(
+          opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
+          opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
+        )
         newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && ${cmd}`)
       }
       else if (opts.type === 'gemini') {
@@ -357,15 +370,21 @@ export class SessionManager {
       }
 
       if (opts.containerName) {
+        const cfg = this.configService?.get()
         const cmd = opts.type === 'claude'
-          ? (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
-            ? 'claude --dangerously-skip-permissions' : 'claude')
+          ? buildClaudeCmd(
+              opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
+              opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
+            )
           : opts.type === 'gemini' ? 'gemini' : ''
         const shell = process.env.SHELL || '/bin/bash'
         args.push('--', shell, '-ic', `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${expandedDir} ${opts.containerName} zsh -lic '${cmd || "exec zsh"}'`)
       } else if (opts.type === 'claude') {
-        const skipPerms = opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions
-        const cmd = skipPerms ? 'claude --dangerously-skip-permissions' : 'claude'
+        const cfg = this.configService?.get()
+        const cmd = buildClaudeCmd(
+          opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
+          opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
+        )
         const shell = process.env.SHELL || '/bin/bash'
         args.push('--', shell, '-ic', cmd)
       } else if (opts.type === 'gemini') {
@@ -414,6 +433,7 @@ export class SessionManager {
       isContainer: !!opts.containerName,
       containerName: opts.containerName,
       skipPermissions: (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions) && opts.type === 'claude' ? true : undefined,
+      enableAutoMode: (opts.enableAutoMode ?? this.configService?.get().enableAutoMode) && opts.type === 'claude' ? true : undefined,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
       createdAt: Date.now(),

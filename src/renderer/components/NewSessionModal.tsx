@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, SquareTerminal, Server, Monitor, GitBranch, Zap, Box } from 'lucide-react'
+import { X, SquareTerminal, Server, Monitor, GitBranch, Zap, Bot, Box } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import type { SessionType, Worktree, ContainerConfig } from '../../shared/types'
 import WorktreeCombobox from './WorktreeCombobox'
@@ -28,6 +28,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const enabledProviders = useSessionStore((s) => s.enabledProviders)
   const enableContainers = useSessionStore((s) => s.enableContainers)
+  const enableAutoModeFeature = useSessionStore((s) => s.enableAutoModeFeature)
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [name, setName] = useState('')
@@ -43,6 +44,7 @@ export default function NewSessionModal(): React.JSX.Element {
   const [worktrees, setWorktrees] = useState<Worktree[]>([])
   const [loadingWorktrees, setLoadingWorktrees] = useState(false)
   const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
+  const [enableAutoMode, setEnableAutoMode] = useState(false)
   const [skipPermissions, setSkipPermissions] = useState(false)
   const [runningContainers, setRunningContainers] = useState<ContainerConfig[]>([])
   const [selectedContainer, setSelectedContainer] = useState<string | undefined>(undefined)
@@ -129,6 +131,7 @@ export default function NewSessionModal(): React.JSX.Element {
         workingDirectory: dir,
         type,
         remoteHost,
+        enableAutoMode: type === 'claude' ? enableAutoMode : undefined,
         skipPermissions: type === 'claude' ? skipPermissions : undefined,
         containerName: selectedContainer
       })
@@ -141,6 +144,7 @@ export default function NewSessionModal(): React.JSX.Element {
       setBranches([])
       setWorktrees([])
       setSelectedWorktree(null)
+      setEnableAutoMode(false)
       setSkipPermissions(false)
       setRunningContainers([])
       setSelectedContainer(undefined)
@@ -314,31 +318,60 @@ export default function NewSessionModal(): React.JSX.Element {
           </div>
 
           {type === 'claude' && (
-            <label
-              className="flex items-center gap-2 cursor-pointer select-none"
-              style={{ color: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--text-muted)' }}
-            >
-              <input
-                type="checkbox"
-                checked={skipPermissions}
-                onChange={(e) => setSkipPermissions(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div
-                className="w-7 h-4 rounded-full relative transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)]"
-                style={{ backgroundColor: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--bg-raised)' }}
+            <div className="flex flex-col gap-2">
+              {enableAutoModeFeature && (
+                <label
+                  className="flex items-center gap-2 cursor-pointer select-none"
+                  style={{ color: enableAutoMode ? 'var(--accent)' : 'var(--text-muted)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={enableAutoMode}
+                    onChange={(e) => setEnableAutoMode(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className="w-7 h-4 rounded-full relative transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)]"
+                    style={{ backgroundColor: enableAutoMode ? 'var(--accent)' : 'var(--bg-raised)' }}
+                  >
+                    <div
+                      className="absolute top-0.5 w-3 h-3 rounded-full transition-transform duration-150"
+                      style={{
+                        backgroundColor: enableAutoMode ? 'var(--bg-primary)' : 'var(--text-muted)',
+                        transform: enableAutoMode ? 'translateX(14px)' : 'translateX(2px)'
+                      }}
+                    />
+                  </div>
+                  <Bot size={12} />
+                  <span className="text-xs">Auto mode</span>
+                </label>
+              )}
+              <label
+                className="flex items-center gap-2 cursor-pointer select-none"
+                style={{ color: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--text-muted)' }}
               >
-                <div
-                  className="absolute top-0.5 w-3 h-3 rounded-full transition-transform duration-150"
-                  style={{
-                    backgroundColor: skipPermissions ? 'var(--bg-primary)' : 'var(--text-muted)',
-                    transform: skipPermissions ? 'translateX(14px)' : 'translateX(2px)'
-                  }}
+                <input
+                  type="checkbox"
+                  checked={skipPermissions}
+                  onChange={(e) => setSkipPermissions(e.target.checked)}
+                  className="sr-only peer"
                 />
-              </div>
-              <Zap size={12} />
-              <span className="text-xs">Skip permissions</span>
-            </label>
+                <div
+                  className="w-7 h-4 rounded-full relative transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)]"
+                  style={{ backgroundColor: skipPermissions ? 'var(--warning, #e9c880)' : 'var(--bg-raised)' }}
+                >
+                  <div
+                    className="absolute top-0.5 w-3 h-3 rounded-full transition-transform duration-150"
+                    style={{
+                      backgroundColor: skipPermissions ? 'var(--bg-primary)' : 'var(--text-muted)',
+                      transform: skipPermissions ? 'translateX(14px)' : 'translateX(2px)'
+                    }}
+                  />
+                </div>
+                <Zap size={12} />
+                <span className="text-xs">Skip permissions</span>
+              </label>
+            </div>
           )}
 
           <div>

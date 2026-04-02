@@ -17,6 +17,7 @@ export interface Session {
   createdAt: number
   lastActiveAt: number
   skipPermissions?: boolean
+  enableAutoMode?: boolean
   isExcluded?: boolean
   isArchived?: boolean
   displayName?: string
@@ -30,6 +31,7 @@ export interface SessionCreate {
   type: SessionType
   remoteHost?: string
   skipPermissions?: boolean
+  enableAutoMode?: boolean
   containerName?: string
 }
 
@@ -133,6 +135,7 @@ export interface PrConfig {
 export interface FeaturesConfig {
   pullRequests: boolean
   containers: boolean
+  autoMode: boolean
 }
 
 export type PrTab = 'mine' | 'team' | 'reviews'
@@ -163,6 +166,7 @@ export interface CccConfig {
   sessionGroups: SessionGroup[]
   zoomFactor: number
   dangerouslySkipPermissions: boolean
+  enableAutoMode: boolean
   excludedSessions: string[]
   archivedSessions: string[]
   sessionDisplayNames: Record<string, string>
