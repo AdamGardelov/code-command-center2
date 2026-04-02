@@ -31,6 +31,8 @@ export default function NewSessionModal(): React.JSX.Element {
 
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
+  const defaultAutoMode = useSessionStore((s) => s.enableAutoMode)
+  const defaultSkipPermissions = useSessionStore((s) => s.dangerouslySkipPermissions)
   const [name, setName] = useState('')
   const [workingDirectory, setWorkingDirectory] = useState('')
   const [type, setType] = useState<SessionType>(enabledProviders[0] ?? 'claude')
@@ -44,8 +46,8 @@ export default function NewSessionModal(): React.JSX.Element {
   const [worktrees, setWorktrees] = useState<Worktree[]>([])
   const [loadingWorktrees, setLoadingWorktrees] = useState(false)
   const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
-  const [enableAutoMode, setEnableAutoMode] = useState(false)
-  const [skipPermissions, setSkipPermissions] = useState(false)
+  const [enableAutoMode, setEnableAutoMode] = useState(defaultAutoMode)
+  const [skipPermissions, setSkipPermissions] = useState(defaultSkipPermissions)
   const [runningContainers, setRunningContainers] = useState<ContainerConfig[]>([])
   const [selectedContainer, setSelectedContainer] = useState<string | undefined>(undefined)
 
