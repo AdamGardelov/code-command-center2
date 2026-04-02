@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { GitBranch, Trash2, Folder, Zap, Box } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
@@ -49,7 +49,18 @@ const showStatus = (session: Session): boolean => {
 
 export default function SessionCard({ session, isActive, onClick }: SessionCardProps): React.JSX.Element {
   const removeSession = useSessionStore((s) => s.removeSession)
+  const renamingSessionId = useSessionStore((s) => s.renamingSessionId)
+  const setRenamingSessionId = useSessionStore((s) => s.setRenamingSessionId)
+  const setDisplayName = useSessionStore((s) => s.setDisplayName)
+  const renameInputRef = useRef<HTMLInputElement>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    if (renamingSessionId === session.id && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [renamingSessionId, session.id])
 
   return (
     <>
@@ -81,12 +92,42 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       <div className="pl-3.5 pr-2.5 py-2">
         {/* Row 1: name + status dot + time */}
         <div className="flex items-center gap-2">
-          <span
-            className="text-[12px] font-semibold truncate flex-1"
-            style={{ color: isActive ? session.color : 'var(--text-primary)' }}
-          >
-            {session.displayName || session.name}
-          </span>
+          {renamingSessionId === session.id ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              defaultValue={session.displayName || session.name}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur()
+                } else if (e.key === 'Escape') {
+                  setRenamingSessionId(null)
+                }
+              }}
+              onBlur={(e) => {
+                const value = e.currentTarget.value.trim()
+                if (value !== '' && value !== session.name) {
+                  void setDisplayName(session.id, value)
+                } else if (value === '' || value === session.name) {
+                  void setDisplayName(session.id, '')
+                }
+                setRenamingSessionId(null)
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[12px] font-semibold truncate flex-1 bg-transparent border-b outline-none"
+              style={{
+                color: isActive ? session.color : 'var(--text-primary)',
+                borderColor: 'var(--accent)',
+              }}
+            />
+          ) : (
+            <span
+              className="text-[12px] font-semibold truncate flex-1"
+              style={{ color: isActive ? session.color : 'var(--text-primary)' }}
+            >
+              {session.displayName || session.name}
+            </span>
+          )}
           {session.remoteHost && (
             <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"
               style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
