@@ -14,6 +14,9 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
   const addSessionToGroup = useSessionStore((s) => s.addSessionToGroup)
   const removeSessionFromGroup = useSessionStore((s) => s.removeSessionFromGroup)
   const toggleExcluded = useSessionStore(s => s.toggleExcluded)
+  const toggleArchived = useSessionStore(s => s.toggleArchived)
+  const setRenamingSessionId = useSessionStore(s => s.setRenamingSessionId)
+  const archivedSessions = useSessionStore(s => s.archivedSessions)
   const toggleMuted = useSessionStore(s => s.toggleMuted)
   const mutedSessions = useSessionStore(s => s.mutedSessions)
   const openInIde = useSessionStore(s => s.openInIde)
@@ -84,13 +87,38 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
           </button>
         ))}
 
-        <div style={{ height: 1, background: 'var(--border)' }} />
+        {/* Rename */}
         <button
           className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
-          onClick={() => { toggleExcluded(sessionId); onClose() }}
+          onClick={() => { setRenamingSessionId(sessionId); onClose() }}
         >
-          {session?.isExcluded ? 'Include session' : 'Exclude session'}
+          Rename...
         </button>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Visibility controls */}
+        <button
+          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2"
+          onClick={() => { toggleExcluded(sessionId); onClose() }}
+          style={{
+            opacity: session?.isArchived ? 0.4 : 1,
+            pointerEvents: session?.isArchived ? 'none' : 'auto',
+          }}
+        >
+          <span className="w-4 text-center text-[10px]">{session?.isExcluded ? '✓' : ''}</span>
+          Exclude from grid
+        </button>
+        <button
+          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+          onClick={() => { toggleArchived(sessionId); onClose() }}
+        >
+          {session && archivedSessions.includes(session.name) ? 'Unarchive' : 'Archive'}
+        </button>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Existing actions */}
         <button
           className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
           onClick={() => { toggleMuted(sessionId); onClose() }}
