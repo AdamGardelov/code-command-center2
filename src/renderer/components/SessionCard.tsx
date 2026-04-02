@@ -74,7 +74,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       style={{
         backgroundColor: isActive ? 'var(--bg-raised)' : 'var(--bg-primary)',
         border: `1px solid ${isActive ? session.color + '40' : 'var(--bg-raised)'}`,
-        opacity: session.isExcluded ? 0.4 : 1,
+        opacity: session.isExcluded || session.isArchived ? 0.4 : 1,
       }}
       onMouseEnter={(e) => {
         if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-muted)'

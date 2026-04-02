@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, LayoutGrid, Monitor, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch } from 'lucide-react'
+import { Plus, LayoutGrid, Monitor, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch, Archive } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
 import type { Session } from '../../shared/types'
@@ -242,20 +242,28 @@ export default function SessionSidebar(): React.JSX.Element {
   const remoteHosts = useSessionStore((s) => s.remoteHosts)
   const hostStatuses = useSessionStore((s) => s.hostStatuses)
   const [searchQuery, setSearchQuery] = useState('')
+  const [archivedOpen, setArchivedOpen] = useState(false)
 
   const filtered = searchQuery
-    ? sessions.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? sessions.filter((s) =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.displayName && s.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
     : sessions
+
+  const activeSessions = filtered.filter((s) => !s.isArchived)
+  const archivedFiltered = filtered.filter((s) => s.isArchived)
 
   const hasRemoteHosts = remoteHosts.length > 0
 
-  const claudeSessions = filtered.filter((s) => s.type === 'claude')
-  const geminiSessions = filtered.filter((s) => s.type === 'gemini')
-  const shellSessions = filtered.filter((s) => s.type === 'shell')
+  const claudeSessions = activeSessions.filter((s) => s.type === 'claude')
+  const geminiSessions = activeSessions.filter((s) => s.type === 'gemini')
+  const shellSessions = activeSessions.filter((s) => s.type === 'shell')
   const runningCount = sessions.filter((s) => s.status === 'working' || s.status === 'idle' || s.status === 'waiting').length
-  const excludedCount = sessions.filter((s) => s.isExcluded).length
+  const excludedCount = sessions.filter((s) => s.isExcluded && !s.isArchived).length
+  const archivedCount = sessions.filter((s) => s.isArchived).length
 
-  const localSessions = filtered.filter((s) => !s.remoteHost)
+  const localSessions = activeSessions.filter((s) => !s.remoteHost)
 
   return (
     <div
@@ -312,9 +320,9 @@ export default function SessionSidebar(): React.JSX.Element {
             )}
             {remoteHosts
               .filter((rh) => hostStatuses[rh.name] !== false)
-              .filter((rh) => filtered.some((s) => s.remoteHost === rh.name))
+              .filter((rh) => activeSessions.some((s) => s.remoteHost === rh.name))
               .map((rh) => {
-                const hostSessions = filtered.filter((s) => s.remoteHost === rh.name)
+                const hostSessions = activeSessions.filter((s) => s.remoteHost === rh.name)
                 return (
                   <MachineGroup
                     key={rh.name}
@@ -362,6 +370,39 @@ export default function SessionSidebar(): React.JSX.Element {
               />
             )}
           </>
+        )}
+
+        {archivedFiltered.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => setArchivedOpen(!archivedOpen)}
+              className="w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors duration-100 hover:bg-[rgba(255,255,255,0.03)]"
+            >
+              {archivedOpen
+                ? <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+                : <ChevronRight size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+              }
+              <Archive size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+              <span className="text-[11px] font-semibold flex-1 text-left" style={{ color: 'var(--text-muted)' }}>
+                Archived
+              </span>
+              <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
+                {archivedFiltered.length}
+              </span>
+            </button>
+            {archivedOpen && (
+              <div className="flex flex-col gap-1 mt-0.5 ml-1">
+                {archivedFiltered.map((s) => (
+                  <SessionCard
+                    key={s.id}
+                    session={s}
+                    isActive={s.id === activeSessionId}
+                    onClick={() => setActiveSession(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {sessions.length === 0 && (
@@ -415,6 +456,11 @@ export default function SessionSidebar(): React.JSX.Element {
           {excludedCount > 0 && (
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {' '}· {excludedCount} excluded
+            </span>
+          )}
+          {archivedCount > 0 && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {' '}· {archivedCount} archived
             </span>
           )}
         </span>
