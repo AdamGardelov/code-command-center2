@@ -20,6 +20,7 @@ interface SessionStore {
   worktreeBasePath: string
   worktreeSyncPaths: string[]
   excludedSessions: string[]
+  archivedSessions: string[]
   mutedSessions: string[]
   notificationsEnabled: boolean
   dangerouslySkipPermissions: boolean
@@ -44,6 +45,10 @@ interface SessionStore {
   removeSessionFromGroup: (groupId: string, sessionId: string) => Promise<void>
   toggleExcluded: (sessionId: string) => Promise<void>
   toggleMuted: (sessionId: string) => Promise<void>
+  toggleArchived: (sessionId: string) => Promise<void>
+  setDisplayName: (sessionId: string, displayName: string) => Promise<void>
+  renamingSessionId: string | null
+  setRenamingSessionId: (id: string | null) => void
   setNotificationsEnabled: (value: boolean) => Promise<void>
   setDangerouslySkipPermissions: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
@@ -94,7 +99,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   worktreeBasePath: '~/worktrees',
   worktreeSyncPaths: ['.claude', 'CLAUDE.md'],
   excludedSessions: [],
+  archivedSessions: [],
   mutedSessions: [],
+  renamingSessionId: null,
   notificationsEnabled: true,
   dangerouslySkipPermissions: false,
   ideCommand: '',
@@ -124,6 +131,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       worktreeBasePath: config.worktreeBasePath ?? '~/worktrees',
       worktreeSyncPaths: config.worktreeSyncPaths ?? ['.claude', 'CLAUDE.md'],
       excludedSessions: config.excludedSessions ?? [],
+      archivedSessions: config.archivedSessions ?? [],
       mutedSessions: config.mutedSessions ?? [],
       notificationsEnabled: config.notificationsEnabled !== false,
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
@@ -139,9 +147,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   loadSessions: async () => {
     const sessions = await window.cccAPI.session.list()
     const excluded = get().excludedSessions
+    const archived = get().archivedSessions
+    const config = await window.cccAPI.config.load()
+    const displayNames = config.sessionDisplayNames ?? {}
     const marked = sessions.map((s: Session) => ({
       ...s,
-      isExcluded: excluded.includes(s.name)
+      isExcluded: excluded.includes(s.name),
+      isArchived: archived.includes(s.name),
+      displayName: displayNames[s.name],
     }))
     set((state) => ({
       sessions: marked,
@@ -302,6 +315,44 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ notificationsEnabled: value })
   },
 
+  toggleArchived: async (sessionId: string) => {
+    const session = get().sessions.find(s => s.id === sessionId)
+    if (!session) return
+    await window.cccAPI.config.toggleArchived(session.name)
+    const wasArchived = get().archivedSessions.includes(session.name)
+    if (wasArchived) {
+      set({
+        sessions: get().sessions.map(s =>
+          s.id === sessionId ? { ...s, isArchived: false } : s
+        ),
+        archivedSessions: get().archivedSessions.filter(n => n !== session.name),
+      })
+    } else {
+      set({
+        sessions: get().sessions.map(s =>
+          s.id === sessionId ? { ...s, isArchived: true, isExcluded: false } : s
+        ),
+        archivedSessions: [...get().archivedSessions, session.name],
+        excludedSessions: get().excludedSessions.filter(n => n !== session.name),
+      })
+    }
+  },
+
+  setDisplayName: async (sessionId: string, displayName: string) => {
+    const session = get().sessions.find(s => s.id === sessionId)
+    if (!session) return
+    await window.cccAPI.config.setDisplayName(session.name, displayName)
+    set({
+      sessions: get().sessions.map(s =>
+        s.id === sessionId
+          ? { ...s, displayName: displayName.trim() === '' ? undefined : displayName.trim() }
+          : s
+      ),
+    })
+  },
+
+  setRenamingSessionId: (id: string | null) => set({ renamingSessionId: id }),
+
   toggleExcluded: async (sessionId: string) => {
     const session = get().sessions.find(s => s.id === sessionId)
     if (!session) return
@@ -339,8 +390,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   resetGridLayout: () => {
-    const { sessions, excludedSessions, gridPresets } = get()
-    const visibleIds = sessions.filter((s) => !excludedSessions.includes(s.name)).map((s) => s.id)
+    const { sessions, excludedSessions, archivedSessions, gridPresets } = get()
+    const visibleIds = sessions
+      .filter((s) => !excludedSessions.includes(s.name) && !archivedSessions.includes(s.name))
+      .map((s) => s.id)
     const newLayout = visibleIds.length > 0 ? buildAutoGrid(visibleIds, gridPresets) : null
     set({ gridLayout: newLayout })
     void window.cccAPI.config.update({ gridLayout: null })
