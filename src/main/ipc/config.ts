@@ -18,4 +18,12 @@ export function registerConfigIpc(configService: ConfigService): void {
   ipcMain.handle('config:toggle-muted', (_event, sessionName: string) => {
     configService.toggleMuted(sessionName)
   })
+
+  ipcMain.handle('config:toggle-archived', (_event, sessionName: string) => {
+    configService.toggleArchived(sessionName)
+  })
+
+  ipcMain.handle('config:set-display-name', (_event, sessionName: string, displayName: string) => {
+    configService.setDisplayName(sessionName, displayName)
+  })
 }

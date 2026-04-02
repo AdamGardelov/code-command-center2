@@ -51,7 +51,9 @@ const api: CccAPI = {
     load: (): Promise<CccConfig> => ipcRenderer.invoke('config:load'),
     update: (partial: Partial<CccConfig>): Promise<CccConfig> => ipcRenderer.invoke('config:update', partial),
     toggleExcluded: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-excluded', sessionName),
-    toggleMuted: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-muted', sessionName)
+    toggleMuted: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-muted', sessionName),
+    toggleArchived: (sessionName: string): Promise<void> => ipcRenderer.invoke('config:toggle-archived', sessionName),
+    setDisplayName: (sessionName: string, displayName: string): Promise<void> => ipcRenderer.invoke('config:set-display-name', sessionName, displayName)
   },
   notification: {
     onToast: (callback: (data: { sessionName: string; message: string; color: string }) => void) => {
