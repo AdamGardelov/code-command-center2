@@ -41,6 +41,7 @@ import { registerGitIpc } from './ipc/git'
 import { registerGroupIpc } from './ipc/group'
 import { registerClipboardIpc } from './ipc/clipboard'
 import { registerShellIpc } from './ipc/shell'
+import { registerUpdaterIpc } from './ipc/updater'
 import { NotificationService } from './notification-service'
 import { PrService } from './pr-service'
 import { ContainerService } from './container-service'
@@ -149,6 +150,7 @@ registerGitIpc(gitService)
 registerGroupIpc(configService)
 registerClipboardIpc()
 registerShellIpc()
+registerUpdaterIpc()
 
 ipcMain.handle('container:list-running', (_event, remoteHost?: string) => {
   return containerService.listRunning(remoteHost)
