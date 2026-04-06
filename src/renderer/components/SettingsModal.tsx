@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SettingsSidebar, { type Tab } from './settings/SettingsSidebar'
@@ -11,6 +11,7 @@ import RemotesSettings from './settings/RemotesSettings'
 import ContainersSettings from './settings/ContainersSettings'
 import AdvancedSettings from './settings/AdvancedSettings'
 import GridSettings from './settings/GridSettings'
+import { AboutTab } from './AboutTab'
 
 const TAB_TITLES: Record<Tab, string> = {
   appearance: 'Appearance',
@@ -22,6 +23,7 @@ const TAB_TITLES: Record<Tab, string> = {
   remotes: 'Remote Hosts',
   containers: 'Containers',
   advanced: 'Advanced',
+  about: 'About',
 }
 
 const TAB_COMPONENTS: Record<Tab, React.ComponentType> = {
@@ -34,12 +36,20 @@ const TAB_COMPONENTS: Record<Tab, React.ComponentType> = {
   remotes: RemotesSettings,
   containers: ContainersSettings,
   advanced: AdvancedSettings,
+  about: AboutTab,
 }
 
 export default function SettingsModal(): React.JSX.Element {
   const settingsOpen = useSessionStore((s) => s.settingsOpen)
+  const settingsInitialTab = useSessionStore((s) => s.settingsInitialTab)
   const toggleSettings = useSessionStore((s) => s.toggleSettings)
   const [tab, setTab] = useState<Tab>('appearance')
+
+  useEffect(() => {
+    if (settingsOpen && settingsInitialTab) {
+      setTab(settingsInitialTab as Tab)
+    }
+  }, [settingsOpen, settingsInitialTab])
 
   if (!settingsOpen) return <></>
 

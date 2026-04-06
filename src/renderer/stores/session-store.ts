@@ -12,6 +12,7 @@ interface SessionStore {
   theme: Theme
   loading: boolean
   settingsOpen: boolean
+  settingsInitialTab: string | null
   favorites: FavoriteFolder[]
   enabledProviders: AiProvider[]
   hostStatuses: Record<string, boolean>
@@ -71,6 +72,7 @@ interface SessionStore {
   toggleModal: () => void
   toggleTheme: () => void
   toggleSettings: () => void
+  openSettingsOnTab: (tab: string) => void
   setFavorites: (favoriteFolders: FavoriteFolder[]) => Promise<void>
   setRemoteHosts: (remoteHosts: RemoteHost[]) => Promise<void>
   setEnabledProviders: (providers: AiProvider[]) => Promise<void>
@@ -94,6 +96,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   theme: 'dark',
   loading: true,
   settingsOpen: false,
+  settingsInitialTab: null,
   enabledProviders: ['claude'] as AiProvider[],
   favorites: [],
   hostStatuses: {},
@@ -206,7 +209,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     void window.cccAPI.config.update({ theme: next })
     return { theme: next }
   }),
-  toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),
+  toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen, settingsInitialTab: null })),
+  openSettingsOnTab: (tab) => set({ settingsOpen: true, settingsInitialTab: tab }),
   setFavorites: async (favoriteFolders) => {
     await window.cccAPI.config.update({ favoriteFolders })
     set({ favorites: favoriteFolders })
