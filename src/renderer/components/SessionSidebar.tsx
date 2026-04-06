@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Plus, LayoutGrid, Monitor, SquareTerminal, ChevronDown, ChevronRight, Search, Server, GitBranch, Archive } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
 import SessionCard from './SessionCard'
+import { UpdateIndicator } from './UpdateIndicator'
 import type { Session } from '../../shared/types'
 
 function GeminiIcon({ size = 12 }: { size?: number }): React.JSX.Element {
@@ -424,10 +425,11 @@ export default function SessionSidebar(): React.JSX.Element {
 
       {/* Footer */}
       <div
-        className="px-2 py-1.5 border-t flex items-center gap-1 flex-shrink-0"
+        className="px-2 py-1.5 border-t flex flex-col gap-1.5 flex-shrink-0"
         style={{ borderColor: 'var(--bg-raised)' }}
       >
-        <div className="flex gap-0.5 flex-1">
+        <UpdateIndicator />
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setViewMode('single')}
             className="flex items-center justify-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors duration-100"
