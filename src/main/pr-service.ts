@@ -286,6 +286,7 @@ export class PrService {
   private sendNotification(title: string, body: string): void {
     if (!this.window || this.window.isDestroyed()) return
 
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Notification } = require('electron') as typeof import('electron')
     const config = this.configService.get()
     if (!config.notificationsEnabled) return
