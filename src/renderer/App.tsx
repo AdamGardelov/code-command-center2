@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import ToastContainer from './components/ToastContainer'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useSessionStore } from './stores/session-store'
+import { useUpdaterStore } from './stores/updater-store'
 
 export default function App(): React.JSX.Element {
   useKeyboard()
@@ -35,6 +36,16 @@ export default function App(): React.JSX.Element {
       unsubHost()
     }
   }, [loadSessions, updateSessionStatus, loadHostStatuses, updateHostStatus])
+
+  useEffect(() => {
+    void window.cccAPI.updater.getState().then((state) => {
+      useUpdaterStore.getState().setState(state)
+    })
+    const unsubscribe = window.cccAPI.updater.onStateChanged((state) => {
+      useUpdaterStore.getState().setState(state)
+    })
+    return unsubscribe
+  }, [])
 
   return (
     <>
