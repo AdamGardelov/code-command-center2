@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
-import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState } from '../shared/types'
 
 const api: CccAPI = {
   window: {
@@ -142,6 +142,18 @@ const api: CccAPI = {
     platform: (): Promise<string> => ipcRenderer.invoke('app:platform'),
     logs: (lines?: number): Promise<string> => ipcRenderer.invoke('app:logs', lines),
     logPath: (): Promise<string> => ipcRenderer.invoke('app:log-path')
+  },
+  updater: {
+    getState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:get-state'),
+    check: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:check'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    onStateChanged: (callback: (state: UpdaterState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: UpdaterState): void => {
+        callback(state)
+      }
+      ipcRenderer.on('updater:state-changed', handler)
+      return () => ipcRenderer.removeListener('updater:state-changed', handler)
+    }
   }
 }
 

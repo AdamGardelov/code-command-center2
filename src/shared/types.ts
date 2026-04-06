@@ -182,6 +182,31 @@ export interface CccConfig {
   gridPresets?: Record<string, string>
 }
 
+export type UpdaterStatus =
+  | 'idle'
+  | 'checking'
+  | 'update-available'
+  | 'up-to-date'
+  | 'error'
+
+export interface UpdaterState {
+  status: UpdaterStatus
+  currentVersion: string
+  latestVersion?: string
+  releaseUrl?: string
+  releaseNotes?: string
+  publishedAt?: string
+  lastCheckedAt?: string
+  errorMessage?: string
+}
+
+export interface UpdaterInstallResult {
+  /** True when no automated install is possible on this platform (e.g. Windows). */
+  manual?: boolean
+  /** Copy-pasteable command shown to the user when `manual` is true. */
+  command?: string
+}
+
 export interface CccAPI {
   window: {
     minimize: () => void
@@ -253,5 +278,11 @@ export interface CccAPI {
     platform: () => Promise<string>
     logs: (lines?: number) => Promise<string>
     logPath: () => Promise<string>
+  }
+  updater: {
+    getState(): Promise<UpdaterState>
+    check(): Promise<UpdaterState>
+    install(): Promise<UpdaterInstallResult>
+    onStateChanged(callback: (state: UpdaterState) => void): () => void
   }
 }
