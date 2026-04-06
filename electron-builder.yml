@@ -14,9 +14,7 @@ extraResources:
     to: resources/
 linux:
   target:
-    - AppImage
     - deb
-    - pacman
   icon: build/icon.png
   category: Development;
 win:
@@ -27,7 +25,3 @@ mac:
   target:
     - dmg
   icon: build/icon.png
-publish:
-  provider: github
-  owner: AdamGardelov
-  repo: code-command-center2
