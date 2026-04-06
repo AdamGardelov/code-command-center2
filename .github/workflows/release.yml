@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
 
@@ -9,7 +10,54 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+      skipped: ${{ steps.bump.outputs.skipped }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump patch and tag
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          LAST_AUTHOR=$(git log -1 --format='%an')
+          if [ "$LAST_AUTHOR" = "github-actions[bot]" ]; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping: last commit was from CI"
+            exit 0
+          fi
+
+          CURRENT=$(node -p "require('./package.json').version")
+          if git rev-parse "v${CURRENT}" >/dev/null 2>&1; then
+            IFS='.' read -r major minor patch <<< "$CURRENT"
+            patch=$((patch + 1))
+            VERSION="${major}.${minor}.${patch}"
+            npm version "$VERSION" --no-git-tag-version
+            git add package.json
+            git commit -m "release: v${VERSION}"
+          else
+            VERSION="$CURRENT"
+          fi
+
+          git tag "v${VERSION}"
+          git push origin main --tags
+
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: [version]
+    if: |
+      always() &&
+      (github.ref_type == 'tag' || needs.version.outputs.skipped != 'true')
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +76,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag || github.ref }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -47,6 +97,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.artifact }}
+          tag_name: ${{ needs.version.outputs.tag || github.ref_name }}
           draft: false
           generate_release_notes: true
         env:
