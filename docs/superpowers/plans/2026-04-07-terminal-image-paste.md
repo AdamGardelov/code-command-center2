@@ -160,7 +160,7 @@ const handleImagePaste = async (): Promise<boolean> => {
       const bytes = new Uint8Array(await blob.arrayBuffer())
       const ext = imageType === 'image/png' ? 'png' : 'jpg'
       const filepath = await window.cccAPI.clipboard.writeImage(bytes, ext)
-      window.cccAPI.terminal.write(sessionId, filepath + ' ')
+      termRef.current?.paste(filepath + ' ')
       return true
     }
     return false
@@ -251,7 +251,7 @@ Add the helper above `handleImagePaste`:
 const fallbackTextPaste = async (): Promise<void> => {
   try {
     const text = await navigator.clipboard.readText()
-    if (text) window.cccAPI.terminal.write(sessionId, text)
+    if (text) termRef.current?.paste(text)
   } catch {
     // Nothing we can do — clipboard unavailable.
   }
