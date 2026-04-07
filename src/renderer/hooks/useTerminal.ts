@@ -67,6 +67,51 @@ export function useTerminal(
   const unsubDataRef = useRef<(() => void) | null>(null)
   const theme = useSessionStore((s) => s.theme)
 
+  const fallbackTextPaste = async (): Promise<void> => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) termRef.current?.paste(text)
+    } catch {
+      // Clipboard unavailable — nothing we can do.
+    }
+  }
+
+  const handleClipboardPaste = async (): Promise<void> => {
+    try {
+      const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId)
+      if (session?.remoteHost) {
+        await fallbackTextPaste()
+        return
+      }
+
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        await fallbackTextPaste()
+        return
+      }
+
+      const items = await navigator.clipboard.read()
+      for (const item of items) {
+        const imageType = item.types.find(
+          (t) => t === 'image/png' || t === 'image/jpeg'
+        )
+        if (!imageType) continue
+
+        const blob = await item.getType(imageType)
+        const bytes = new Uint8Array(await blob.arrayBuffer())
+        const ext = imageType === 'image/png' ? 'png' : 'jpg'
+        const filepath = await window.cccAPI.clipboard.writeImage(bytes, ext)
+        termRef.current?.paste(filepath + ' ')
+        return
+      }
+
+      await fallbackTextPaste()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to paste image'
+      console.error('[image paste]', message)
+      await fallbackTextPaste()
+    }
+  }
+
   useEffect(() => {
     const container = containerRef.current
     if (!container || !sessionId) return
@@ -108,6 +153,18 @@ export function useTerminal(
 
     termRef.current = terminal
     fitRef.current = fitAddon
+
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true
+      const isPaste =
+        event.key.toLowerCase() === 'v' &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey
+      if (!isPaste) return true
+
+      void handleClipboardPaste()
+      return false
+    })
 
     // Helper: fit terminal and sync pty size (skips if container has no area)
     const fitAndResize = (): void => {
