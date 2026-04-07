@@ -167,6 +167,15 @@ export class PrService {
       }
     }
 
+    // Restrict to pinned repos when configured, so team/review searches
+    // don't surface PRs from repos the user hasn't opted into.
+    if (prConfig.pinnedRepos.length > 0) {
+      const allowed = new Set(
+        prConfig.pinnedRepos.map(r => (r.includes('/') ? r : `${prConfig.githubOrg}/${r}`))
+      )
+      return allPrs.filter(pr => allowed.has(pr.repo))
+    }
+
     return allPrs
   }
 
