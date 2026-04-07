@@ -67,48 +67,18 @@ export function useTerminal(
   const unsubDataRef = useRef<(() => void) | null>(null)
   const theme = useSessionStore((s) => s.theme)
 
-  const fallbackTextPaste = async (): Promise<void> => {
-    try {
-      const text = await navigator.clipboard.readText()
-      if (text) termRef.current?.paste(text)
-    } catch {
-      // Clipboard unavailable — nothing we can do.
-    }
-  }
-
-  const handleClipboardPaste = async (): Promise<void> => {
+  const handleImagePaste = async (file: File): Promise<void> => {
     try {
       const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId)
-      if (session?.remoteHost) {
-        await fallbackTextPaste()
-        return
-      }
-
-      if (!navigator.clipboard || !navigator.clipboard.read) {
-        await fallbackTextPaste()
-        return
-      }
-
-      const items = await navigator.clipboard.read()
-      for (const item of items) {
-        const imageType = item.types.find(
-          (t) => t === 'image/png' || t === 'image/jpeg'
-        )
-        if (!imageType) continue
-
-        const blob = await item.getType(imageType)
-        const bytes = new Uint8Array(await blob.arrayBuffer())
-        const ext = imageType === 'image/png' ? 'png' : 'jpg'
-        const filepath = await window.cccAPI.clipboard.writeImage(bytes, ext)
-        termRef.current?.paste(filepath + ' ')
-        return
-      }
-
-      await fallbackTextPaste()
+      if (session?.remoteHost) return
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const ext = file.type === 'image/jpeg' ? 'jpg' : 'png'
+      const filepath = await window.cccAPI.clipboard.writeImage(bytes, ext)
+      console.log('[image paste] wrote', filepath)
+      termRef.current?.paste(filepath + ' ')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to paste image'
       console.error('[image paste]', message)
-      await fallbackTextPaste()
     }
   }
 
@@ -154,17 +124,29 @@ export function useTerminal(
     termRef.current = terminal
     fitRef.current = fitAddon
 
-    terminal.attachCustomKeyEventHandler((event) => {
-      if (event.type !== 'keydown') return true
-      const isPaste =
-        event.key.toLowerCase() === 'v' &&
-        (event.ctrlKey || event.metaKey) &&
-        !event.shiftKey
-      if (!isPaste) return true
+    // Intercept paste entirely — handle images ourselves, forward text to xterm.
+    // We always preventDefault + stopImmediatePropagation so xterm's own paste
+    // listener doesn't also fire (which would duplicate text).
+    const onPaste = (event: ClipboardEvent): void => {
+      const data = event.clipboardData
+      if (!data) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
 
-      void handleClipboardPaste()
-      return false
-    })
+      const file =
+        Array.from(data.files).find((f) => f.type.startsWith('image/')) ??
+        Array.from(data.items).find((i) => i.type.startsWith('image/'))?.getAsFile() ??
+        null
+
+      if (file) {
+        void handleImagePaste(file)
+        return
+      }
+
+      const text = data.getData('text/plain')
+      if (text) termRef.current?.paste(text)
+    }
+    container.addEventListener('paste', onPaste, true)
 
     // Helper: fit terminal and sync pty size (skips if container has no area)
     const fitAndResize = (): void => {
@@ -213,6 +195,7 @@ export function useTerminal(
     return () => {
       cancelAnimationFrame(resizeRaf)
       resizeObserver.disconnect()
+      container.removeEventListener('paste', onPaste, true)
       selectionDisposable.dispose()
       inputDisposable.dispose()
       if (unsubDataRef.current) unsubDataRef.current()
