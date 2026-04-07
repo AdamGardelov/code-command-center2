@@ -1,8 +1,8 @@
 export type SessionStatus = 'idle' | 'working' | 'waiting' | 'stopped' | 'error'
 
-export type SessionType = 'claude' | 'gemini' | 'shell'
+export type SessionType = 'claude' | 'gemini' | 'shell' | 'codex'
 
-export type AiProvider = 'claude' | 'gemini'
+export type AiProvider = 'claude' | 'gemini' | 'codex'
 
 export interface Session {
   id: string
@@ -18,6 +18,8 @@ export interface Session {
   lastActiveAt: number
   skipPermissions?: boolean
   enableAutoMode?: boolean
+  codexFullAuto?: boolean
+  codexDangerBypass?: boolean
   isExcluded?: boolean
   isArchived?: boolean
   displayName?: string
@@ -32,6 +34,8 @@ export interface SessionCreate {
   remoteHost?: string
   skipPermissions?: boolean
   enableAutoMode?: boolean
+  codexFullAuto?: boolean
+  codexDangerBypass?: boolean
   containerName?: string
 }
 
@@ -166,6 +170,8 @@ export interface CccConfig {
   zoomFactor: number
   dangerouslySkipPermissions: boolean
   enableAutoMode: boolean
+  codexFullAuto: boolean
+  codexDangerouslyBypassApprovals: boolean
   excludedSessions: string[]
   archivedSessions: string[]
   sessionDisplayNames: Record<string, string>
