@@ -198,10 +198,8 @@ export function useTerminal(
       window.cccAPI.terminal.write(sessionId, data)
     })
 
-    const unsubData = window.cccAPI.terminal.onData((id, data) => {
-      if (id === sessionId) {
-        terminal.write(data)
-      }
+    const unsubData = window.cccAPI.terminal.onData(sessionId, (data) => {
+      terminal.write(data)
     })
     unsubDataRef.current = unsubData
 

@@ -1,6 +1,25 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState } from '../shared/types'
 
+// Single-dispatcher for terminal:data IPC events.
+// Routes each chunk to the callbacks subscribed for that sessionId,
+// avoiding O(N) fan-out across all mounted terminals.
+const terminalDataSubscribers = new Map<string, Set<(data: string) => void>>()
+let terminalDataListenerInstalled = false
+
+function ensureTerminalDataListener(): void {
+  if (terminalDataListenerInstalled) return
+  terminalDataListenerInstalled = true
+  ipcRenderer.on(
+    'terminal:data',
+    (_event: Electron.IpcRendererEvent, sessionId: string, data: string) => {
+      const subs = terminalDataSubscribers.get(sessionId)
+      if (!subs) return
+      for (const cb of subs) cb(data)
+    }
+  )
+}
+
 const api: CccAPI = {
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),
@@ -22,16 +41,20 @@ const api: CccAPI = {
       ipcRenderer.send('terminal:write', sessionId, data),
     resize: (sessionId: string, cols: number, rows: number) =>
       ipcRenderer.send('terminal:resize', sessionId, cols, rows),
-    onData: (callback: (sessionId: string, data: string) => void) => {
-      const handler = (
-        _event: Electron.IpcRendererEvent,
-        sessionId: string,
-        data: string
-      ): void => {
-        callback(sessionId, data)
+    onData: (sessionId: string, callback: (data: string) => void) => {
+      ensureTerminalDataListener()
+      let subs = terminalDataSubscribers.get(sessionId)
+      if (!subs) {
+        subs = new Set()
+        terminalDataSubscribers.set(sessionId, subs)
       }
-      ipcRenderer.on('terminal:data', handler)
-      return () => ipcRenderer.removeListener('terminal:data', handler)
+      subs.add(callback)
+      return () => {
+        const set = terminalDataSubscribers.get(sessionId)
+        if (!set) return
+        set.delete(callback)
+        if (set.size === 0) terminalDataSubscribers.delete(sessionId)
+      }
     }
   },
   state: {

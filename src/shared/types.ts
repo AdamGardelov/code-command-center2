@@ -232,7 +232,7 @@ export interface CccAPI {
   terminal: {
     write: (sessionId: string, data: string) => void
     resize: (sessionId: string, cols: number, rows: number) => void
-    onData: (callback: (sessionId: string, data: string) => void) => () => void
+    onData: (sessionId: string, callback: (data: string) => void) => () => void
   }
   state: {
     onStateChanged: (callback: (sessionId: string, status: SessionStatus) => void) => () => void
