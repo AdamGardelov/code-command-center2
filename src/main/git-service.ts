@@ -107,6 +107,8 @@ export class GitService {
   }
 
   addWorktree(repoPath: string, branch: string, targetPath: string, remoteHost?: string): Worktree {
+    // Strip ref prefixes users may paste or pick from branch lists
+    branch = branch.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const expandedTarget = remoteHost ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
 
@@ -168,7 +170,16 @@ export class GitService {
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const output = this.exec(['-C', expanded, 'branch', '-a', '--format=%(refname:short)'], remoteHost)
     if (!output) return []
-    return output.split('\n').filter(b => b.length > 0)
+    const cleaned = new Set<string>()
+    for (const raw of output.split('\n')) {
+      let b = raw.trim()
+      if (!b || b.includes(' -> ')) continue
+      // Strip any ref/heads/remotes prefixes and the first remote segment (e.g. "origin/")
+      b = b.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
+      if (b.startsWith('remotes/')) b = b.slice('remotes/'.length)
+      cleaned.add(b)
+    }
+    return [...cleaned].sort()
   }
 
   getRepoRoot(dir: string, remoteHost?: string): string | null {
@@ -177,8 +188,15 @@ export class GitService {
   }
 
   resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string): string {
+    // Use the leaf segment of the branch name as the folder, stripping ref/remote prefixes
+    const cleanBranch = branch
+      .replace(/^refs\/heads\//, '')
+      .replace(/^refs\/remotes\//, '')
+      .replace(/^heads\//, '')
+    const folder = basename(cleanBranch) || cleanBranch
+
     const config = this.configService?.get()
-    if (!config) return `${repoPath}/../${basename(repoPath)}-worktrees/${branch}`
+    if (!config) return `${repoPath}/../${basename(repoPath)}-worktrees/${folder}`
 
     const allFavorites = remoteHost
       ? config.remoteHosts.find(h => h.name === remoteHost)?.favoriteFolders ?? []
@@ -189,7 +207,7 @@ export class GitService {
       return expandedFav === expandedRepo || f.path === repoPath
     })
     if (matchingFav?.worktreePath) {
-      return `${matchingFav.worktreePath}/${branch}`
+      return `${matchingFav.worktreePath}/${folder}`
     }
 
     const hostBasePath = remoteHost
@@ -198,10 +216,10 @@ export class GitService {
     const basePath = hostBasePath ?? config.worktreeBasePath
     if (basePath) {
       const repoName = basename(repoPath)
-      return `${basePath}/${repoName}/${branch}`
+      return `${basePath}/${repoName}/${folder}`
     }
 
     const repoName = basename(repoPath)
-    return `${repoPath}/../${repoName}-worktrees/${branch}`
+    return `${repoPath}/../${repoName}-worktrees/${folder}`
   }
 }

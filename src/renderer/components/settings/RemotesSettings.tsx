@@ -8,7 +8,7 @@ export default function RemotesSettings(): React.JSX.Element {
   const setRemoteHosts = useSessionStore((s) => s.setRemoteHosts)
 
   const [editRemoteIdx, setEditRemoteIdx] = useState<number | null>(null)
-  const [editRemoteForm, setEditRemoteForm] = useState<{ name: string; host: string; shell: string }>({ name: '', host: '', shell: '' })
+  const [editRemoteForm, setEditRemoteForm] = useState<{ name: string; host: string; shell: string; worktreeBasePath: string }>({ name: '', host: '', shell: '', worktreeBasePath: '' })
   const [addRemoteMode, setAddRemoteMode] = useState(false)
   const [expandedRemote, setExpandedRemote] = useState<number | null>(null)
   const [editRemoteFavIdx, setEditRemoteFavIdx] = useState<number | null>(null)
@@ -49,6 +49,14 @@ export default function RemotesSettings(): React.JSX.Element {
               className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
             />
+            <input
+              type="text"
+              value={editRemoteForm.worktreeBasePath}
+              onChange={(e) => setEditRemoteForm({ ...editRemoteForm, worktreeBasePath: e.target.value })}
+              placeholder="Worktree base path (e.g. ~/worktrees)"
+              className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+            />
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setEditRemoteIdx(null)}
@@ -61,7 +69,7 @@ export default function RemotesSettings(): React.JSX.Element {
                 onClick={() => {
                   if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
                   const updated = [...remoteHosts]
-                  updated[idx] = { ...updated[idx], name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined }
+                  updated[idx] = { ...updated[idx], name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined, worktreeBasePath: editRemoteForm.worktreeBasePath.trim() || undefined }
                   saveRemoteHosts(updated)
                   setEditRemoteIdx(null)
                 }}
@@ -101,7 +109,7 @@ export default function RemotesSettings(): React.JSX.Element {
               <button
                 onClick={() => {
                   setEditRemoteIdx(idx)
-                  setEditRemoteForm({ name: rh.name, host: rh.host, shell: rh.shell || '' })
+                  setEditRemoteForm({ name: rh.name, host: rh.host, shell: rh.shell || '', worktreeBasePath: rh.worktreeBasePath || '' })
                   setAddRemoteMode(false)
                 }}
                 className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
@@ -322,6 +330,14 @@ export default function RemotesSettings(): React.JSX.Element {
             className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
           />
+          <input
+            type="text"
+            value={editRemoteForm.worktreeBasePath}
+            onChange={(e) => setEditRemoteForm({ ...editRemoteForm, worktreeBasePath: e.target.value })}
+            placeholder="Worktree base path (e.g. ~/worktrees)"
+            className="w-full px-2.5 py-1.5 rounded-md text-xs border outline-none transition-colors duration-100 focus:border-[var(--accent)]"
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+          />
           <div className="flex gap-2 justify-end">
             <button
               onClick={() => setAddRemoteMode(false)}
@@ -333,10 +349,10 @@ export default function RemotesSettings(): React.JSX.Element {
             <button
               onClick={() => {
                 if (!editRemoteForm.name.trim() || !editRemoteForm.host.trim()) return
-                const updated = [...remoteHosts, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined, favoriteFolders: [] }]
+                const updated = [...remoteHosts, { name: editRemoteForm.name.trim(), host: editRemoteForm.host.trim(), shell: editRemoteForm.shell.trim() || undefined, worktreeBasePath: editRemoteForm.worktreeBasePath.trim() || undefined, favoriteFolders: [] }]
                 saveRemoteHosts(updated)
                 setAddRemoteMode(false)
-                setEditRemoteForm({ name: '', host: '', shell: '' })
+                setEditRemoteForm({ name: '', host: '', shell: '', worktreeBasePath: '' })
               }}
               className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors duration-100"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
@@ -351,7 +367,7 @@ export default function RemotesSettings(): React.JSX.Element {
           onClick={() => {
             setAddRemoteMode(true)
             setEditRemoteIdx(null)
-            setEditRemoteForm({ name: '', host: '', shell: '' })
+            setEditRemoteForm({ name: '', host: '', shell: '', worktreeBasePath: '' })
           }}
           className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg border border-dashed text-[11px] font-medium transition-colors duration-100 hover:border-[var(--accent)] hover:text-[var(--accent)]"
           style={{ borderColor: 'var(--bg-raised)', color: 'var(--text-muted)' }}
