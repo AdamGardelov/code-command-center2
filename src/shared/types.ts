@@ -273,6 +273,7 @@ export interface CccAPI {
   }
   clipboard: {
     writeText: (text: string) => void
+    writeImage: (bytes: Uint8Array, ext: 'png' | 'jpg') => Promise<string>
   }
   shell: {
     openExternal: (url: string) => void

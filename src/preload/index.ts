@@ -129,7 +129,9 @@ const api: CccAPI = {
     }
   },
   clipboard: {
-    writeText: (text: string) => ipcRenderer.send('clipboard:write-text', text)
+    writeText: (text: string) => ipcRenderer.send('clipboard:write-text', text),
+    writeImage: (bytes: Uint8Array, ext: 'png' | 'jpg'): Promise<string> =>
+      ipcRenderer.invoke('clipboard:write-image', bytes, ext)
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.send('shell:open-external', url)
