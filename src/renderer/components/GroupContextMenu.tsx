@@ -99,15 +99,14 @@ export default function GroupContextMenu({ sessionId, x, y, onClose }: GroupCont
 
         {/* Visibility controls */}
         <button
-          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2"
+          className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
           onClick={() => { toggleExcluded(sessionId); onClose() }}
           style={{
             opacity: session?.isArchived ? 0.4 : 1,
             pointerEvents: session?.isArchived ? 'none' : 'auto',
           }}
         >
-          <span className="w-4 text-center text-[10px]">{session?.isExcluded ? '✓' : ''}</span>
-          Exclude from grid
+          {session?.isExcluded ? 'Include in grid' : 'Exclude from grid'}
         </button>
         <button
           className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-tertiary)] transition-colors"

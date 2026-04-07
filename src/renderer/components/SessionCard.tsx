@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GitBranch, Trash2, Folder, Zap, Bot, Box } from 'lucide-react'
+import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
@@ -74,7 +74,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       style={{
         backgroundColor: isActive ? 'var(--bg-raised)' : 'var(--bg-primary)',
         border: `1px solid ${isActive ? session.color + '40' : 'var(--bg-raised)'}`,
-        opacity: session.isExcluded || session.isArchived ? 0.4 : 1,
+        opacity: session.isArchived ? 0.4 : 1,
       }}
       onMouseEnter={(e) => {
         if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-muted)'
@@ -86,7 +86,13 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
       {/* Color accent strip */}
       <div
         className="absolute left-0 top-0 bottom-0 w-[3px]"
-        style={{ backgroundColor: isActive ? session.color : session.color + '40' }}
+        style={
+          session.isExcluded && !session.isArchived
+            ? {
+                background: `repeating-linear-gradient(to bottom, ${isActive ? session.color : session.color + '80'} 0 3px, transparent 3px 6px)`,
+              }
+            : { backgroundColor: isActive ? session.color : session.color + '40' }
+        }
       />
 
       <div className="pl-3.5 pr-2.5 py-2">
@@ -146,6 +152,11 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
                 </span>
               )}
             </>
+          )}
+          {session.isExcluded && !session.isArchived && (
+            <span title="Excluded from grid" style={{ color: 'var(--text-muted)' }}>
+              <Grid2x2X size={12} />
+            </span>
           )}
           {session.enableAutoMode && (
             <span title="Auto mode enabled" style={{ color: 'var(--accent)' }}>
