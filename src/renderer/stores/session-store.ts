@@ -29,6 +29,7 @@ interface SessionStore {
   codexFullAuto: boolean
   codexDangerouslyBypassApprovals: boolean
   ideCommand: string
+  screenshotPastePath: string
   activeView: ActiveView
   features: FeaturesConfig
   containers: ContainerConfig[]
@@ -60,6 +61,7 @@ interface SessionStore {
   setCodexFullAuto: (value: boolean) => Promise<void>
   setCodexDangerouslyBypassApprovals: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
+  setScreenshotPastePath: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
   openFolder: (sessionId: string) => Promise<void>
   getGroupedSessions: () => {
@@ -118,6 +120,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   codexFullAuto: false,
   codexDangerouslyBypassApprovals: false,
   ideCommand: '',
+  screenshotPastePath: '',
   activeView: 'sessions' as ActiveView,
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
@@ -152,6 +155,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       codexFullAuto: config.codexFullAuto ?? false,
       codexDangerouslyBypassApprovals: config.codexDangerouslyBypassApprovals ?? false,
       ideCommand: config.ideCommand ?? '',
+      screenshotPastePath: config.screenshotPastePath ?? '',
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
@@ -407,6 +411,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setIdeCommand: async (value: string) => {
     await window.cccAPI.config.update({ ideCommand: value || undefined })
     set({ ideCommand: value })
+  },
+
+  setScreenshotPastePath: async (value: string) => {
+    await window.cccAPI.config.update({ screenshotPastePath: value || undefined })
+    set({ screenshotPastePath: value })
   },
 
   setGridLayout: (layout) => set({ gridLayout: layout }),

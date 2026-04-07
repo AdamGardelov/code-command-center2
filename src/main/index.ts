@@ -148,7 +148,7 @@ registerConfigIpc(configService)
 registerHostIpc(sshService)
 registerGitIpc(gitService)
 registerGroupIpc(configService)
-registerClipboardIpc()
+registerClipboardIpc(configService)
 registerShellIpc()
 registerUpdaterIpc()
 

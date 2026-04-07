@@ -178,6 +178,7 @@ export interface CccConfig {
   notificationsEnabled: boolean
   mutedSessions: string[]
   ideCommand?: string
+  screenshotPastePath?: string
   claudeConfigRoutes: ClaudeConfigRoute[]
   defaultClaudeConfigDir?: string
   features: FeaturesConfig

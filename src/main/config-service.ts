@@ -73,6 +73,7 @@ export class ConfigService {
           notificationsEnabled: parsed.notificationsEnabled !== false,
           mutedSessions: Array.isArray(parsed.mutedSessions) ? parsed.mutedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
+          screenshotPastePath: typeof parsed.screenshotPastePath === 'string' ? parsed.screenshotPastePath : undefined,
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
           defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined,
           features: parsed.features && typeof parsed.features === 'object'
@@ -149,6 +150,9 @@ export class ConfigService {
     if (partial.notificationsEnabled !== undefined) this.config.notificationsEnabled = partial.notificationsEnabled
     if (partial.mutedSessions !== undefined) this.config.mutedSessions = partial.mutedSessions
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
+    if (partial.screenshotPastePath !== undefined) {
+      this.config.screenshotPastePath = partial.screenshotPastePath || undefined
+    }
     if (partial.claudeConfigRoutes !== undefined) this.config.claudeConfigRoutes = partial.claudeConfigRoutes
     if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
     if (partial.features !== undefined) this.config.features = partial.features
