@@ -9,6 +9,13 @@ function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
   return cmd
 }
 
+function buildCodexCmd(fullAuto: boolean, dangerBypass: boolean): string {
+  let cmd = 'codex'
+  if (fullAuto) cmd += ' --full-auto'
+  if (dangerBypass) cmd += ' --dangerously-bypass-approvals-and-sandbox'
+  return cmd
+}
+
 // Muted, distinguishable palette that works on dark backgrounds
 const SESSION_COLORS = [
   '#88a1bb', // blue
@@ -102,10 +109,10 @@ function tmuxSessionName(name: string): string {
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
   private sshService: SshService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
     this.configService = service
   }
 
@@ -324,7 +331,14 @@ export class SessionManager {
               opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
               opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
             )
-          : opts.type === 'gemini' ? 'gemini' : ''
+          : opts.type === 'gemini'
+            ? 'gemini'
+            : opts.type === 'codex'
+              ? buildCodexCmd(
+                  opts.codexFullAuto ?? cfg?.codexFullAuto ?? false,
+                  opts.codexDangerBypass ?? cfg?.codexDangerouslyBypassApprovals ?? false
+                )
+              : ''
         const dockerCmd = `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${opts.workingDirectory} ${opts.containerName} zsh -lic '${cmd || 'exec zsh'}'`
         newArgs.push('--', remoteShell, '-ic', dockerCmd)
       } else if (opts.type === 'claude') {
@@ -337,6 +351,14 @@ export class SessionManager {
       }
       else if (opts.type === 'gemini') {
         newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && gemini`)
+      }
+      else if (opts.type === 'codex') {
+        const cfg = this.configService?.get()
+        const cmd = buildCodexCmd(
+          opts.codexFullAuto ?? cfg?.codexFullAuto ?? false,
+          opts.codexDangerBypass ?? cfg?.codexDangerouslyBypassApprovals ?? false
+        )
+        newArgs.push('--', remoteShell, '-ic', `cd ${opts.workingDirectory} && ${cmd}`)
       }
 
       this.tmuxCmd(opts.remoteHost, ...newArgs)
@@ -376,7 +398,14 @@ export class SessionManager {
               opts.skipPermissions ?? cfg?.dangerouslySkipPermissions ?? false,
               opts.enableAutoMode ?? cfg?.enableAutoMode ?? false
             )
-          : opts.type === 'gemini' ? 'gemini' : ''
+          : opts.type === 'gemini'
+            ? 'gemini'
+            : opts.type === 'codex'
+              ? buildCodexCmd(
+                  opts.codexFullAuto ?? cfg?.codexFullAuto ?? false,
+                  opts.codexDangerBypass ?? cfg?.codexDangerouslyBypassApprovals ?? false
+                )
+              : ''
         const shell = process.env.SHELL || '/bin/bash'
         args.push('--', shell, '-ic', `docker exec -it -e CCC_SESSION_NAME=${opts.name} -w ${expandedDir} ${opts.containerName} zsh -lic '${cmd || "exec zsh"}'`)
       } else if (opts.type === 'claude') {
@@ -390,6 +419,14 @@ export class SessionManager {
       } else if (opts.type === 'gemini') {
         const shell = process.env.SHELL || '/bin/bash'
         args.push('--', shell, '-ic', 'gemini')
+      } else if (opts.type === 'codex') {
+        const cfg = this.configService?.get()
+        const cmd = buildCodexCmd(
+          opts.codexFullAuto ?? cfg?.codexFullAuto ?? false,
+          opts.codexDangerBypass ?? cfg?.codexDangerouslyBypassApprovals ?? false
+        )
+        const shell = process.env.SHELL || '/bin/bash'
+        args.push('--', shell, '-ic', cmd)
       }
 
       tmux(...args)
@@ -434,6 +471,8 @@ export class SessionManager {
       containerName: opts.containerName,
       skipPermissions: (opts.skipPermissions ?? this.configService?.get().dangerouslySkipPermissions) && opts.type === 'claude' ? true : undefined,
       enableAutoMode: (opts.enableAutoMode ?? this.configService?.get().enableAutoMode) && opts.type === 'claude' ? true : undefined,
+      codexFullAuto: (opts.codexFullAuto ?? this.configService?.get().codexFullAuto) && opts.type === 'codex' ? true : undefined,
+      codexDangerBypass: (opts.codexDangerBypass ?? this.configService?.get().codexDangerouslyBypassApprovals) && opts.type === 'codex' ? true : undefined,
       gitBranch: isRemote ? undefined : getGitBranch(expandedDir),
       repoPath: isRemote ? undefined : getRepoRoot(expandedDir),
       createdAt: Date.now(),
