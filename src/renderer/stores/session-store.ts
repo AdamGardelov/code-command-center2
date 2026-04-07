@@ -26,6 +26,8 @@ interface SessionStore {
   notificationsEnabled: boolean
   dangerouslySkipPermissions: boolean
   enableAutoMode: boolean
+  codexFullAuto: boolean
+  codexDangerouslyBypassApprovals: boolean
   ideCommand: string
   activeView: ActiveView
   features: FeaturesConfig
@@ -55,6 +57,8 @@ interface SessionStore {
   setNotificationsEnabled: (value: boolean) => Promise<void>
   setDangerouslySkipPermissions: (value: boolean) => Promise<void>
   setEnableAutoMode: (value: boolean) => Promise<void>
+  setCodexFullAuto: (value: boolean) => Promise<void>
+  setCodexDangerouslyBypassApprovals: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
   openFolder: (sessionId: string) => Promise<void>
@@ -111,6 +115,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   notificationsEnabled: true,
   dangerouslySkipPermissions: false,
   enableAutoMode: false,
+  codexFullAuto: false,
+  codexDangerouslyBypassApprovals: false,
   ideCommand: '',
   activeView: 'sessions' as ActiveView,
   features: { pullRequests: false } as FeaturesConfig,
@@ -143,6 +149,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       notificationsEnabled: config.notificationsEnabled !== false,
       dangerouslySkipPermissions: config.dangerouslySkipPermissions ?? false,
       enableAutoMode: config.enableAutoMode ?? false,
+      codexFullAuto: config.codexFullAuto ?? false,
+      codexDangerouslyBypassApprovals: config.codexDangerouslyBypassApprovals ?? false,
       ideCommand: config.ideCommand ?? '',
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
@@ -384,6 +392,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setEnableAutoMode: async (value: boolean) => {
     await window.cccAPI.config.update({ enableAutoMode: value })
     set({ enableAutoMode: value })
+  },
+
+  setCodexFullAuto: async (value: boolean) => {
+    await window.cccAPI.config.update({ codexFullAuto: value })
+    set({ codexFullAuto: value })
+  },
+
+  setCodexDangerouslyBypassApprovals: async (value: boolean) => {
+    await window.cccAPI.config.update({ codexDangerouslyBypassApprovals: value })
+    set({ codexDangerouslyBypassApprovals: value })
   },
 
   setIdeCommand: async (value: string) => {
