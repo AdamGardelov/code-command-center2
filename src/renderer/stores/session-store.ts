@@ -29,7 +29,8 @@ interface SessionStore {
   codexFullAuto: boolean
   codexDangerouslyBypassApprovals: boolean
   ideCommand: string
-  screenshotPastePath: string
+  screenshotPasteHostDir: string
+  screenshotPasteSessionDir: string
   activeView: ActiveView
   features: FeaturesConfig
   containers: ContainerConfig[]
@@ -61,7 +62,8 @@ interface SessionStore {
   setCodexFullAuto: (value: boolean) => Promise<void>
   setCodexDangerouslyBypassApprovals: (value: boolean) => Promise<void>
   setIdeCommand: (value: string) => Promise<void>
-  setScreenshotPastePath: (value: string) => Promise<void>
+  setScreenshotPasteHostDir: (value: string) => Promise<void>
+  setScreenshotPasteSessionDir: (value: string) => Promise<void>
   openInIde: (sessionId: string) => Promise<void>
   openFolder: (sessionId: string) => Promise<void>
   getGroupedSessions: () => {
@@ -120,7 +122,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   codexFullAuto: false,
   codexDangerouslyBypassApprovals: false,
   ideCommand: '',
-  screenshotPastePath: '',
+  screenshotPasteHostDir: '',
+  screenshotPasteSessionDir: '',
   activeView: 'sessions' as ActiveView,
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
@@ -155,7 +158,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       codexFullAuto: config.codexFullAuto ?? false,
       codexDangerouslyBypassApprovals: config.codexDangerouslyBypassApprovals ?? false,
       ideCommand: config.ideCommand ?? '',
-      screenshotPastePath: config.screenshotPastePath ?? '',
+      screenshotPasteHostDir: config.screenshotPasteHostDir ?? '',
+      screenshotPasteSessionDir: config.screenshotPasteSessionDir ?? '',
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
@@ -413,9 +417,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ ideCommand: value })
   },
 
-  setScreenshotPastePath: async (value: string) => {
-    await window.cccAPI.config.update({ screenshotPastePath: value || undefined })
-    set({ screenshotPastePath: value })
+  setScreenshotPasteHostDir: async (value: string) => {
+    await window.cccAPI.config.update({ screenshotPasteHostDir: value || undefined })
+    set({ screenshotPasteHostDir: value })
+  },
+
+  setScreenshotPasteSessionDir: async (value: string) => {
+    await window.cccAPI.config.update({ screenshotPasteSessionDir: value || undefined })
+    set({ screenshotPasteSessionDir: value })
   },
 
   setGridLayout: (layout) => set({ gridLayout: layout }),

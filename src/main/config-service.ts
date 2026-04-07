@@ -73,7 +73,18 @@ export class ConfigService {
           notificationsEnabled: parsed.notificationsEnabled !== false,
           mutedSessions: Array.isArray(parsed.mutedSessions) ? parsed.mutedSessions : [],
           ideCommand: typeof parsed.ideCommand === 'string' ? parsed.ideCommand : undefined,
-          screenshotPastePath: typeof parsed.screenshotPastePath === 'string' ? parsed.screenshotPastePath : undefined,
+          screenshotPasteHostDir:
+            typeof parsed.screenshotPasteHostDir === 'string'
+              ? parsed.screenshotPasteHostDir
+              : typeof parsed.screenshotPastePath === 'string'
+                ? parsed.screenshotPastePath
+                : undefined,
+          screenshotPasteSessionDir:
+            typeof parsed.screenshotPasteSessionDir === 'string'
+              ? parsed.screenshotPasteSessionDir
+              : typeof parsed.screenshotPastePath === 'string'
+                ? parsed.screenshotPastePath
+                : undefined,
           claudeConfigRoutes: Array.isArray(parsed.claudeConfigRoutes) ? parsed.claudeConfigRoutes : [],
           defaultClaudeConfigDir: typeof parsed.defaultClaudeConfigDir === 'string' ? parsed.defaultClaudeConfigDir : undefined,
           features: parsed.features && typeof parsed.features === 'object'
@@ -150,8 +161,11 @@ export class ConfigService {
     if (partial.notificationsEnabled !== undefined) this.config.notificationsEnabled = partial.notificationsEnabled
     if (partial.mutedSessions !== undefined) this.config.mutedSessions = partial.mutedSessions
     if (partial.ideCommand !== undefined) this.config.ideCommand = partial.ideCommand
-    if (partial.screenshotPastePath !== undefined) {
-      this.config.screenshotPastePath = partial.screenshotPastePath || undefined
+    if (partial.screenshotPasteHostDir !== undefined) {
+      this.config.screenshotPasteHostDir = partial.screenshotPasteHostDir || undefined
+    }
+    if (partial.screenshotPasteSessionDir !== undefined) {
+      this.config.screenshotPasteSessionDir = partial.screenshotPasteSessionDir || undefined
     }
     if (partial.claudeConfigRoutes !== undefined) this.config.claudeConfigRoutes = partial.claudeConfigRoutes
     if (partial.defaultClaudeConfigDir !== undefined) this.config.defaultClaudeConfigDir = partial.defaultClaudeConfigDir
