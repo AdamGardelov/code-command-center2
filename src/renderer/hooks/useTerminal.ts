@@ -124,6 +124,17 @@ export function useTerminal(
     termRef.current = terminal
     fitRef.current = fitAddon
 
+    // Swallow Ctrl/Cmd+V so the raw keystroke doesn't reach the pty — the
+    // browser will still fire a 'paste' event which we handle below.
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true
+      const isPaste =
+        event.key.toLowerCase() === 'v' &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey
+      return !isPaste
+    })
+
     // Intercept paste entirely — handle images ourselves, forward text to xterm.
     // We always preventDefault + stopImmediatePropagation so xterm's own paste
     // listener doesn't also fire (which would duplicate text).
