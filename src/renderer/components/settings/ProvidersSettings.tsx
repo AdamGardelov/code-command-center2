@@ -100,7 +100,7 @@ export default function ProvidersSettings(): React.JSX.Element {
                   </span>
                 </label>
                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Passes --enable-auto-mode to Claude on session start
+                  Passes --permission-mode auto to Claude on session start
                 </p>
               </div>
 

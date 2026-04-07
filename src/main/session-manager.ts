@@ -4,7 +4,7 @@ import type { SshService } from './ssh-service'
 
 function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
   let cmd = 'claude'
-  if (autoMode) cmd += ' --enable-auto-mode'
+  if (autoMode) cmd += ' --permission-mode auto'
   if (skipPerms) cmd += ' --dangerously-skip-permissions'
   return cmd
 }

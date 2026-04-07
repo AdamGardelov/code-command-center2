@@ -64,6 +64,15 @@ export default function NewSessionModal(): React.JSX.Element {
   const [selectedContainer, setSelectedContainer] = useState<string | undefined>(undefined)
 
   useEffect(() => {
+    if (modalOpen) {
+      setEnableAutoMode(defaultAutoMode)
+      setSkipPermissions(defaultSkipPermissions)
+      setCodexFullAuto(defaultCodexFullAuto)
+      setCodexDangerBypass(defaultCodexDangerBypass)
+    }
+  }, [modalOpen, defaultAutoMode, defaultSkipPermissions, defaultCodexFullAuto, defaultCodexDangerBypass])
+
+  useEffect(() => {
     if (!modalOpen || !enableContainers) {
       setRunningContainers([])
       setSelectedContainer(undefined)
@@ -160,10 +169,10 @@ export default function NewSessionModal(): React.JSX.Element {
       setBranches([])
       setWorktrees([])
       setSelectedWorktree(null)
-      setEnableAutoMode(false)
-      setSkipPermissions(false)
-      setCodexFullAuto(false)
-      setCodexDangerBypass(false)
+      setEnableAutoMode(defaultAutoMode)
+      setSkipPermissions(defaultSkipPermissions)
+      setCodexFullAuto(defaultCodexFullAuto)
+      setCodexDangerBypass(defaultCodexDangerBypass)
       setRunningContainers([])
       setSelectedContainer(undefined)
       toggleModal()
