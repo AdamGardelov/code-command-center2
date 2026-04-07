@@ -17,20 +17,28 @@ export class GitService {
   }
 
   private exec(args: string[], remoteHost?: string): string | null {
+    return this.execDetailed(args, remoteHost).stdout
+  }
+
+  private execDetailed(args: string[], remoteHost?: string): { stdout: string | null; stderr: string } {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
       const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
-      return this.sshService.exec(sshHost, `git ${escaped}`)
+      const stdout = this.sshService.exec(sshHost, `git ${escaped}`)
+      return { stdout, stderr: stdout === null ? 'remote git command failed' : '' }
     }
     try {
-      return execFileSync('git', args, {
+      const stdout = execFileSync('git', args, {
         encoding: 'utf-8',
         timeout: 10000,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim()
-    } catch {
-      return null
+      return { stdout, stderr: '' }
+    } catch (err) {
+      const e = err as { stderr?: Buffer | string; message?: string }
+      const stderr = (e.stderr ? e.stderr.toString() : e.message ?? 'unknown error').trim()
+      return { stdout: null, stderr }
     }
   }
 
@@ -102,13 +110,31 @@ export class GitService {
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const expandedTarget = remoteHost ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
 
+    // Ensure parent directory exists — git worktree add requires it
+    if (remoteHost && this.sshService) {
+      const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+      const sshHost = hostConfig?.host ?? remoteHost
+      const parent = dirname(expandedTarget).replace(/'/g, "'\\''")
+      this.sshService.exec(sshHost, `mkdir -p '${parent}'`)
+    } else {
+      try {
+        mkdirSync(dirname(expandedTarget), { recursive: true })
+      } catch (err) {
+        console.warn('Failed to create worktree parent dir:', err)
+      }
+    }
+
     // Try existing branch first, fall back to new branch
-    let result = this.exec(['-C', expanded, 'worktree', 'add', expandedTarget, branch], remoteHost)
+    const existing = this.execDetailed(['-C', expanded, 'worktree', 'add', expandedTarget, branch], remoteHost)
+    let result: string | null = existing.stdout
+    let lastStderr = existing.stderr
     if (result === null) {
-      result = this.exec(['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget], remoteHost)
+      const created = this.execDetailed(['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget], remoteHost)
+      result = created.stdout
+      if (result === null) lastStderr = created.stderr || lastStderr
     }
     if (result === null) {
-      throw new Error(`Failed to create worktree for branch "${branch}" at ${targetPath}`)
+      throw new Error(`Failed to create worktree for branch "${branch}" at ${expandedTarget}: ${lastStderr}`)
     }
 
     this.syncPaths(expanded, expandedTarget, remoteHost)
