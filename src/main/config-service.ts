@@ -19,6 +19,8 @@ const DEFAULT_CONFIG: CccConfig = {
   zoomFactor: 1.0,
   dangerouslySkipPermissions: false,
   enableAutoMode: false,
+  codexFullAuto: false,
+  codexDangerouslyBypassApprovals: false,
   excludedSessions: [],
   archivedSessions: [],
   sessionDisplayNames: {},
@@ -61,6 +63,8 @@ export class ConfigService {
           zoomFactor: typeof parsed.zoomFactor === 'number' ? parsed.zoomFactor : 1.0,
           dangerouslySkipPermissions: parsed.dangerouslySkipPermissions === true,
           enableAutoMode: parsed.enableAutoMode === true,
+          codexFullAuto: parsed.codexFullAuto === true,
+          codexDangerouslyBypassApprovals: parsed.codexDangerouslyBypassApprovals === true,
           excludedSessions: Array.isArray(parsed.excludedSessions) ? parsed.excludedSessions : [],
           archivedSessions: Array.isArray(parsed.archivedSessions) ? parsed.archivedSessions : [],
           sessionDisplayNames: parsed.sessionDisplayNames && typeof parsed.sessionDisplayNames === 'object'
