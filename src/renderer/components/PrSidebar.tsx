@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, ChevronDown, ChevronRight, ExternalLink, X } from 'lucide-react'
 import PrRow from './PrRow'
 import PrSetup from './PrSetup'
-import type { PrState, PrTab, PullRequest } from '../../shared/types'
+import PrContextMenu from './PrContextMenu'
+import PrToast from './PrToast'
+import type { PrToastState } from './PrToast'
+import { useSessionStore } from '../stores/session-store'
+import type { PrState, PrTab, PullRequest, SessionType, FavoriteFolder } from '../../shared/types'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -12,6 +16,19 @@ function timeAgo(iso: string): string {
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
+}
+
+function resolveRepoPath(repo: string, favorites: FavoriteFolder[]): string | null {
+  // 1. Explicit match via githubRepo field
+  const explicit = favorites.find(f => f.githubRepo === repo)
+  if (explicit) return explicit.path
+
+  // 2. Name match — strip org, match case-insensitively
+  const repoName = repo.split('/').pop() ?? repo
+  const byName = favorites.find(f => f.name.toLowerCase() === repoName.toLowerCase())
+  if (byName) return byName.path
+
+  return null
 }
 
 export default function PrSidebar(): React.JSX.Element {
@@ -27,10 +44,14 @@ export default function PrSidebar(): React.JSX.Element {
   })
   const [activeTab, setActiveTab] = useState<PrTab>('mine')
   const [attentionOpen, setAttentionOpen] = useState(true)
+  const [contextMenu, setContextMenu] = useState<{ pr: PullRequest; x: number; y: number } | null>(null)
+  const [toast, setToast] = useState<PrToastState | null>(null)
+
+  const favorites = useSessionStore((s) => s.favorites)
+  const enabledProviders = useSessionStore((s) => s.enabledProviders)
+  const createSession = useSessionStore((s) => s.createSession)
 
   useEffect(() => {
-    // Fetch current state to avoid race condition where initial poll
-    // completed before this component mounted
     window.cccAPI.pr.getState().then((state) => {
       if (state && Object.keys(state).length > 0) {
         setPrState((prev) => ({ ...prev, ...state }))
@@ -75,6 +96,45 @@ export default function PrSidebar(): React.JSX.Element {
       attentionItems: prev.attentionItems.filter((a) => a.pr.id !== prId),
     }))
   }, [])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, pr: PullRequest) => {
+    setContextMenu({ pr, x: e.clientX, y: e.clientY })
+  }, [])
+
+  const handleReviewInWorktree = useCallback(async (pr: PullRequest, provider: SessionType) => {
+    const repoPath = resolveRepoPath(pr.repo, favorites)
+    if (!repoPath) {
+      setToast({
+        type: 'error',
+        message: `Could not resolve "${pr.repo}" to a local path`,
+        detail: 'Add it as a favorite folder or set its githubRepo field'
+      })
+      return
+    }
+
+    const repoShort = pr.repo.split('/').pop() ?? pr.repo
+    setToast({
+      type: 'loading',
+      message: 'Creating worktree...',
+      detail: `${pr.branch} → ${repoShort}`
+    })
+
+    try {
+      const worktree = await window.cccAPI.git.addWorktree(repoPath, pr.branch, '')
+      await createSession({
+        name: `review/${repoShort}#${pr.number}`,
+        workingDirectory: worktree.path,
+        type: provider
+      })
+      setToast(null)
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: 'Failed to create worktree',
+        detail: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }, [favorites, createSession])
 
   // Show setup if we don't have config yet (first load, no state received)
   const [hasConfig, setHasConfig] = useState(false)
@@ -227,9 +287,28 @@ export default function PrSidebar(): React.JSX.Element {
             </span>
           </div>
         ) : (
-          tabPrs[activeTab].map((pr) => <PrRow key={pr.id} pr={pr} />)
+          tabPrs[activeTab].map((pr) => (
+            <PrRow key={pr.id} pr={pr} onContextMenu={handleContextMenu} />
+          ))
         )}
       </div>
+
+      {/* Toast */}
+      {toast && <PrToast toast={toast} onDismiss={() => setToast(null)} />}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <PrContextMenu
+          pr={contextMenu.pr}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          enabledProviders={enabledProviders}
+          onClose={() => setContextMenu(null)}
+          onOpenInBrowser={() => window.open(contextMenu.pr.url, '_blank')}
+          onCopyUrl={() => window.cccAPI.clipboard.writeText(contextMenu.pr.url)}
+          onReviewInWorktree={(provider) => void handleReviewInWorktree(contextMenu.pr, provider)}
+        />
+      )}
     </div>
   )
 }
