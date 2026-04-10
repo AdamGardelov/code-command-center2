@@ -79,6 +79,7 @@ export function parseRawPr(node: RawPrNode, repoFullName: string): PullRequest {
     title: node.title,
     url: node.url,
     repo: repoFullName,
+    branch: node.headRefName,
     author: node.author.login,
     isDraft: node.isDraft,
     additions: node.additions,

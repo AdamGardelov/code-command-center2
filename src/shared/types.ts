@@ -59,6 +59,7 @@ export interface FavoriteFolder {
   path: string
   defaultBranch: string
   worktreePath?: string
+  githubRepo?: string
 }
 
 export interface RemoteHost {
@@ -104,6 +105,7 @@ export interface PullRequest {
   title: string
   url: string
   repo: string
+  branch: string
   author: string
   isDraft: boolean
   additions: number
