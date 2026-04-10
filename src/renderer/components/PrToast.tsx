@@ -25,11 +25,10 @@ export default function PrToast({
     >
       {toast.type === 'loading' ? (
         <div
-          className="w-3 h-3 flex-shrink-0 rounded-full"
+          className="w-3 h-3 flex-shrink-0 rounded-full animate-spin"
           style={{
             border: '2px solid #4ade80',
-            borderTopColor: 'transparent',
-            animation: 'spin 0.8s linear infinite'
+            borderTopColor: 'transparent'
           }}
         />
       ) : (

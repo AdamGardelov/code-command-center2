@@ -61,7 +61,7 @@ export default function PrRow({
   const repoShort = pr.repo.split('/').pop() ?? pr.repo
 
   const handleClick = (): void => {
-    window.open(pr.url, '_blank')
+    window.cccAPI.shell.openExternal(pr.url)
   }
 
   return (

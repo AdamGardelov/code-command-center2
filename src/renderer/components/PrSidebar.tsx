@@ -228,7 +228,7 @@ export default function PrSidebar(): React.JSX.Element {
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       <button
-                        onClick={() => window.open(item.pr.url, '_blank')}
+                        onClick={() => window.cccAPI.shell.openExternal(item.pr.url)}
                         className="p-0.5 rounded hover:bg-[rgba(255,255,255,0.1)]"
                         style={{ color: 'var(--text-muted)' }}
                         title="Open in browser"
@@ -304,7 +304,7 @@ export default function PrSidebar(): React.JSX.Element {
           y={contextMenu.y}
           enabledProviders={enabledProviders}
           onClose={() => setContextMenu(null)}
-          onOpenInBrowser={() => window.open(contextMenu.pr.url, '_blank')}
+          onOpenInBrowser={() => window.cccAPI.shell.openExternal(contextMenu.pr.url)}
           onCopyUrl={() => window.cccAPI.clipboard.writeText(contextMenu.pr.url)}
           onReviewInWorktree={(provider) => void handleReviewInWorktree(contextMenu.pr, provider)}
         />

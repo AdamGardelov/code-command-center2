@@ -25,6 +25,7 @@ export default function PrContextMenu({
   const menuRef = useRef<HTMLDivElement>(null)
   const [submenuOpen, setSubmenuOpen] = useState(false)
   const [adjustedPos, setAdjustedPos] = useState({ x, y })
+  const [submenuFlipped, setSubmenuFlipped] = useState(false)
 
   // Adjust position to keep menu in viewport
   useEffect(() => {
@@ -33,22 +34,16 @@ export default function PrContextMenu({
     const newX = x + rect.width > window.innerWidth ? window.innerWidth - rect.width - 4 : x
     const newY = y + rect.height > window.innerHeight ? window.innerHeight - rect.height - 4 : y
     setAdjustedPos({ x: newX, y: newY })
+    setSubmenuFlipped(newX + rect.width + 130 > window.innerWidth)
   }, [x, y])
 
-  // Close on click-outside
+  // Close on Escape
   useEffect(() => {
-    const handleClick = (e: MouseEvent): void => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
     const handleKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleKey)
     return () => {
-      document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
   }, [onClose])
@@ -62,6 +57,8 @@ export default function PrContextMenu({
   const menuItemClass = 'w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[rgba(255,255,255,0.06)]'
 
   return (
+    <>
+    <div className="fixed inset-0 z-40" onClick={onClose} />
     <div
       ref={menuRef}
       className="fixed z-50 rounded-md py-1 shadow-lg"
@@ -108,7 +105,7 @@ export default function PrContextMenu({
           <div
             className="absolute rounded-md py-1 shadow-lg"
             style={{
-              left: '100%',
+              ...(submenuFlipped ? { right: '100%' } : { left: '100%' }),
               top: 0,
               backgroundColor: '#1a1a1a',
               border: '1px solid #333',
@@ -129,5 +126,6 @@ export default function PrContextMenu({
         )}
       </div>
     </div>
+    </>
   )
 }
