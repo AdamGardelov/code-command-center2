@@ -93,7 +93,12 @@ export function useTerminal(
       cursorBlink: true,
       cursorStyle: 'block',
       allowProposedApi: true,
-      theme: getTerminalTheme(theme)
+      theme: getTerminalTheme(theme),
+      linkHandler: {
+        activate: (_event, url) => {
+          window.cccAPI.shell.openExternal(url)
+        }
+      }
     })
 
     const fitAddon = new FitAddon()
