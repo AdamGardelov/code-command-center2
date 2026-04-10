@@ -51,7 +51,13 @@ function ReviewerList({ reviewers }: { reviewers: PullRequest['reviewers'] }): R
   )
 }
 
-export default function PrRow({ pr }: { pr: PullRequest }): React.JSX.Element {
+export default function PrRow({
+  pr,
+  onContextMenu
+}: {
+  pr: PullRequest
+  onContextMenu: (e: React.MouseEvent, pr: PullRequest) => void
+}): React.JSX.Element {
   const repoShort = pr.repo.split('/').pop() ?? pr.repo
 
   const handleClick = (): void => {
@@ -61,6 +67,10 @@ export default function PrRow({ pr }: { pr: PullRequest }): React.JSX.Element {
   return (
     <button
       onClick={handleClick}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu(e, pr)
+      }}
       className="w-full text-left p-2 rounded-md transition-colors duration-100 hover:bg-[rgba(255,255,255,0.03)] cursor-pointer"
       style={{ background: 'rgba(255,255,255,0.01)' }}
     >
