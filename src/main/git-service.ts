@@ -207,7 +207,8 @@ export class GitService {
       return expandedFav === expandedRepo || f.path === repoPath
     })
     if (matchingFav?.worktreePath) {
-      return `${matchingFav.worktreePath}/${folder}`
+      const repoName = basename(repoPath)
+      return `${matchingFav.worktreePath}/${folder}/${repoName}`
     }
 
     const hostBasePath = remoteHost
@@ -216,7 +217,7 @@ export class GitService {
     const basePath = hostBasePath ?? config.worktreeBasePath
     if (basePath) {
       const repoName = basename(repoPath)
-      return `${basePath}/${repoName}/${folder}`
+      return `${basePath}/${folder}/${repoName}`
     }
 
     const repoName = basename(repoPath)
