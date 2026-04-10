@@ -473,25 +473,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
     }
 
-    // Auto-groups from repoPath
-    const repoMap = new Map<string, string[]>()
-    for (const session of sessions) {
-      if (manuallyGrouped.has(session.id) || !session.repoPath) continue
-      const existing = repoMap.get(session.repoPath) ?? []
-      existing.push(session.id)
-      repoMap.set(session.repoPath, existing)
-    }
-    for (const [repoPath, sessionIds] of repoMap) {
-      if (sessionIds.length >= 2) {
-        const repoName = repoPath.split('/').pop() ?? repoPath
-        groups.push({
-          group: { id: `auto-${repoPath}`, name: repoName, auto: true },
-          sessionIds
-        })
-        for (const id of sessionIds) manuallyGrouped.add(id)
-      }
-    }
-
     const ungrouped = sessions.filter(s => !manuallyGrouped.has(s.id)).map(s => s.id)
     return { groups, ungrouped }
   },
