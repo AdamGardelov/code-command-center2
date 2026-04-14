@@ -102,7 +102,20 @@ export class SshService {
   }
 
   startMonitoring(hosts: Array<{ name: string; host: string }>): void {
-    // Seed entries optimistically as online so exec() works during the very first check window
+    // Stop any existing monitoring interval so we don't stack timers on config changes.
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = null
+    }
+
+    // Remove hosts no longer in config
+    for (const name of this.hostStatuses.keys()) {
+      if (!hosts.some(h => h.name === name)) {
+        this.hostStatuses.delete(name)
+      }
+    }
+
+    // Seed new entries optimistically as online so exec() works during the very first check window
     // (matches prior behavior where the initial sync probe ran before exec calls were possible).
     for (const h of hosts) {
       if (!this.hostStatuses.has(h.name)) {

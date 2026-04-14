@@ -145,7 +145,7 @@ ptyManager.setStatusChangeHandler((sessionId, status) => {
 
 registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
-registerConfigIpc(configService)
+registerConfigIpc(configService, sshService)
 registerHostIpc(sshService)
 registerGitIpc(gitService)
 registerGroupIpc(configService)
