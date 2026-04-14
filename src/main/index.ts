@@ -68,6 +68,7 @@ const prService = new PrService(configService)
 const containerService = new ContainerService()
 containerService.setSshService(sshService)
 containerService.setConfigService(configService)
+sessionManager.setContainerService(containerService)
 
 const isMac = process.platform === 'darwin'
 

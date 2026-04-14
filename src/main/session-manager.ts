@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from 'child_process'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
+import type { ContainerService } from './container-service'
 
 function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
   let cmd = 'claude'
@@ -111,6 +112,7 @@ export class SessionManager {
   private colorIndex = 0
   private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
   private sshService: SshService | null = null
+  private containerService: ContainerService | null = null
 
   setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
     this.configService = service
@@ -118,6 +120,10 @@ export class SessionManager {
 
   setSshService(service: SshService): void {
     this.sshService = service
+  }
+
+  setContainerService(service: ContainerService): void {
+    this.containerService = service
   }
 
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
@@ -298,6 +304,12 @@ export class SessionManager {
   async create(opts: SessionCreate): Promise<Session> {
     if (opts.containerName && !isValidContainerName(opts.containerName)) {
       throw new Error(`Invalid container name: ${opts.containerName}`)
+    }
+    if (opts.containerName && this.containerService) {
+      const running = this.containerService.isRunning(opts.containerName, opts.remoteHost, true)
+      if (!running) {
+        throw new Error(`Container "${opts.containerName}" is not running`)
+      }
     }
     const tmuxName = tmuxSessionName(opts.name)
     const expandedDir = opts.workingDirectory.replace(/^~/, process.env.HOME ?? '')

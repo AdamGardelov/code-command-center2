@@ -53,11 +53,15 @@ export class SshService {
         timeout: 3000,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim()
-    } catch {
-      // Proactively mark this host offline so subsequent exec() calls short-circuit instead of
-      // each eating another connect timeout. The next monitor tick will flip it back if/when
-      // the host recovers.
-      this.markOfflineByHost(host)
+    } catch (err) {
+      // SSH exit code 255 means connection failure (unreachable, auth error, timeout).
+      // Any other exit code means the connection succeeded but the remote command failed
+      // (e.g. `tmux has-session` returns 1 when the session doesn't exist). Only mark the
+      // host offline for actual connection failures.
+      const exitCode = (err as { status?: number }).status
+      if (exitCode === 255 || exitCode == null) {
+        this.markOfflineByHost(host)
+      }
       return null
     }
   }

@@ -27,12 +27,14 @@ export class ContainerService {
     this.configService = configService
   }
 
-  isRunning(containerName: string, remoteHost?: string): boolean {
+  isRunning(containerName: string, remoteHost?: string, skipCache?: boolean): boolean {
     if (!isValidContainerName(containerName)) return false
     const cacheKey = `${remoteHost ?? 'local'}:${containerName}`
-    const cached = this.cache.get(cacheKey)
-    if (cached && Date.now() < cached.expiresAt) {
-      return cached.running
+    if (!skipCache) {
+      const cached = this.cache.get(cacheKey)
+      if (cached && Date.now() < cached.expiresAt) {
+        return cached.running
+      }
     }
 
     let running = false
