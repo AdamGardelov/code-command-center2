@@ -16,24 +16,53 @@ function ActivityBarItem({ icon, active, onClick, badge, tooltip }: ActivityBarI
     <button
       onClick={onClick}
       title={tooltip}
-      className="relative flex items-center justify-center rounded transition-colors duration-100"
+      className="relative flex items-center justify-center transition-colors duration-100"
       style={{
-        width: 28,
-        height: 28,
-        backgroundColor: active ? 'rgba(233,200,128,0.15)' : 'transparent',
-        color: active ? 'var(--accent)' : 'var(--text-muted)',
+        width: 30,
+        height: 30,
+        borderRadius: 6,
+        backgroundColor: active ? 'var(--amber-wash)' : 'transparent',
+        color: active ? 'var(--amber)' : 'var(--ink-3)'
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+          e.currentTarget.style.color = 'var(--ink-1)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = 'transparent'
+          e.currentTarget.style.color = 'var(--ink-3)'
+        }
       }}
     >
+      {/* Left-rail accent line on active */}
+      {active && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: -6,
+            top: 6,
+            bottom: 6,
+            width: 2,
+            borderRadius: '0 2px 2px 0',
+            backgroundColor: 'var(--amber)'
+          }}
+        />
+      )}
       {icon}
       {badge && (
-        <div
-          className="absolute rounded-full"
+        <span
           style={{
-            width: 8,
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            minWidth: 8,
             height: 8,
-            backgroundColor: 'var(--accent)',
-            top: -1,
-            right: -1,
+            borderRadius: 4,
+            backgroundColor: 'var(--amber)'
           }}
         />
       )}
@@ -51,39 +80,48 @@ export default function ActivityBar({ hasAttention }: { hasAttention: boolean })
 
   return (
     <div
-      className="flex flex-col items-center pt-2 pb-2 gap-1 flex-shrink-0"
+      className="flex flex-col items-center flex-shrink-0"
       style={{
-        width: 36,
-        backgroundColor: 'var(--bg-primary)',
-        borderRight: '1px solid var(--bg-raised)',
+        width: 40,
+        padding: '6px 0',
+        gap: 2,
+        backgroundColor: 'var(--bg-0)',
+        borderRight: '1px solid var(--line)'
       }}
     >
       {/* Sidebar toggle */}
       <button
         onClick={toggleSidebar}
         title={sidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
-        className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+        className="flex items-center justify-center transition-colors duration-100"
         style={{
-          width: 28,
-          height: 28,
-          color: 'var(--text-muted)',
+          width: 30,
+          height: 30,
+          borderRadius: 6,
+          color: 'var(--ink-3)'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+          e.currentTarget.style.color = 'var(--ink-1)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent'
+          e.currentTarget.style.color = 'var(--ink-3)'
         }}
       >
         {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
       </button>
 
-      {/* Separator */}
       <div
+        aria-hidden
         style={{
-          width: 18,
+          width: 20,
           height: 1,
-          backgroundColor: 'var(--bg-raised)',
-          marginTop: 2,
-          marginBottom: 2,
+          backgroundColor: 'var(--line)',
+          margin: '4px 0'
         }}
       />
 
-      {/* Nav items */}
       <ActivityBarItem
         icon={<SquareTerminal size={16} />}
         view="sessions"
@@ -93,7 +131,7 @@ export default function ActivityBar({ hasAttention }: { hasAttention: boolean })
       />
       {features.pullRequests && (
         <ActivityBarItem
-          icon={<GitPullRequestArrow size={16} />}
+          icon={<GitPullRequestArrow size={15} />}
           view="pullRequests"
           active={activeView === 'pullRequests'}
           onClick={() => setActiveView('pullRequests')}
@@ -102,18 +140,25 @@ export default function ActivityBar({ hasAttention }: { hasAttention: boolean })
         />
       )}
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Settings at bottom */}
       <button
         onClick={toggleSettings}
         title="Settings"
-        className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
+        className="flex items-center justify-center transition-colors duration-100"
         style={{
-          width: 28,
-          height: 28,
-          color: 'var(--text-muted)',
+          width: 30,
+          height: 30,
+          borderRadius: 6,
+          color: 'var(--ink-3)'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+          e.currentTarget.style.color = 'var(--ink-1)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent'
+          e.currentTarget.style.color = 'var(--ink-3)'
         }}
       >
         <Settings size={15} />

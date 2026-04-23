@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, ChevronDown, ChevronRight, ExternalLink, X } from 'lucide-react'
+import { RefreshCw, AlertCircle, ExternalLink, X } from 'lucide-react'
 import PrRow from './PrRow'
 import PrSetup from './PrSetup'
 import PrContextMenu from './PrContextMenu'
@@ -19,15 +19,11 @@ function timeAgo(iso: string): string {
 }
 
 function resolveRepoPath(repo: string, favorites: FavoriteFolder[]): string | null {
-  // 1. Explicit match via githubRepo field
   const explicit = favorites.find(f => f.githubRepo === repo)
   if (explicit) return explicit.path
-
-  // 2. Name match — strip org, match case-insensitively
   const repoName = repo.split('/').pop() ?? repo
   const byName = favorites.find(f => f.name.toLowerCase() === repoName.toLowerCase())
   if (byName) return byName.path
-
   return null
 }
 
@@ -43,7 +39,6 @@ export default function PrSidebar(): React.JSX.Element {
     error: null,
   })
   const [activeTab, setActiveTab] = useState<PrTab>('mine')
-  const [attentionOpen, setAttentionOpen] = useState(true)
   const [contextMenu, setContextMenu] = useState<{ pr: PullRequest; x: number; y: number } | null>(null)
   const [toast, setToast] = useState<PrToastState | null>(null)
 
@@ -136,7 +131,6 @@ export default function PrSidebar(): React.JSX.Element {
     }
   }, [favorites, createSession])
 
-  // Show setup if we don't have config yet (first load, no state received)
   const [hasConfig, setHasConfig] = useState(false)
   useEffect(() => {
     window.cccAPI.config.load().then((c) => {
@@ -161,130 +155,197 @@ export default function PrSidebar(): React.JSX.Element {
   ]
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-surface)' }}>
-      {/* Header */}
-      <div className="px-3 py-2 flex items-center justify-between border-b flex-shrink-0" style={{ borderColor: 'var(--bg-raised)' }}>
-        <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-1)' }}>
+      {/* Header — matches SessionSidebar header */}
+      <div
+        className="flex items-center flex-shrink-0"
+        style={{ padding: '8px 10px 4px', gap: 6 }}
+      >
+        <span
+          className="flex-1"
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-3)'
+          }}
+        >
           Pull Requests
         </span>
-        <div className="flex items-center gap-2">
-          {prState.lastUpdated && (
-            <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
-              {timeAgo(prState.lastUpdated)}
-            </span>
-          )}
-          <button
-            onClick={() => window.cccAPI.pr.refresh()}
-            className="p-1 rounded transition-colors hover:bg-[rgba(255,255,255,0.05)]"
-            style={{ color: 'var(--text-muted)' }}
-            title="Refresh"
-          >
-            <RefreshCw size={12} className={prState.isLoading ? 'animate-spin' : ''} />
-          </button>
-        </div>
+        {prState.lastUpdated && (
+          <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-3)' }}>
+            {timeAgo(prState.lastUpdated)}
+          </span>
+        )}
+        <button
+          onClick={() => window.cccAPI.pr.refresh()}
+          className="flex items-center justify-center rounded transition-colors duration-100"
+          style={{ width: 20, height: 20, color: 'var(--ink-3)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+            e.currentTarget.style.color = 'var(--amber)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent'
+            e.currentTarget.style.color = 'var(--ink-3)'
+          }}
+          title="Refresh"
+        >
+          <RefreshCw size={12} className={prState.isLoading ? 'animate-spin' : ''} />
+        </button>
       </div>
 
       {/* Error */}
       {prState.error && (
-        <div className="px-3 py-2 text-[10px] border-b" style={{ color: '#f87171', borderColor: 'var(--bg-raised)' }}>
+        <div
+          className="flex-shrink-0"
+          style={{
+            padding: '6px 10px',
+            fontSize: 10,
+            color: 'var(--s-error)',
+            borderBottom: '1px solid var(--line)',
+            backgroundColor: 'color-mix(in srgb, var(--s-error) 8%, transparent)'
+          }}
+        >
           Error: {prState.error}
         </div>
       )}
 
-      {/* Needs Attention */}
-      {prState.attentionItems.length > 0 && (
-        <div className="border-b flex-shrink-0" style={{ borderColor: 'var(--bg-raised)' }}>
-          <button
-            onClick={() => setAttentionOpen(!attentionOpen)}
-            className="w-full px-3 py-1.5 flex items-center gap-1.5 hover:bg-[rgba(255,255,255,0.02)]"
-          >
-            {attentionOpen ? <ChevronDown size={10} style={{ color: 'var(--accent)' }} /> : <ChevronRight size={10} style={{ color: 'var(--accent)' }} />}
-            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
-              Needs Attention
-            </span>
-            <span className="text-[9px] ml-auto" style={{ color: 'var(--accent)' }}>
-              {prState.attentionItems.length}
-            </span>
-          </button>
-          {attentionOpen && (
-            <div className="px-3 pb-2 flex flex-col gap-1">
-              {prState.attentionItems.map((item) => (
-                <div
-                  key={item.pr.id}
-                  className="p-1.5 rounded"
-                  style={{
-                    backgroundColor: item.reason === 'ready_to_merge' ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)',
-                    borderLeft: `2px solid ${item.reason === 'ready_to_merge' ? '#4ade80' : '#f87171'}`,
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] truncate" style={{ color: 'var(--text-primary)' }}>
-                        {item.pr.title}
-                      </div>
-                      <div className="text-[9px] mt-0.5" style={{ color: item.reason === 'ready_to_merge' ? '#4ade80' : '#f87171' }}>
-                        {item.reason === 'ready_to_merge' ? 'Ready to merge' : 'Changes requested'}
-                      </div>
-                    </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => window.cccAPI.shell.openExternal(item.pr.url)}
-                        className="p-0.5 rounded hover:bg-[rgba(255,255,255,0.1)]"
-                        style={{ color: 'var(--text-muted)' }}
-                        title="Open in browser"
-                      >
-                        <ExternalLink size={10} />
-                      </button>
-                      <button
-                        onClick={() => void handleDismissAttention(item.pr.id)}
-                        className="p-0.5 rounded hover:bg-[rgba(255,255,255,0.1)]"
-                        style={{ color: 'var(--text-muted)' }}
-                        title="Dismiss"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab bar */}
-      <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--bg-raised)' }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className="flex-1 py-1.5 text-center text-[10px] font-medium transition-colors"
-            style={{
-              color: activeTab === t.key ? 'var(--accent)' : 'var(--text-muted)',
-              borderBottom: activeTab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
-            }}
-          >
-            {t.label}{' '}
-            <span
-              className="ml-0.5"
+      {/* Tabs */}
+      <div
+        className="flex flex-shrink-0"
+        style={{
+          padding: '8px 10px 0',
+          gap: 14,
+          borderBottom: '1px solid var(--line)'
+        }}
+      >
+        {tabs.map((t) => {
+          const active = activeTab === t.key
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className="relative transition-colors"
               style={{
-                color: activeTab === t.key ? 'var(--accent)' : 'var(--text-muted)',
-                opacity: activeTab === t.key ? 1 : 0.6,
+                padding: '6px 2px 9px',
+                fontSize: 11,
+                fontWeight: 500,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: active ? 'var(--amber)' : 'var(--ink-3)'
               }}
             >
-              {t.count}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 9.5,
+                  marginLeft: 4,
+                  color: active ? 'var(--amber)' : 'var(--ink-4)'
+                }}
+              >
+                {t.count}
+              </span>
+              {active && (
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: -1,
+                    height: 2,
+                    backgroundColor: 'var(--amber)'
+                  }}
+                />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* PR list */}
-      <div className="flex-1 overflow-y-auto px-1.5 py-1">
+      <div
+        className="flex-1 overflow-y-auto ccc-scroll min-h-0"
+        style={{ padding: '6px 6px' }}
+      >
+        {/* Needs Attention */}
+        {prState.attentionItems.length > 0 && (
+          <div style={{ margin: '4px 4px 10px' }}>
+            {prState.attentionItems.map((item) => {
+              const isReady = item.reason === 'ready_to_merge'
+              const color = isReady ? 'var(--amber)' : 'var(--s-error)'
+              return (
+                <div
+                  key={item.pr.id}
+                  className="flex"
+                  style={{
+                    gap: 8,
+                    alignItems: 'flex-start',
+                    padding: '8px 10px',
+                    marginBottom: 4,
+                    borderRadius: 8,
+                    backgroundColor: isReady
+                      ? 'color-mix(in srgb, var(--amber) 8%, transparent)'
+                      : 'color-mix(in srgb, var(--s-error) 8%, transparent)',
+                    border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+                    fontSize: 11
+                  }}
+                >
+                  <AlertCircle size={14} style={{ color, flexShrink: 0, marginTop: 1 }} />
+                  <div className="flex-1 min-w-0">
+                    <div style={{ color: 'var(--ink-0)', fontWeight: 500 }}>
+                      {isReady ? 'Ready to merge' : 'Changes requested'}
+                    </div>
+                    <div
+                      className="truncate"
+                      style={{
+                        color: 'var(--ink-3)',
+                        marginTop: 2,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10
+                      }}
+                    >
+                      #{item.pr.number} · {item.pr.repo}
+                    </div>
+                  </div>
+                  <div className="flex flex-shrink-0" style={{ gap: 2 }}>
+                    <button
+                      onClick={() => window.cccAPI.shell.openExternal(item.pr.url)}
+                      className="flex items-center justify-center rounded transition-colors"
+                      style={{ width: 20, height: 20, color: 'var(--ink-3)', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-2)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                      title="Open in browser"
+                    >
+                      <ExternalLink size={11} />
+                    </button>
+                    <button
+                      onClick={() => void handleDismissAttention(item.pr.id)}
+                      className="flex items-center justify-center rounded transition-colors"
+                      style={{ width: 20, height: 20, color: 'var(--ink-3)', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-2)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                      title="Dismiss"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {tabPrs[activeTab].length === 0 ? (
-          <div className="flex items-center justify-center h-20">
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {prState.isLoading ? 'Loading...' : 'No pull requests'}
-            </span>
+          <div
+            className="flex items-center justify-center"
+            style={{ height: 80, fontSize: 11, color: 'var(--ink-3)' }}
+          >
+            {prState.isLoading ? 'Loading…' : 'No pull requests'}
           </div>
         ) : (
           tabPrs[activeTab].map((pr) => (
@@ -293,10 +354,8 @@ export default function PrSidebar(): React.JSX.Element {
         )}
       </div>
 
-      {/* Toast */}
       {toast && <PrToast toast={toast} onDismiss={() => setToast(null)} />}
 
-      {/* Context menu */}
       {contextMenu && (
         <PrContextMenu
           pr={contextMenu.pr}

@@ -1,63 +1,170 @@
 @import "tailwindcss";
 
+/* =====================================================================
+   Design tokens — polished warm-amber palette
+   Legacy names (--bg-primary, --accent, --success, --error) are kept as
+   aliases so existing utility classes keep working while the redesign
+   rolls across components.
+   ===================================================================== */
 :root,
 [data-theme="dark"] {
-  --bg-primary: #18191c;
-  --bg-surface: #1e2025;
-  --bg-raised: #2a2d35;
-  --bg-terminal: #292c33;
-  --text-primary: #eaeaea;
-  --text-secondary: #c5c8c6;
-  --text-muted: #8b8e94;
-  --accent: #e9c880;
-  --accent-muted: rgba(233, 200, 128, 0.12);
-  --success: #c2c97a;
-  --error: #d98a88;
-  --container: #7ec8c8;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --modal-backdrop: rgba(0, 0, 0, 0.6);
+  /* Layered backgrounds — richer than flat primary/surface/raised */
+  --bg-0: #15161a;           /* deepest — app backdrop, titlebar, activity bar */
+  --bg-1: #1b1d22;           /* panels — sidebar surface */
+  --bg-2: #23262d;           /* raised — cards, modals, hover wells */
+  --bg-3: #2d313a;           /* elevated hover */
+  --bg-term: #101114;        /* terminal — deeper than surface for depth */
+
+  /* Hairlines */
+  --line: #2a2e36;
+  --line-soft: rgba(255, 255, 255, 0.04);
+
+  /* Ink scale — warm off-whites, never pure */
+  --ink-0: #f2efe6;
+  --ink-1: #d5d1c5;
+  --ink-2: #9a968a;
+  --ink-3: #6b6860;
+  --ink-4: #4a4842;
+
+  /* Amber accent family */
+  --amber:      #e9c880;
+  --amber-hi:   #f3d998;
+  --amber-lo:   #c9a85d;
+  --amber-wash: rgba(233, 200, 128, 0.10);
+  --amber-glow: rgba(233, 200, 128, 0.22);
+  --amber-rim:  rgba(233, 200, 128, 0.35);
+
+  /* Status family — shared chroma, varied hue */
+  --s-idle:    #8a8680;
+  --s-working: #e9c880;
+  --s-waiting: #e49a6b;
+  --s-done:    #a8c27a;
+  --s-error:   #d9866a;
+
+  /* Provider hues (exposed for future cross-use) */
+  --p-claude: #d97757;
+  --p-gemini: #6ea3f2;
+  --p-codex:  #d5d1c5;
+  --p-shell:  #e9c880;
+
+  /* Typography */
+  --font-sans: 'Inter Tight', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  /* Radii + elevation */
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 60px -10px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  /* --- Legacy aliases (keep downstream styles working) --- */
+  --bg-primary:     var(--bg-0);
+  --bg-surface:     var(--bg-1);
+  --bg-raised:      var(--bg-2);
+  --bg-terminal:    var(--bg-term);
+  --text-primary:   var(--ink-0);
+  --text-secondary: var(--ink-1);
+  --text-muted:     var(--ink-2);
+  --accent:         var(--amber);
+  --accent-muted:   var(--amber-wash);
+  --success:        var(--s-done);
+  --error:          var(--s-error);
+  --warning:        var(--s-waiting);
+  --container:      #7ec8c8;
+  --modal-backdrop: rgba(0, 0, 0, 0.55);
 }
 
 [data-theme="light"] {
-  --bg-primary: #f5f5f7;
-  --bg-surface: #ffffff;
-  --bg-raised: #e5e5ea;
-  --bg-terminal: #fafafa;
-  --text-primary: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-muted: #737373;
-  --accent: #b45f04;
-  --accent-muted: rgba(180, 95, 4, 0.1);
-  --success: #047857;
-  --error: #b91c1c;
-  --container: #0d7377;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg-0: #f5f5f2;
+  --bg-1: #ffffff;
+  --bg-2: #eceae2;
+  --bg-3: #dedacf;
+  --bg-term: #faf8f2;
+
+  --line: #dedacf;
+  --line-soft: rgba(0, 0, 0, 0.05);
+
+  --ink-0: #1a1a1a;
+  --ink-1: #3a3a3a;
+  --ink-2: #6b6b6b;
+  --ink-3: #8b8b8b;
+  --ink-4: #b0b0b0;
+
+  --amber:      #b45f04;
+  --amber-hi:   #c47420;
+  --amber-lo:   #8a4600;
+  --amber-wash: rgba(180, 95, 4, 0.10);
+  --amber-glow: rgba(180, 95, 4, 0.18);
+  --amber-rim:  rgba(180, 95, 4, 0.30);
+
+  --s-idle:    #7a7770;
+  --s-working: #b45f04;
+  --s-waiting: #b56a36;
+  --s-done:    #547338;
+  --s-error:   #a24d34;
+
+  --shadow-modal: 0 20px 60px -10px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.08);
+
+  --bg-primary:     var(--bg-0);
+  --bg-surface:     var(--bg-1);
+  --bg-raised:      var(--bg-2);
+  --bg-terminal:    var(--bg-term);
+  --text-primary:   var(--ink-0);
+  --text-secondary: var(--ink-1);
+  --text-muted:     var(--ink-2);
+  --accent:         var(--amber);
+  --accent-muted:   var(--amber-wash);
+  --success:        var(--s-done);
+  --error:          var(--s-error);
+  --warning:        var(--s-waiting);
+  --container:      #0d7377;
   --modal-backdrop: rgba(0, 0, 0, 0.3);
 }
 
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--bg-0);
+  color: var(--ink-1);
   font-family: var(--font-sans);
   overflow: hidden;
   user-select: none;
   text-rendering: optimizeLegibility;
-  font-feature-settings: 'kern' 1, 'liga' 1;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'ss01' 1;
 }
 
+/* Modal entrance */
 @keyframes modal-enter {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97) translateY(4px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Status dot pulse */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.status-pulse {
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+/* Caret blink for fake terminal hints */
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
 /* Sidebar drag handle */
@@ -71,7 +178,7 @@ body {
   z-index: 1;
 }
 .sidebar-drag-handle:hover {
-  background-color: var(--accent) !important;
+  background-color: var(--amber) !important;
   opacity: 0.7;
   width: 2px;
 }
@@ -111,20 +218,20 @@ body {
 }
 
 .split-drag-handle:hover {
-  background-color: var(--accent);
+  background-color: var(--amber);
   opacity: 0.7;
 }
 
-/* xterm.js container — all layers must share same bg to hide pixel gaps */
+/* xterm.js container — shared bg on every layer to hide pixel gaps */
 .xterm-container {
   width: 100%;
   height: 100%;
-  background-color: var(--bg-terminal);
+  background-color: var(--bg-term);
   overflow: hidden;
 }
 
 .terminal-outer {
-  background-color: var(--bg-terminal);
+  background-color: var(--bg-term);
   overflow: hidden;
 }
 
@@ -132,15 +239,14 @@ body {
   height: 100%;
   width: 100%;
   padding: 4px;
-  background-color: var(--bg-terminal);
+  background-color: var(--bg-term);
 }
 
 .xterm-container .xterm-viewport,
 .xterm-container .xterm-screen {
-  background-color: var(--bg-terminal) !important;
+  background-color: var(--bg-term) !important;
 }
 
-/* Hide xterm scrollbar — tmux handles scrolling */
 .xterm-container .xterm-viewport::-webkit-scrollbar {
   width: 0;
   display: none;
@@ -151,7 +257,7 @@ body {
   display: flex;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-0);
 }
 
 .grid-card {
@@ -159,23 +265,47 @@ body {
   flex-direction: column;
   flex: 1;
   overflow: hidden;
-  background-color: var(--bg-terminal);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+  background-color: var(--bg-term);
+  border: 1px solid var(--line);
+  border-radius: 8px;
   min-width: 0;
   min-height: 0;
 }
 
+.grid-card.active {
+  border-color: var(--amber-rim);
+}
+
 .grid-card .xterm-container,
 .grid-card .terminal-outer {
-  background-color: var(--bg-terminal) !important;
+  background-color: var(--bg-term) !important;
 }
 
-/* Status pulse animation */
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+/* Slim scrollbar used by panel lists */
+.ccc-scroll::-webkit-scrollbar        { width: 6px; }
+.ccc-scroll::-webkit-scrollbar-thumb  { background: var(--bg-3); border-radius: 3px; }
+.ccc-scroll::-webkit-scrollbar-track  { background: transparent; }
+
+/* Keyboard hint chip */
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-2);
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  line-height: 1.4;
 }
 
-.status-pulse {
-  animation: status-pulse 2s ease-in-out infinite;
+.kbd-lg {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--ink-1);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  background: var(--bg-2);
+  font-family: var(--font-mono);
+  line-height: 1;
 }

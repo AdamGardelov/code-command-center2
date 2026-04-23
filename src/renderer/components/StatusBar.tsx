@@ -4,6 +4,15 @@ import { useSessionStore } from '../stores/session-store'
 
 declare const __APP_VERSION__: string
 
+function Dot({ color }: { color: string }): React.JSX.Element {
+  return (
+    <span
+      aria-hidden
+      style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: color, display: 'inline-block' }}
+    />
+  )
+}
+
 export default function StatusBar(): React.JSX.Element {
   const sessions = useSessionStore((s) => s.sessions)
   const viewMode = useSessionStore((s) => s.viewMode)
@@ -30,64 +39,112 @@ export default function StatusBar(): React.JSX.Element {
   return (
     <>
       <div
-        className="h-5 flex items-center justify-between px-4 text-[10px] font-medium border-t select-none flex-shrink-0"
+        className="flex items-center select-none flex-shrink-0"
         style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--bg-raised)',
-          color: 'var(--text-muted)'
+          height: 22,
+          padding: '0 10px',
+          gap: 14,
+          backgroundColor: 'var(--bg-0)',
+          borderTop: '1px solid var(--line)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10.5,
+          color: 'var(--ink-3)'
         }}
       >
-        <span>{runningCount} running · {sessions.length} total</span>
-        <div className="flex items-center gap-2">
-          <span>v{__APP_VERSION__} · {viewMode === 'grid' ? 'Grid' : 'Single'}</span>
-          <button
-            onClick={openLogs}
-            className="p-0.5 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-            style={{ color: 'var(--text-muted)' }}
-            title="View logs"
-          >
-            <FileText size={10} />
-          </button>
-        </div>
+        <span className="inline-flex items-center gap-1.5">
+          <Dot color="var(--s-done)" /> tmux
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Dot color="var(--s-done)" /> local
+        </span>
+        <div className="flex-1" />
+        <span className="inline-flex items-center gap-1.5">
+          {runningCount}/{sessions.length} running
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          view:{' '}
+          <span style={{ color: 'var(--amber)' }}>{viewMode === 'grid' ? 'grid' : 'single'}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">v{__APP_VERSION__}</span>
+        <button
+          onClick={openLogs}
+          className="flex items-center justify-center rounded transition-colors duration-100"
+          style={{ width: 18, height: 18, color: 'var(--ink-3)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+            e.currentTarget.style.color = 'var(--ink-1)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent'
+            e.currentTarget.style.color = 'var(--ink-3)'
+          }}
+          title="View logs"
+        >
+          <FileText size={10} />
+        </button>
       </div>
 
       {logOpen && (
         <div
-          className="absolute bottom-5 right-0 w-[600px] max-h-[400px] flex flex-col border rounded-t-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 z-50 flex flex-col overflow-hidden"
           style={{
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--bg-raised)'
+            bottom: 22,
+            width: 600,
+            maxHeight: 400,
+            backgroundColor: 'var(--bg-1)',
+            border: '1px solid var(--line)',
+            borderTopLeftRadius: 10,
+            borderTopRightRadius: 10,
+            boxShadow: 'var(--shadow-modal)'
           }}
         >
           <div
-            className="flex items-center justify-between px-3 py-1.5 text-[11px] font-medium border-b flex-shrink-0"
+            className="flex items-center justify-between flex-shrink-0"
             style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--bg-raised)',
-              color: 'var(--text-secondary)'
+              padding: '6px 12px',
+              borderBottom: '1px solid var(--line)',
+              backgroundColor: 'var(--bg-2)',
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'var(--ink-1)'
             }}
           >
-            <span>Logs — {logPath}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>Logs — {logPath}</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={refreshLogs}
-                className="px-1.5 py-0.5 rounded text-[10px] transition-colors hover:bg-[var(--bg-raised)]"
-                style={{ color: 'var(--text-muted)' }}
+                className="rounded transition-colors"
+                style={{
+                  padding: '2px 6px',
+                  fontSize: 10,
+                  color: 'var(--ink-2)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-3)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
               >
                 Refresh
               </button>
               <button
                 onClick={() => setLogOpen(false)}
-                className="p-0.5 rounded transition-colors hover:bg-[var(--bg-raised)]"
-                style={{ color: 'var(--text-muted)' }}
+                className="flex items-center justify-center rounded transition-colors"
+                style={{ width: 20, height: 20, color: 'var(--ink-3)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-3)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
               >
                 <X size={12} />
               </button>
             </div>
           </div>
           <pre
-            className="flex-1 overflow-auto p-3 text-[10px] leading-relaxed font-mono whitespace-pre-wrap"
-            style={{ color: 'var(--text-secondary)' }}
+            className="flex-1 overflow-auto ccc-scroll whitespace-pre-wrap"
+            style={{
+              padding: 12,
+              fontSize: 10,
+              lineHeight: 1.5,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--ink-1)',
+              backgroundColor: 'var(--bg-1)'
+            }}
           >
             {logContent || 'No logs yet.'}
           </pre>
