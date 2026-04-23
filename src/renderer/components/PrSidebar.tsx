@@ -115,7 +115,12 @@ export default function PrSidebar(): React.JSX.Element {
     })
 
     try {
-      const worktree = await window.cccAPI.git.addWorktree(repoPath, pr.branch, '')
+      const worktree = await window.cccAPI.git.addWorktree(
+        repoPath,
+        pr.branch,
+        '',
+        'track-remote'
+      )
       await createSession({
         name: `review/${repoShort}#${pr.number}`,
         workingDirectory: worktree.path,

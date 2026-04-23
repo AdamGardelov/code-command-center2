@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Folder, GitBranch, Plus, X } from 'lucide-react'
+import { Cloud, Folder, GitBranch, Plus, X } from 'lucide-react'
 import type { BranchMetadata, Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 
+export type BranchPickerMode =
+  | 'existing-worktree'
+  | 'existing-local'
+  | 'track-remote'
+  | 'new-branch'
+
 export interface BranchPickerResult {
-  mode: 'existing' | 'create-worktree' | 'new'
+  mode: BranchPickerMode
   branch: string
   worktreePath?: string
 }
@@ -16,7 +22,7 @@ interface BranchPickerProps {
   onConfirm: (result: BranchPickerResult) => void
 }
 
-type FilterMode = 'all' | 'worktrees' | 'in-use' | 'stale'
+type FilterMode = 'all' | 'worktrees' | 'in-use' | 'stale' | 'remote'
 
 interface MatchResult {
   score: number
@@ -117,8 +123,12 @@ function BranchRow({ item, selected, onSelect, onDelete, dataIdx }: BranchRowPro
             <Folder size={13} />
             {activeSession && <span className="bp-row__wt-dot" />}
           </div>
+        ) : meta.remoteOnly ? (
+          <div className="bp-row__remote-only" title="Branch on origin — will check out a tracking worktree">
+            <Cloud size={13} />
+          </div>
         ) : (
-          <div className="bp-row__remote" title="Remote/local branch — a worktree will be created">
+          <div className="bp-row__remote" title="Local branch — a worktree will be created">
             <GitBranch size={13} />
           </div>
         )}
@@ -136,6 +146,7 @@ function BranchRow({ item, selected, onSelect, onDelete, dataIdx }: BranchRowPro
                 dirty
               </span>
             )}
+            {meta.remoteOnly && <span className="bp-row__badge remote">from origin</span>}
             {activeSession && (
               <span className="bp-row__badge active">
                 in use · {activeSession.displayName || activeSession.name}
@@ -221,6 +232,8 @@ function Preview({ item, query, isNewFocused }: PreviewProps): React.JSX.Element
         <span className="bp-preview__title">{meta.branch}</span>
         {meta.hasWorktree ? (
           <span className="bp-preview__tag ok">open existing worktree</span>
+        ) : meta.remoteOnly ? (
+          <span className="bp-preview__tag remote">check out from origin</span>
         ) : (
           <span className="bp-preview__tag new">will create worktree</span>
         )}
@@ -299,6 +312,9 @@ export default function BranchPicker({
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [focusIdx, setFocusIdx] = useState(0)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [fetching, setFetching] = useState(false)
+  const [fetchFailed, setFetchFailed] = useState(false)
+  const [fetchTick, setFetchTick] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -325,10 +341,39 @@ export default function BranchPicker({
     }
   }, [repoPath, remoteHost, refreshTick])
 
+  useEffect(() => {
+    let cancelled = false
+    setFetching(true)
+    setFetchFailed(false)
+    window.cccAPI.git
+      .fetchRemotes(repoPath, remoteHost)
+      .then((res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          setFetchFailed(true)
+          return
+        }
+        setRefreshTick((n) => n + 1)
+      })
+      .catch(() => {
+        if (!cancelled) setFetchFailed(true)
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [repoPath, remoteHost, fetchTick])
+
   const handleDelete = (path: string): void => {
     void window.cccAPI.git
       .removeWorktree(path, remoteHost)
       .then(() => setRefreshTick((n) => n + 1))
+  }
+
+  const handleManualRefresh = (): void => {
+    setFetchTick((n) => n + 1)
   }
 
   useEffect(() => {
@@ -340,7 +385,8 @@ export default function BranchPicker({
       all: branches.length,
       worktrees: branches.filter((b) => b.hasWorktree).length,
       stale: branches.filter((b) => b.stale).length,
-      inUse: branches.filter((b) => !!sessionUsingBranch(sessions, b)).length
+      inUse: branches.filter((b) => !!sessionUsingBranch(sessions, b)).length,
+      remote: branches.filter((b) => b.remoteOnly).length
     }),
     [branches, sessions]
   )
@@ -350,6 +396,7 @@ export default function BranchPicker({
       if (filterMode === 'worktrees') return b.hasWorktree
       if (filterMode === 'stale') return b.stale
       if (filterMode === 'in-use') return !!sessionUsingBranch(sessions, b)
+      if (filterMode === 'remote') return b.remoteOnly
       return true
     })
 
@@ -375,7 +422,7 @@ export default function BranchPicker({
       for (const row of matched) withMeta.push(row)
     }
 
-    const exact = base.some((b) => b.branch === query)
+    const exact = branches.some((b) => b.branch === query)
     return { scored: withMeta, isNew: query.length > 0 && !exact }
   }, [branches, filterMode, query, sessions])
 
@@ -392,8 +439,13 @@ export default function BranchPicker({
   const hovered = isNew && focusIdx === 0 ? null : scored[isNew ? focusIdx - 1 : focusIdx] ?? null
 
   const confirmRow = (row: ScoredBranch): void => {
+    let mode: BranchPickerMode
+    if (row.meta.hasWorktree) mode = 'existing-worktree'
+    else if (row.meta.remoteOnly) mode = 'track-remote'
+    else mode = 'existing-local'
+
     onConfirm({
-      mode: row.meta.hasWorktree ? 'existing' : 'create-worktree',
+      mode,
       branch: row.meta.branch,
       worktreePath: row.meta.worktreePath
     })
@@ -401,7 +453,7 @@ export default function BranchPicker({
 
   const confirmFocused = (): void => {
     if (isNew && focusIdx === 0) {
-      onConfirm({ mode: 'new', branch: query.trim() })
+      onConfirm({ mode: 'new-branch', branch: query.trim() })
       return
     }
     const row = scored[isNew ? focusIdx - 1 : focusIdx]
@@ -431,13 +483,23 @@ export default function BranchPicker({
     ? 'Create branch & worktree'
     : hovered?.meta.hasWorktree
       ? 'Open worktree'
-      : 'Checkout worktree'
+      : hovered?.meta.remoteOnly
+        ? 'Check out from origin'
+        : 'Checkout worktree'
 
   return (
     <div className="branch-picker">
       <div className="bp-header">
         <div className="bp-search">
-          <GitBranch size={14} style={{ color: 'var(--amber)' }} />
+          <button
+            type="button"
+            className={`bp-refresh${fetching ? ' spinning' : ''}`}
+            onClick={handleManualRefresh}
+            title={fetching ? 'Fetching from origin…' : 'Refresh branch list from origin'}
+            disabled={fetching}
+          >
+            <GitBranch size={14} style={{ color: 'var(--amber)' }} />
+          </button>
           <input
             ref={inputRef}
             value={query}
@@ -451,6 +513,11 @@ export default function BranchPicker({
               <X size={11} />
             </button>
           )}
+          {fetchFailed && !fetching && (
+            <span className="bp-offline-chip" title="Couldn't reach origin — showing cached state">
+              offline — cached
+            </span>
+          )}
         </div>
         <div className="bp-filters">
           {(
@@ -458,6 +525,7 @@ export default function BranchPicker({
               ['all', 'All branches', counts.all],
               ['worktrees', 'With worktree', counts.worktrees],
               ['in-use', 'In use', counts.inUse],
+              ['remote', 'Remote', counts.remote],
               ['stale', 'Stale', counts.stale]
             ] as const
           ).map(([k, label, n]) => (
@@ -480,7 +548,7 @@ export default function BranchPicker({
         {!loading && isNew && (
           <div
             className={`bp-row new${focusIdx === 0 ? ' selected' : ''}`}
-            onClick={() => onConfirm({ mode: 'new', branch: query.trim() })}
+            onClick={() => onConfirm({ mode: 'new-branch', branch: query.trim() })}
             data-idx={0}
           >
             <div className="bp-row__icon">

@@ -107,7 +107,10 @@ export interface BranchMetadata {
   lastCommitTimestamp: number
   remote?: string
   stale: boolean
+  remoteOnly?: boolean
 }
+
+export type WorktreeCreateMode = 'existing-local' | 'track-remote' | 'new-branch'
 
 export interface PrReviewer {
   login: string
@@ -274,10 +277,17 @@ export interface CccAPI {
   }
   git: {
     listWorktrees: (repoPath: string, remoteHost?: string) => Promise<Worktree[]>
-    addWorktree: (repoPath: string, branch: string, targetPath: string, remoteHost?: string) => Promise<Worktree>
+    addWorktree: (
+      repoPath: string,
+      branch: string,
+      targetPath: string,
+      mode: WorktreeCreateMode,
+      remoteHost?: string
+    ) => Promise<Worktree>
     removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>
     listBranches: (repoPath: string, remoteHost?: string) => Promise<string[]>
     getBranchMetadata: (repoPath: string, remoteHost?: string) => Promise<BranchMetadata[]>
+    fetchRemotes: (repoPath: string, remoteHost?: string) => Promise<{ ok: boolean; error?: string }>
   }
   group: {
     create: (name: string) => Promise<SessionGroup>

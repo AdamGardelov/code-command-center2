@@ -283,13 +283,18 @@ export default function NewSessionModal(): React.JSX.Element {
       let dir = workingDirectory.trim() || '~'
 
       if (branchChoice && type !== 'shell' && workingDirectory.trim()) {
-        if (branchChoice.mode === 'existing' && branchChoice.worktreePath) {
+        if (branchChoice.mode === 'existing-worktree' && branchChoice.worktreePath) {
           dir = branchChoice.worktreePath
-        } else if (branchChoice.mode === 'create-worktree' || branchChoice.mode === 'new') {
+        } else if (
+          branchChoice.mode === 'existing-local' ||
+          branchChoice.mode === 'track-remote' ||
+          branchChoice.mode === 'new-branch'
+        ) {
           const worktree = await window.cccAPI.git.addWorktree(
             workingDirectory.trim(),
             branchChoice.branch,
             '',
+            branchChoice.mode,
             remoteHost
           )
           dir = worktree.path
@@ -564,13 +569,13 @@ export default function NewSessionModal(): React.JSX.Element {
                     {branchChoice ? (
                       <>
                         <span>{branchChoice.branch}</span>
-                        {branchChoice.mode === 'existing' && (
+                        {branchChoice.mode === 'existing-worktree' && (
                           <span className="branch-trigger__tag">worktree</span>
                         )}
-                        {branchChoice.mode === 'create-worktree' && (
+                        {(branchChoice.mode === 'existing-local' || branchChoice.mode === 'track-remote') && (
                           <span className="branch-trigger__tag">checkout</span>
                         )}
-                        {branchChoice.mode === 'new' && (
+                        {branchChoice.mode === 'new-branch' && (
                           <span className="branch-trigger__tag">new</span>
                         )}
                       </>

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
-import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState, WorktreeCreateMode } from '../shared/types'
 
 // Single-dispatcher for terminal:data IPC events.
 // Routes each chunk to the callbacks subscribed for that sessionId,
@@ -117,14 +117,21 @@ const api: CccAPI = {
   git: {
     listWorktrees: (repoPath: string, remoteHost?: string) =>
       ipcRenderer.invoke('git:list-worktrees', repoPath, remoteHost),
-    addWorktree: (repoPath: string, branch: string, targetPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, remoteHost),
+    addWorktree: (
+      repoPath: string,
+      branch: string,
+      targetPath: string,
+      mode: WorktreeCreateMode,
+      remoteHost?: string
+    ) => ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, mode, remoteHost),
     removeWorktree: (worktreePath: string, remoteHost?: string) =>
       ipcRenderer.invoke('git:remove-worktree', worktreePath, remoteHost),
     listBranches: (repoPath: string, remoteHost?: string) =>
       ipcRenderer.invoke('git:list-branches', repoPath, remoteHost),
     getBranchMetadata: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost)
+      ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost),
+    fetchRemotes: (repoPath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:fetch-remotes', repoPath, remoteHost)
   },
   group: {
     create: (name: string): Promise<SessionGroup> => ipcRenderer.invoke('group:create', name),

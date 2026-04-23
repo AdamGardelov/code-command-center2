@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
 import { basename, dirname, join } from 'path'
-import type { Worktree, BranchMetadata, CccConfig } from '../shared/types'
+import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode } from '../shared/types'
 import type { SshService } from './ssh-service'
 
 export class GitService {
@@ -20,7 +20,11 @@ export class GitService {
     return this.execDetailed(args, remoteHost).stdout
   }
 
-  private execDetailed(args: string[], remoteHost?: string): { stdout: string | null; stderr: string } {
+  private execDetailed(
+    args: string[],
+    remoteHost?: string,
+    timeoutMs = 10000
+  ): { stdout: string | null; stderr: string } {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
@@ -31,7 +35,7 @@ export class GitService {
     try {
       const stdout = execFileSync('git', args, {
         encoding: 'utf-8',
-        timeout: 10000,
+        timeout: timeoutMs,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim()
       return { stdout, stderr: '' }
@@ -106,13 +110,17 @@ export class GitService {
     return worktrees
   }
 
-  addWorktree(repoPath: string, branch: string, targetPath: string, remoteHost?: string): Worktree {
-    // Strip ref prefixes users may paste or pick from branch lists
+  addWorktree(
+    repoPath: string,
+    branch: string,
+    targetPath: string,
+    mode: WorktreeCreateMode,
+    remoteHost?: string
+  ): Worktree {
     branch = branch.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const expandedTarget = remoteHost ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
 
-    // Ensure parent directory exists — git worktree add requires it
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
@@ -126,17 +134,42 @@ export class GitService {
       }
     }
 
-    // Try existing branch first, fall back to new branch
-    const existing = this.execDetailed(['-C', expanded, 'worktree', 'add', expandedTarget, branch], remoteHost)
-    let result: string | null = existing.stdout
-    let lastStderr = existing.stderr
-    if (result === null) {
-      const created = this.execDetailed(['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget], remoteHost)
-      result = created.stdout
-      if (result === null) lastStderr = created.stderr || lastStderr
+    let result: { stdout: string | null; stderr: string }
+    if (mode === 'new-branch') {
+      result = this.execDetailed(
+        ['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget],
+        remoteHost
+      )
+    } else {
+      // existing-local OR track-remote — git DWIMs to origin/<branch> for track-remote
+      // because the remote ref is present (caller should have called fetchRemotes first).
+      result = this.execDetailed(
+        ['-C', expanded, 'worktree', 'add', expandedTarget, branch],
+        remoteHost
+      )
     }
-    if (result === null) {
-      throw new Error(`Failed to create worktree for branch "${branch}" at ${expandedTarget}: ${lastStderr}`)
+
+    if (result.stdout === null) {
+      throw new Error(
+        `Failed to create worktree for branch "${branch}" at ${expandedTarget}: ${result.stderr}`
+      )
+    }
+
+    if (mode === 'new-branch') {
+      // Preconfigure upstream so first `git push` (no -u) lands on origin/<branch>.
+      const setRemote = this.execDetailed(
+        ['-C', expanded, 'config', `branch.${branch}.remote`, 'origin'],
+        remoteHost
+      )
+      const setMerge = this.execDetailed(
+        ['-C', expanded, 'config', `branch.${branch}.merge`, `refs/heads/${branch}`],
+        remoteHost
+      )
+      if (setRemote.stdout === null || setMerge.stdout === null) {
+        console.warn(
+          `Worktree created but failed to preconfigure upstream for "${branch}". First push will need -u.`
+        )
+      }
     }
 
     this.syncPaths(expanded, expandedTarget, remoteHost)
@@ -182,6 +215,20 @@ export class GitService {
     return [...cleaned].sort()
   }
 
+  fetchRemotes(repoPath: string, remoteHost?: string): { ok: boolean; error?: string } {
+    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+    const timeout = remoteHost ? 30000 : 15000
+    const result = this.execDetailed(
+      ['-C', expanded, 'fetch', '--prune', 'origin'],
+      remoteHost,
+      timeout
+    )
+    if (result.stdout === null) {
+      return { ok: false, error: result.stderr || 'fetch failed' }
+    }
+    return { ok: true }
+  }
+
   getRepoRoot(dir: string, remoteHost?: string): string | null {
     const expanded = remoteHost ? dir : dir.replace(/^~/, process.env.HOME ?? '')
     return this.exec(['-C', expanded, 'rev-parse', '--show-toplevel'], remoteHost)
@@ -209,62 +256,107 @@ export class GitService {
       '%(subject)'
     ].join(sep)
 
-    const out = this.exec(
+    const localOut = this.exec(
       ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/heads'],
       remoteHost
     )
-    if (!out) return []
 
     const now = Math.floor(Date.now() / 1000)
     const thirtyDays = 60 * 60 * 24 * 30
     const results: BranchMetadata[] = []
+    const localBranchNames = new Set<string>()
 
-    for (const line of out.split('\n')) {
-      if (!line.trim()) continue
-      const parts = line.split(sep)
-      const branch = parts[0] ?? ''
-      if (!branch) continue
-      const upstream = parts[1] ?? ''
-      const track = parts[2] ?? ''
-      const ts = parseInt(parts[3] ?? '0', 10) || 0
-      const author = parts[4] ?? ''
-      const subject = parts.slice(5).join(sep)
+    if (localOut) {
+      for (const line of localOut.split('\n')) {
+        if (!line.trim()) continue
+        const parts = line.split(sep)
+        const branch = parts[0] ?? ''
+        if (!branch) continue
+        localBranchNames.add(branch)
+        const upstream = parts[1] ?? ''
+        const track = parts[2] ?? ''
+        const ts = parseInt(parts[3] ?? '0', 10) || 0
+        const author = parts[4] ?? ''
+        const subject = parts.slice(5).join(sep)
 
-      let ahead = 0
-      let behind = 0
-      const aMatch = track.match(/ahead (\d+)/)
-      const bMatch = track.match(/behind (\d+)/)
-      if (aMatch) ahead = parseInt(aMatch[1], 10)
-      if (bMatch) behind = parseInt(bMatch[1], 10)
+        let ahead = 0
+        let behind = 0
+        const aMatch = track.match(/ahead (\d+)/)
+        const bMatch = track.match(/behind (\d+)/)
+        if (aMatch) ahead = parseInt(aMatch[1], 10)
+        if (bMatch) behind = parseInt(bMatch[1], 10)
 
-      const wt = worktreeByBranch.get(branch)
-      let dirty = false
-      if (wt) {
-        const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
-        dirty = !!status && status.trim().length > 0
+        const wt = worktreeByBranch.get(branch)
+        let dirty = false
+        if (wt) {
+          const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
+          dirty = !!status && status.trim().length > 0
+        }
+
+        const stale = behind > 40 || (ts > 0 && now - ts > thirtyDays && behind > 10)
+
+        results.push({
+          branch,
+          isMain: branch === defaultBranch,
+          hasWorktree: wt !== undefined,
+          worktreePath: wt?.path,
+          dirty,
+          ahead,
+          behind,
+          lastCommitSubject: subject,
+          lastCommitAuthor: author,
+          lastCommitTimestamp: ts,
+          remote: upstream || undefined,
+          stale,
+          remoteOnly: false
+        })
       }
+    }
 
-      const stale = behind > 40 || (ts > 0 && now - ts > thirtyDays && behind > 10)
+    // Append remote-only branches (present on origin, no local counterpart)
+    const remoteOut = this.exec(
+      ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/remotes/origin'],
+      remoteHost
+    )
 
-      results.push({
-        branch,
-        isMain: branch === defaultBranch,
-        hasWorktree: wt !== undefined,
-        worktreePath: wt?.path,
-        dirty,
-        ahead,
-        behind,
-        lastCommitSubject: subject,
-        lastCommitAuthor: author,
-        lastCommitTimestamp: ts,
-        remote: upstream || undefined,
-        stale
-      })
+    if (remoteOut) {
+      for (const line of remoteOut.split('\n')) {
+        if (!line.trim()) continue
+        const parts = line.split(sep)
+        const rawRef = parts[0] ?? ''
+        if (!rawRef) continue
+        // rawRef looks like "origin/feature/foo" — strip the remote prefix
+        const branch = rawRef.startsWith('origin/') ? rawRef.slice('origin/'.length) : rawRef
+        if (!branch || branch === 'HEAD') continue
+        if (localBranchNames.has(branch)) continue
+
+        const ts = parseInt(parts[3] ?? '0', 10) || 0
+        const author = parts[4] ?? ''
+        const subject = parts.slice(5).join(sep)
+
+        results.push({
+          branch,
+          isMain: false,
+          hasWorktree: false,
+          worktreePath: undefined,
+          dirty: false,
+          ahead: 0,
+          behind: 0,
+          lastCommitSubject: subject,
+          lastCommitAuthor: author,
+          lastCommitTimestamp: ts,
+          remote: rawRef,
+          stale: false,
+          remoteOnly: true
+        })
+      }
     }
 
     results.sort((a, b) => {
       if (a.isMain !== b.isMain) return a.isMain ? -1 : 1
       if (a.hasWorktree !== b.hasWorktree) return a.hasWorktree ? -1 : 1
+      // Local (non-remoteOnly) branches first, then remote-only
+      if (!!a.remoteOnly !== !!b.remoteOnly) return a.remoteOnly ? 1 : -1
       return b.lastCommitTimestamp - a.lastCommitTimestamp
     })
 
