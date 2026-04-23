@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Folder, GitBranch, Plus, X } from 'lucide-react'
+import { Cloud, Folder, GitBranch, Plus, X } from 'lucide-react'
 import type { BranchMetadata, Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 
@@ -123,8 +123,12 @@ function BranchRow({ item, selected, onSelect, onDelete, dataIdx }: BranchRowPro
             <Folder size={13} />
             {activeSession && <span className="bp-row__wt-dot" />}
           </div>
+        ) : meta.remoteOnly ? (
+          <div className="bp-row__remote-only" title="Branch on origin — will check out a tracking worktree">
+            <Cloud size={13} />
+          </div>
         ) : (
-          <div className="bp-row__remote" title="Remote/local branch — a worktree will be created">
+          <div className="bp-row__remote" title="Local branch — a worktree will be created">
             <GitBranch size={13} />
           </div>
         )}
@@ -142,6 +146,7 @@ function BranchRow({ item, selected, onSelect, onDelete, dataIdx }: BranchRowPro
                 dirty
               </span>
             )}
+            {meta.remoteOnly && <span className="bp-row__badge remote">from origin</span>}
             {activeSession && (
               <span className="bp-row__badge active">
                 in use · {activeSession.displayName || activeSession.name}
@@ -227,6 +232,8 @@ function Preview({ item, query, isNewFocused }: PreviewProps): React.JSX.Element
         <span className="bp-preview__title">{meta.branch}</span>
         {meta.hasWorktree ? (
           <span className="bp-preview__tag ok">open existing worktree</span>
+        ) : meta.remoteOnly ? (
+          <span className="bp-preview__tag remote">check out from origin</span>
         ) : (
           <span className="bp-preview__tag new">will create worktree</span>
         )}
@@ -474,7 +481,9 @@ export default function BranchPicker({
     ? 'Create branch & worktree'
     : hovered?.meta.hasWorktree
       ? 'Open worktree'
-      : 'Checkout worktree'
+      : hovered?.meta.remoteOnly
+        ? 'Check out from origin'
+        : 'Checkout worktree'
 
   return (
     <div className="branch-picker">

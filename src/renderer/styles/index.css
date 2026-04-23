@@ -513,6 +513,20 @@ body {
   color: var(--ink-2);
   border: 1px dashed var(--line);
 }
+.bp-row__remote-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7aa7d8;
+}
+.bp-row__badge.remote {
+  background: rgba(122, 167, 216, 0.14);
+  color: #7aa7d8;
+}
+.bp-preview__tag.remote {
+  background: rgba(122, 167, 216, 0.14);
+  color: #7aa7d8;
+}
 .bp-row__new {
   background: var(--amber);
   color: var(--bg-0);
