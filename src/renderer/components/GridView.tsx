@@ -43,11 +43,15 @@ export default function GridView(): React.JSX.Element {
     if (added.length === 0 && removedIds.length === 0) return
 
     let newLayout = gridLayout
-    // Remove sessions that are no longer visible
+    // Remove sessions that are no longer visible. If the tree collapses to
+    // empty (e.g. every persisted ID is stale after an app relaunch, since
+    // session IDs are regenerated per launch), rebuild from the currently
+    // visible sessions instead of bailing with a null layout — otherwise the
+    // effect won't re-run until deps change and the grid stays blank.
     for (const id of removedIds) {
       const result = removeSession(newLayout, id)
       if (result === null) {
-        setGridLayout(null)
+        setGridLayout(buildAutoGrid(visibleSessions.map((s) => s.id), gridPresets))
         return
       }
       newLayout = result
