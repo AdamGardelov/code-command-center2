@@ -26,25 +26,63 @@ function shortenPath(path: string): string {
 }
 
 const statusColors: Record<string, string> = {
-  idle: 'var(--success)',
-  working: 'var(--accent)',
-  waiting: 'var(--error)',
-  stopped: 'var(--text-muted)',
-  error: 'var(--error)'
-}
-
-const statusLabels: Record<string, string> = {
-  idle: 'Idle',
-  working: 'Working',
-  waiting: 'Needs input',
-  stopped: 'Stopped',
-  error: 'Error'
+  idle: 'var(--s-idle)',
+  working: 'var(--s-working)',
+  waiting: 'var(--s-waiting)',
+  stopped: 'var(--ink-3)',
+  error: 'var(--s-error)'
 }
 
 const pulseStatuses = new Set(['working', 'waiting'])
 
-const showStatus = (session: Session): boolean => {
-  return session.type !== 'shell'
+const showStatus = (session: Session): boolean => session.type !== 'shell'
+
+interface TagChipProps {
+  tone: 'auto' | 'skip' | 'container' | 'host'
+  icon?: React.ReactNode
+  children: React.ReactNode
+  title?: string
+}
+
+function TagChip({ tone, icon, children, title }: TagChipProps): React.JSX.Element {
+  const palette: Record<TagChipProps['tone'], { bg: string; fg: string }> = {
+    auto: {
+      bg: 'color-mix(in srgb, var(--amber) 18%, transparent)',
+      fg: 'var(--amber)'
+    },
+    skip: {
+      bg: 'color-mix(in srgb, var(--s-error) 18%, transparent)',
+      fg: 'var(--s-error)'
+    },
+    container: {
+      bg: 'color-mix(in srgb, var(--container) 18%, transparent)',
+      fg: 'var(--container)'
+    },
+    host: {
+      bg: 'var(--bg-2)',
+      fg: 'var(--ink-2)'
+    }
+  }
+  const { bg, fg } = palette[tone]
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center flex-shrink-0"
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 8.5,
+        padding: '1px 4px',
+        borderRadius: 3,
+        backgroundColor: bg,
+        color: fg,
+        lineHeight: 1.3,
+        gap: 3
+      }}
+    >
+      {icon}
+      {children}
+    </span>
+  )
 }
 
 export default function SessionCard({ session, isActive, onClick }: SessionCardProps): React.JSX.Element {
@@ -62,122 +100,180 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
     }
   }, [renamingSessionId, session.id])
 
+  const dotColor = statusColors[session.status] ?? 'var(--ink-3)'
+  const pulses = pulseStatuses.has(session.status)
+  const excludedDashed = session.isExcluded && !session.isArchived
+
   return (
     <>
-    <button
-      onClick={onClick}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        setContextMenu({ x: e.clientX, y: e.clientY })
-      }}
-      className="w-full text-left rounded-lg transition-all duration-100 group relative overflow-hidden"
-      style={{
-        backgroundColor: isActive ? 'var(--bg-raised)' : 'var(--bg-primary)',
-        border: `1px solid ${isActive ? session.color + '40' : 'var(--bg-raised)'}`,
-        opacity: session.isArchived ? 0.4 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-muted)'
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = 'var(--bg-raised)'
-      }}
-    >
-      {/* Color accent strip */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-[3px]"
-        style={
-          session.isExcluded && !session.isArchived
-            ? {
-                background: `repeating-linear-gradient(to bottom, ${isActive ? session.color : session.color + '80'} 0 3px, transparent 3px 6px)`,
-              }
-            : { backgroundColor: isActive ? session.color : session.color + '40' }
-        }
-      />
-
-      <div className="pl-3.5 pr-2.5 py-2">
-        {/* Row 1: name + status dot + time */}
-        <div className="flex items-center gap-2">
-          {renamingSessionId === session.id ? (
-            <input
-              ref={renameInputRef}
-              type="text"
-              defaultValue={session.displayName || session.name}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.currentTarget.blur()
-                } else if (e.key === 'Escape') {
-                  setRenamingSessionId(null)
-                }
-              }}
-              onBlur={(e) => {
-                const value = e.currentTarget.value.trim()
-                if (value !== '' && value !== session.name) {
-                  void setDisplayName(session.id, value)
-                } else if (value === '' || value === session.name) {
-                  void setDisplayName(session.id, '')
-                }
-                setRenamingSessionId(null)
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="text-[12px] font-semibold truncate flex-1 bg-transparent border-b outline-none"
-              style={{
-                color: isActive ? session.color : 'var(--text-primary)',
-                borderColor: 'var(--accent)',
-              }}
-            />
-          ) : (
-            <span
-              className="text-[12px] font-semibold truncate flex-1"
-              style={{ color: isActive ? session.color : 'var(--text-primary)' }}
-            >
-              {session.displayName || session.name}
-            </span>
-          )}
-          {session.remoteHost && (
-            <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"
-              style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
-              {session.remoteHost}
-            </span>
-          )}
-          {session.isContainer && (
-            <>
-              <span title={`Container: ${session.containerName}`} style={{ color: 'var(--container)' }}>
-                <Box size={12} />
-              </span>
-              {session.containerName && (
-                <span className="text-[8px] px-1 py-px rounded font-medium flex-shrink-0"
-                  style={{ color: 'var(--container)', backgroundColor: 'color-mix(in srgb, var(--container) 15%, var(--bg-raised))' }}>
-                  {session.containerName}
-                </span>
-              )}
-            </>
-          )}
-          {session.isExcluded && !session.isArchived && (
-            <span title="Excluded from grid" style={{ color: 'var(--text-muted)' }}>
-              <Grid2x2X size={12} />
-            </span>
-          )}
-          {session.enableAutoMode && (
-            <span title="Auto mode enabled" style={{ color: 'var(--accent)' }}>
-              <Bot size={12} />
-            </span>
-          )}
-          {session.skipPermissions && (
-            <span title="Skip Permissions enabled" style={{ color: 'var(--warning, #f59e0b)' }}>
-              <Zap size={12} />
-            </span>
-          )}
-          {showStatus(session) && (
-            <span
-              className={`w-[6px] h-[6px] rounded-full flex-shrink-0 ${pulseStatuses.has(session.status) ? 'status-pulse' : ''}`}
-              style={{ backgroundColor: statusColors[session.status] ?? 'var(--text-muted)' }}
-            />
-          )}
+      <button
+        onClick={onClick}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setContextMenu({ x: e.clientX, y: e.clientY })
+        }}
+        className="group relative w-full text-left transition-colors duration-100"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '12px 1fr auto',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 8px',
+          borderRadius: 6,
+          backgroundColor: isActive ? 'var(--amber-wash)' : 'transparent',
+          opacity: session.isArchived ? 0.5 : 1,
+          cursor: 'pointer',
+          border: 'none'
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) e.currentTarget.style.backgroundColor = 'var(--line-soft)'
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
+        }}
+      >
+        {/* Left accent rail (active only) */}
+        {isActive && (
           <span
-            className="text-[10px] tabular-nums flex-shrink-0 font-medium group-hover:opacity-0 transition-opacity duration-100"
-            style={{ color: 'var(--text-muted)' }}
-          >
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 6,
+              bottom: 6,
+              width: 2,
+              borderRadius: '0 2px 2px 0',
+              backgroundColor: 'var(--amber)'
+            }}
+          />
+        )}
+
+        {/* Column 1: Status dot */}
+        <span
+          aria-hidden
+          className={pulses ? 'status-pulse' : ''}
+          style={
+            excludedDashed
+              ? {
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  justifySelf: 'center',
+                  backgroundImage: `repeating-linear-gradient(45deg, ${dotColor} 0 2px, transparent 2px 4px)`
+                }
+              : {
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  justifySelf: 'center',
+                  backgroundColor: showStatus(session) ? dotColor : 'var(--ink-4)',
+                  boxShadow: '0 0 0 2px rgba(0,0,0,0.2)'
+                }
+          }
+        />
+
+        {/* Column 2: Name + meta */}
+        <span className="flex flex-col min-w-0" style={{ gap: 1 }}>
+          {/* Name row */}
+          <span className="flex items-center min-w-0" style={{ gap: 5 }}>
+            {renamingSessionId === session.id ? (
+              <input
+                ref={renameInputRef}
+                type="text"
+                defaultValue={session.displayName || session.name}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  else if (e.key === 'Escape') setRenamingSessionId(null)
+                }}
+                onBlur={(e) => {
+                  const value = e.currentTarget.value.trim()
+                  if (value !== '' && value !== session.name) {
+                    void setDisplayName(session.id, value)
+                  } else if (value === '' || value === session.name) {
+                    void setDisplayName(session.id, '')
+                  }
+                  setRenamingSessionId(null)
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="truncate flex-1 bg-transparent border-b outline-none"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--ink-0)',
+                  borderColor: 'var(--amber)'
+                }}
+              />
+            ) : (
+              <span
+                className="truncate"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: isActive ? 'var(--amber-hi)' : 'var(--ink-0)',
+                  flex: '0 1 auto',
+                  minWidth: 0
+                }}
+              >
+                {session.displayName || session.name}
+              </span>
+            )}
+
+            {session.enableAutoMode && (
+              <TagChip tone="auto" icon={<Bot size={8} />} title="Auto mode enabled">
+                auto
+              </TagChip>
+            )}
+            {session.skipPermissions && (
+              <TagChip tone="skip" icon={<Zap size={8} />} title="Skip permissions enabled">
+                skip
+              </TagChip>
+            )}
+            {session.isContainer && (
+              <TagChip tone="container" icon={<Box size={8} />} title={`Container: ${session.containerName ?? ''}`}>
+                {session.containerName ?? 'box'}
+              </TagChip>
+            )}
+            {session.remoteHost && (
+              <TagChip tone="host" title={`Remote host: ${session.remoteHost}`}>
+                {session.remoteHost}
+              </TagChip>
+            )}
+            {session.isExcluded && !session.isArchived && (
+              <span title="Excluded from grid" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
+                <Grid2x2X size={10} />
+              </span>
+            )}
+          </span>
+
+          {/* Meta row */}
+          {(session.gitBranch || session.workingDirectory) && (
+            <span
+              className="flex items-center min-w-0"
+              style={{
+                gap: 4,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9.5,
+                color: 'var(--ink-3)'
+              }}
+            >
+              {session.gitBranch ? (
+                <>
+                  <GitBranch size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+                  <span className="truncate">{session.gitBranch}</span>
+                </>
+              ) : session.workingDirectory && session.workingDirectory !== '~' ? (
+                <>
+                  <Folder size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+                  <span className="truncate">{shortenPath(session.workingDirectory)}</span>
+                </>
+              ) : null}
+            </span>
+          )}
+        </span>
+
+        {/* Column 3: Elapsed / delete */}
+        <span className="flex items-center" style={{ gap: 4, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-3)' }}>
+          <span className="group-hover:opacity-0 transition-opacity duration-100">
             {formatRelativeTime(session.lastActiveAt)}
           </span>
           <button
@@ -185,50 +281,22 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
               e.stopPropagation()
               void removeSession(session.id)
             }}
-            className="absolute right-2 top-2 p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity duration-100 hover:bg-[var(--bg-raised)]"
-            style={{ color: 'var(--error)' }}
+            className="absolute rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity duration-100"
+            style={{
+              right: 6,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              padding: 2,
+              color: 'var(--s-error)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-2)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
             title="Kill session"
           >
             <Trash2 size={12} />
           </button>
-        </div>
-
-        {/* Row 2: status + git branch */}
-        {(showStatus(session) || session.gitBranch) && (
-          <div className="flex items-center gap-1.5 mt-1">
-            {showStatus(session) && (
-              <span
-                className="text-[10px] font-bold uppercase tracking-wide"
-                style={{ color: statusColors[session.status] ?? 'var(--text-muted)' }}
-              >
-                {statusLabels[session.status] ?? session.status}
-              </span>
-            )}
-            {showStatus(session) && session.gitBranch && (
-              <span style={{ color: 'var(--text-muted)' }} className="text-[10px]">·</span>
-            )}
-            {session.gitBranch && (
-              <>
-                <GitBranch size={10} style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0" />
-                <span className="text-[10px] font-medium truncate" style={{ color: 'var(--text-secondary)' }}>
-                  {session.gitBranch}
-                </span>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Row 3: working directory */}
-        {session.workingDirectory && session.workingDirectory !== '~' && (
-          <div className="flex items-center gap-1 mt-1">
-            <Folder size={10} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
-            <span className="text-[10px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
-              {shortenPath(session.workingDirectory)}
-            </span>
-          </div>
-        )}
-      </div>
-    </button>
+        </span>
+      </button>
       {contextMenu && (
         <GroupContextMenu
           sessionId={session.id}

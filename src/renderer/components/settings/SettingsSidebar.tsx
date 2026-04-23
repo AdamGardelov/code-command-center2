@@ -49,14 +49,24 @@ const NAV_GROUPS: NavGroup[] = [
 export default function SettingsSidebar({ activeTab, onTabChange }: { activeTab: Tab; onTabChange: (tab: Tab) => void }): React.JSX.Element {
   return (
     <div
-      className="w-[180px] flex-shrink-0 border-r overflow-y-auto py-4 px-2.5"
-      style={{ borderColor: 'var(--bg-raised)' }}
+      className="w-[180px] flex-shrink-0 overflow-y-auto ccc-scroll"
+      style={{
+        backgroundColor: 'var(--bg-0)',
+        borderRight: '1px solid var(--line)',
+        padding: '18px 10px'
+      }}
     >
       {NAV_GROUPS.map((group) => (
         <div key={group.label}>
           <div
-            className="text-[9px] uppercase tracking-[1.2px] font-semibold px-2.5 pt-3 pb-1.5 first:pt-0"
-            style={{ color: 'var(--text-muted)' }}
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-3)',
+              padding: '12px 10px 6px'
+            }}
           >
             {group.label}
           </div>
@@ -67,10 +77,30 @@ export default function SettingsSidebar({ activeTab, onTabChange }: { activeTab:
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="flex items-center gap-2.5 w-full px-2.5 py-[6px] rounded-md text-xs transition-colors duration-100"
+                className="flex items-center w-full transition-colors duration-100"
                 style={{
-                  backgroundColor: isActive ? 'var(--bg-raised)' : 'transparent',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                  gap: 8,
+                  padding: '7px 10px',
+                  border: 'none',
+                  borderRadius: 6,
+                  backgroundColor: isActive ? 'var(--amber-wash)' : 'transparent',
+                  color: isActive ? 'var(--amber)' : 'var(--ink-2)',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+                    e.currentTarget.style.color = 'var(--ink-1)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = 'var(--ink-2)'
+                  }
                 }}
               >
                 <Icon size={14} />

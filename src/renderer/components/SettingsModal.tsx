@@ -62,38 +62,61 @@ export default function SettingsModal(): React.JSX.Element {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'var(--modal-backdrop)' }}
+      style={{
+        backgroundColor: 'var(--modal-backdrop)',
+        backdropFilter: 'blur(3px)',
+        animation: 'modal-fade 160ms ease'
+      }}
       onClick={handleBackdropClick}
     >
       <div
-        className="w-[720px] h-[80vh] flex rounded-xl border overflow-hidden"
+        className="flex overflow-hidden"
         style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--bg-raised)',
-          animation: 'modal-enter 150ms ease'
+          width: 720,
+          height: '80vh',
+          backgroundColor: 'var(--bg-1)',
+          border: '1px solid var(--line)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-modal)',
+          animation: 'modal-enter 180ms cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
       >
-        {/* Sidebar */}
         <SettingsSidebar activeTab={tab} onTabChange={setTab} />
 
-        {/* Content */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <div
+            className="flex items-center justify-between flex-shrink-0"
+            style={{ padding: '22px 26px 16px' }}
+          >
+            <h2
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--ink-0)',
+                letterSpacing: '-0.005em',
+                margin: 0
+              }}
+            >
               {TAB_TITLES[tab]}
             </h2>
             <button
               onClick={toggleSettings}
-              className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-              style={{ color: 'var(--text-muted)' }}
+              className="flex items-center justify-center rounded transition-colors duration-100"
+              style={{ width: 24, height: 24, color: 'var(--ink-3)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+                e.currentTarget.style.color = 'var(--ink-0)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = 'var(--ink-3)'
+              }}
             >
               <X size={14} />
             </button>
           </div>
 
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto ccc-scroll" style={{ padding: '0 26px 26px' }}>
             <ActiveTab />
           </div>
         </div>

@@ -106,14 +106,14 @@ export default function Layout(): React.JSX.Element {
             {/* Drag handle — thin line on the sidebar edge */}
             <div
               className="w-px flex-shrink-0 cursor-col-resize sidebar-drag-handle"
-              style={{ backgroundColor: 'var(--bg-raised)' }}
+              style={{ backgroundColor: 'var(--line)' }}
               onMouseDown={handleDragStart}
             />
           </>
         )}
 
         {/* Main area */}
-        <main className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-terminal)' }}>
+        <main className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-0)' }}>
           {sessions.length === 0 ? (
             <EmptyState />
           ) : viewMode === 'single' && activeSession ? (

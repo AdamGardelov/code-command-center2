@@ -1,6 +1,5 @@
 import { Minus, Square, X, Sun, Moon } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import logoSrc from '../assets/logo.png'
 
 export default function TitleBar(): React.JSX.Element {
   const theme = useSessionStore((s) => s.theme)
@@ -10,29 +9,56 @@ export default function TitleBar(): React.JSX.Element {
 
   return (
     <div
-      className="h-8 flex items-center justify-between select-none flex-shrink-0"
+      className="flex items-center select-none flex-shrink-0"
       style={{
-        backgroundColor: 'var(--bg-primary)',
+        height: 28,
+        gap: 10,
+        backgroundColor: 'var(--bg-0)',
+        borderBottom: '1px solid var(--line)',
         WebkitAppRegion: 'drag',
-        paddingLeft: isMac ? '78px' : '12px',
-        paddingRight: '12px'
+        paddingLeft: isMac ? '78px' : '10px',
+        paddingRight: '4px'
       } as React.CSSProperties}
     >
-      <div className="flex items-center gap-1.5">
-        <img src={logoSrc} alt="CCC" className="w-4 h-4" draggable={false} />
-        <span className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-          CCC
-        </span>
+      <div className="flex items-center" style={{ gap: 8 }}>
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, var(--amber) 0%, var(--amber-lo) 100%)',
+            color: 'var(--bg-0)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            fontWeight: 700,
+            lineHeight: 1
+          }}
+        >
+          C
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: 'var(--ink-2)',
+            letterSpacing: '0.02em'
+          }}
+        >
+          <span style={{ color: 'var(--amber)', fontWeight: 600 }}>CCC</span>
+          <span style={{ color: 'var(--ink-3)' }}> — Code Command Center</span>
+        </div>
       </div>
 
+      <div className="flex-1" />
+
       <div
-        className="flex items-center gap-0.5"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        className="flex items-center"
+        style={{ gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <button
           onClick={toggleTheme}
-          className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-          style={{ color: 'var(--text-muted)' }}
+          className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-2)]"
+          style={{ width: 28, height: 22, color: 'var(--ink-3)' }}
           title="Toggle theme (Ctrl+T)"
         >
           {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
@@ -41,22 +67,30 @@ export default function TitleBar(): React.JSX.Element {
           <>
             <button
               onClick={() => window.cccAPI.window.minimize()}
-              className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-              style={{ color: 'var(--text-muted)' }}
+              className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-2)]"
+              style={{ width: 28, height: 22, color: 'var(--ink-3)' }}
             >
               <Minus size={12} />
             </button>
             <button
               onClick={() => window.cccAPI.window.maximize()}
-              className="p-1 rounded transition-colors duration-100 hover:bg-[var(--bg-raised)]"
-              style={{ color: 'var(--text-muted)' }}
+              className="flex items-center justify-center rounded transition-colors duration-100 hover:bg-[var(--bg-2)]"
+              style={{ width: 28, height: 22, color: 'var(--ink-3)' }}
             >
               <Square size={10} />
             </button>
             <button
               onClick={() => window.cccAPI.window.close()}
-              className="p-1 rounded transition-colors duration-100 hover:bg-red-500/20 hover:text-red-400"
-              style={{ color: 'var(--text-muted)' }}
+              className="flex items-center justify-center rounded transition-colors duration-100"
+              style={{ width: 28, height: 22, color: 'var(--ink-3)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#c04a3c'
+                e.currentTarget.style.color = '#fff'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = ''
+                e.currentTarget.style.color = 'var(--ink-3)'
+              }}
             >
               <X size={12} />
             </button>
