@@ -305,6 +305,9 @@ export default function BranchPicker({
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const [focusIdx, setFocusIdx] = useState(0)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [fetching, setFetching] = useState(false)
+  const [fetchFailed, setFetchFailed] = useState(false)
+  const [fetchTick, setFetchTick] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -331,10 +334,39 @@ export default function BranchPicker({
     }
   }, [repoPath, remoteHost, refreshTick])
 
+  useEffect(() => {
+    let cancelled = false
+    setFetching(true)
+    setFetchFailed(false)
+    window.cccAPI.git
+      .fetchRemotes(repoPath, remoteHost)
+      .then((res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          setFetchFailed(true)
+          return
+        }
+        setRefreshTick((n) => n + 1)
+      })
+      .catch(() => {
+        if (!cancelled) setFetchFailed(true)
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [repoPath, remoteHost, fetchTick])
+
   const handleDelete = (path: string): void => {
     void window.cccAPI.git
       .removeWorktree(path, remoteHost)
       .then(() => setRefreshTick((n) => n + 1))
+  }
+
+  const handleManualRefresh = (): void => {
+    setFetchTick((n) => n + 1)
   }
 
   useEffect(() => {
@@ -448,7 +480,15 @@ export default function BranchPicker({
     <div className="branch-picker">
       <div className="bp-header">
         <div className="bp-search">
-          <GitBranch size={14} style={{ color: 'var(--amber)' }} />
+          <button
+            type="button"
+            className={`bp-refresh${fetching ? ' spinning' : ''}`}
+            onClick={handleManualRefresh}
+            title={fetching ? 'Fetching from origin…' : 'Refresh branch list from origin'}
+            disabled={fetching}
+          >
+            <GitBranch size={14} style={{ color: 'var(--amber)' }} />
+          </button>
           <input
             ref={inputRef}
             value={query}
@@ -461,6 +501,11 @@ export default function BranchPicker({
             <button type="button" className="bp-clear" onClick={() => setQuery('')} title="Clear">
               <X size={11} />
             </button>
+          )}
+          {fetchFailed && !fetching && (
+            <span className="bp-offline-chip" title="Couldn't reach origin — showing cached state">
+              offline — cached
+            </span>
           )}
         </div>
         <div className="bp-filters">
