@@ -227,62 +227,107 @@ export class GitService {
       '%(subject)'
     ].join(sep)
 
-    const out = this.exec(
+    const localOut = this.exec(
       ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/heads'],
       remoteHost
     )
-    if (!out) return []
 
     const now = Math.floor(Date.now() / 1000)
     const thirtyDays = 60 * 60 * 24 * 30
     const results: BranchMetadata[] = []
+    const localBranchNames = new Set<string>()
 
-    for (const line of out.split('\n')) {
-      if (!line.trim()) continue
-      const parts = line.split(sep)
-      const branch = parts[0] ?? ''
-      if (!branch) continue
-      const upstream = parts[1] ?? ''
-      const track = parts[2] ?? ''
-      const ts = parseInt(parts[3] ?? '0', 10) || 0
-      const author = parts[4] ?? ''
-      const subject = parts.slice(5).join(sep)
+    if (localOut) {
+      for (const line of localOut.split('\n')) {
+        if (!line.trim()) continue
+        const parts = line.split(sep)
+        const branch = parts[0] ?? ''
+        if (!branch) continue
+        localBranchNames.add(branch)
+        const upstream = parts[1] ?? ''
+        const track = parts[2] ?? ''
+        const ts = parseInt(parts[3] ?? '0', 10) || 0
+        const author = parts[4] ?? ''
+        const subject = parts.slice(5).join(sep)
 
-      let ahead = 0
-      let behind = 0
-      const aMatch = track.match(/ahead (\d+)/)
-      const bMatch = track.match(/behind (\d+)/)
-      if (aMatch) ahead = parseInt(aMatch[1], 10)
-      if (bMatch) behind = parseInt(bMatch[1], 10)
+        let ahead = 0
+        let behind = 0
+        const aMatch = track.match(/ahead (\d+)/)
+        const bMatch = track.match(/behind (\d+)/)
+        if (aMatch) ahead = parseInt(aMatch[1], 10)
+        if (bMatch) behind = parseInt(bMatch[1], 10)
 
-      const wt = worktreeByBranch.get(branch)
-      let dirty = false
-      if (wt) {
-        const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
-        dirty = !!status && status.trim().length > 0
+        const wt = worktreeByBranch.get(branch)
+        let dirty = false
+        if (wt) {
+          const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
+          dirty = !!status && status.trim().length > 0
+        }
+
+        const stale = behind > 40 || (ts > 0 && now - ts > thirtyDays && behind > 10)
+
+        results.push({
+          branch,
+          isMain: branch === defaultBranch,
+          hasWorktree: wt !== undefined,
+          worktreePath: wt?.path,
+          dirty,
+          ahead,
+          behind,
+          lastCommitSubject: subject,
+          lastCommitAuthor: author,
+          lastCommitTimestamp: ts,
+          remote: upstream || undefined,
+          stale,
+          remoteOnly: false
+        })
       }
+    }
 
-      const stale = behind > 40 || (ts > 0 && now - ts > thirtyDays && behind > 10)
+    // Append remote-only branches (present on origin, no local counterpart)
+    const remoteOut = this.exec(
+      ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/remotes/origin'],
+      remoteHost
+    )
 
-      results.push({
-        branch,
-        isMain: branch === defaultBranch,
-        hasWorktree: wt !== undefined,
-        worktreePath: wt?.path,
-        dirty,
-        ahead,
-        behind,
-        lastCommitSubject: subject,
-        lastCommitAuthor: author,
-        lastCommitTimestamp: ts,
-        remote: upstream || undefined,
-        stale
-      })
+    if (remoteOut) {
+      for (const line of remoteOut.split('\n')) {
+        if (!line.trim()) continue
+        const parts = line.split(sep)
+        const rawRef = parts[0] ?? ''
+        if (!rawRef) continue
+        // rawRef looks like "origin/feature/foo" — strip the remote prefix
+        const branch = rawRef.startsWith('origin/') ? rawRef.slice('origin/'.length) : rawRef
+        if (!branch || branch === 'HEAD') continue
+        if (localBranchNames.has(branch)) continue
+
+        const ts = parseInt(parts[3] ?? '0', 10) || 0
+        const author = parts[4] ?? ''
+        const subject = parts.slice(5).join(sep)
+
+        results.push({
+          branch,
+          isMain: false,
+          hasWorktree: false,
+          worktreePath: undefined,
+          dirty: false,
+          ahead: 0,
+          behind: 0,
+          lastCommitSubject: subject,
+          lastCommitAuthor: author,
+          lastCommitTimestamp: ts,
+          remote: rawRef,
+          stale: false,
+          remoteOnly: true
+        })
+      }
     }
 
     results.sort((a, b) => {
       if (a.isMain !== b.isMain) return a.isMain ? -1 : 1
       if (a.hasWorktree !== b.hasWorktree) return a.hasWorktree ? -1 : 1
+      // Local (non-remoteOnly) branches first, then remote-only
+      if (!!a.remoteOnly !== !!b.remoteOnly) return a.remoteOnly ? 1 : -1
       return b.lastCommitTimestamp - a.lastCommitTimestamp
     })
 
