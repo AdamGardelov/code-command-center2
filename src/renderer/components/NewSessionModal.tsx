@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { X, SquareTerminal, Server, Monitor, GitBranch, Zap, Bot, Box } from 'lucide-react'
+import { X, SquareTerminal, Server, Monitor, GitBranch, Zap, Bot, Box, Folder, ChevronDown } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import type { SessionType, Worktree, ContainerConfig } from '../../shared/types'
-import WorktreeCombobox from './WorktreeCombobox'
+import type { SessionType, ContainerConfig } from '../../shared/types'
+import BranchPicker, { type BranchPickerResult } from './BranchPicker'
 
 function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
   return (
@@ -235,13 +235,8 @@ export default function NewSessionModal(): React.JSX.Element {
   const [remoteHost, setRemoteHost] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<'repo' | 'existing' | 'new'>('repo')
-  const [branch, setBranch] = useState('')
-  const [branches, setBranches] = useState<string[]>([])
-  const [loadingBranches, setLoadingBranches] = useState(false)
-  const [worktrees, setWorktrees] = useState<Worktree[]>([])
-  const [loadingWorktrees, setLoadingWorktrees] = useState(false)
-  const [selectedWorktree, setSelectedWorktree] = useState<string | null>(null)
+  const [branchChoice, setBranchChoice] = useState<BranchPickerResult | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [enableAutoMode, setEnableAutoMode] = useState(defaultAutoMode)
   const [skipPermissions, setSkipPermissions] = useState(defaultSkipPermissions)
   const [codexFullAuto, setCodexFullAuto] = useState(defaultCodexFullAuto)
@@ -276,42 +271,6 @@ export default function NewSessionModal(): React.JSX.Element {
 
   if (!modalOpen) return <></>
 
-  const loadBranches = async (repoPath: string): Promise<void> => {
-    setLoadingBranches(true)
-    try {
-      const branchList = await window.cccAPI.git.listBranches(repoPath, remoteHost)
-      setBranches(branchList)
-    } catch {
-      setBranches([])
-    } finally {
-      setLoadingBranches(false)
-    }
-  }
-
-  const loadWorktrees = async (repoPath: string): Promise<void> => {
-    setLoadingWorktrees(true)
-    try {
-      const wts = await window.cccAPI.git.listWorktrees(repoPath, remoteHost)
-      setWorktrees(wts.filter(w => !w.isMain))
-    } catch {
-      setWorktrees([])
-    } finally {
-      setLoadingWorktrees(false)
-    }
-  }
-
-  const handleDeleteWorktree = async (worktreePath: string): Promise<void> => {
-    try {
-      await window.cccAPI.git.removeWorktree(worktreePath, remoteHost)
-      setWorktrees((prev) => prev.filter((wt) => wt.path !== worktreePath))
-      if (selectedWorktree === worktreePath) {
-        setSelectedWorktree(null)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete worktree')
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!name.trim() || creating) return
@@ -323,16 +282,18 @@ export default function NewSessionModal(): React.JSX.Element {
     try {
       let dir = workingDirectory.trim() || '~'
 
-      if (mode === 'new' && branch.trim()) {
-        const worktree = await window.cccAPI.git.addWorktree(
-          workingDirectory.trim(),
-          branch.trim(),
-          '',
-          remoteHost
-        )
-        dir = worktree.path
-      } else if (mode === 'existing' && selectedWorktree) {
-        dir = selectedWorktree
+      if (branchChoice && type !== 'shell' && workingDirectory.trim()) {
+        if (branchChoice.mode === 'existing' && branchChoice.worktreePath) {
+          dir = branchChoice.worktreePath
+        } else if (branchChoice.mode === 'create-worktree' || branchChoice.mode === 'new') {
+          const worktree = await window.cccAPI.git.addWorktree(
+            workingDirectory.trim(),
+            branchChoice.branch,
+            '',
+            remoteHost
+          )
+          dir = worktree.path
+        }
       }
 
       await createSession({
@@ -350,11 +311,7 @@ export default function NewSessionModal(): React.JSX.Element {
       setWorkingDirectory('')
       setType(enabledProviders[0] ?? 'claude')
       setRemoteHost(undefined)
-      setMode('repo')
-      setBranch('')
-      setBranches([])
-      setWorktrees([])
-      setSelectedWorktree(null)
+      setBranchChoice(null)
       setEnableAutoMode(defaultAutoMode)
       setSkipPermissions(defaultSkipPermissions)
       setCodexFullAuto(defaultCodexFullAuto)
@@ -437,7 +394,7 @@ export default function NewSessionModal(): React.JSX.Element {
           <div style={{ marginBottom: 14 }}>
             <FieldLabel>Where</FieldLabel>
             <div className="flex flex-wrap" style={{ gap: 6 }}>
-              <Chip active={remoteHost === undefined} onClick={() => setRemoteHost(undefined)}>
+              <Chip active={remoteHost === undefined} onClick={() => { setRemoteHost(undefined); setBranchChoice(null) }}>
                 <Monitor size={11} /> Local
               </Chip>
               {remoteHosts.map((rh) => {
@@ -447,7 +404,7 @@ export default function NewSessionModal(): React.JSX.Element {
                     key={rh.name}
                     active={remoteHost === rh.name}
                     disabled={!online}
-                    onClick={() => online && setRemoteHost(rh.name)}
+                    onClick={() => { if (online) { setRemoteHost(rh.name); setBranchChoice(null) } }}
                     title={online ? rh.name : `${rh.name} — offline`}
                   >
                     <Server size={11} /> {rh.name}
@@ -475,7 +432,7 @@ export default function NewSessionModal(): React.JSX.Element {
                     onClick={() => {
                       setName(fav.name)
                       setWorkingDirectory(fav.path)
-                      void loadBranches(fav.path)
+                      setBranchChoice(null)
                     }}
                   >
                     {fav.name}
@@ -574,7 +531,10 @@ export default function NewSessionModal(): React.JSX.Element {
               <input
                 type="text"
                 value={workingDirectory}
-                onChange={(e) => setWorkingDirectory(e.target.value)}
+                onChange={(e) => {
+                  setWorkingDirectory(e.target.value)
+                  setBranchChoice(null)
+                }}
                 placeholder="e.g. ~/projects/my-app"
                 style={inputStyle}
                 onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--amber-rim)' }}
@@ -583,69 +543,51 @@ export default function NewSessionModal(): React.JSX.Element {
             </div>
           )}
 
-          {/* Mode */}
+          {/* Branch / Worktree trigger */}
           {workingDirectory.trim() && type !== 'shell' && (
             <div>
-              <FieldLabel>Mode</FieldLabel>
-              <div className="flex flex-wrap" style={{ gap: 6 }}>
-                {(['repo', 'existing', 'new'] as const).map((m) => {
-                  const labels = { repo: 'Open in repo', existing: 'Worktree', new: 'New worktree' }
-                  return (
-                    <Chip
-                      key={m}
-                      active={mode === m}
-                      onClick={() => {
-                        setMode(m)
-                        if (m === 'existing' && worktrees.length === 0) {
-                          void loadWorktrees(workingDirectory.trim())
-                        }
-                      }}
-                    >
-                      {m !== 'repo' && <GitBranch size={11} />}
-                      {labels[m]}
-                    </Chip>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Worktree */}
-          {mode === 'existing' && (
-            <div>
-              <FieldLabel>Worktree</FieldLabel>
-              <WorktreeCombobox
-                worktrees={worktrees}
-                loading={loadingWorktrees}
-                selected={selectedWorktree}
-                onSelect={setSelectedWorktree}
-                onClear={() => setSelectedWorktree(null)}
-                onDelete={handleDeleteWorktree}
-              />
-            </div>
-          )}
-
-          {mode === 'new' && (
-            <div>
-              <FieldLabel>Branch</FieldLabel>
-              <input
-                type="text"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                placeholder="e.g. feature-auth"
-                list="branch-suggestions"
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--amber-rim)' }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--line)' }}
-              />
-              {branches.length > 0 && (
-                <datalist id="branch-suggestions">
-                  {branches.map(b => <option key={b} value={b} />)}
-                </datalist>
-              )}
-              {loadingBranches && (
-                <p style={{ fontSize: 10, marginTop: 4, color: 'var(--ink-3)' }}>Loading branches…</p>
-              )}
+              <FieldLabel>Branch / Worktree</FieldLabel>
+              <button
+                type="button"
+                className="branch-trigger"
+                onClick={() => setPickerOpen(true)}
+              >
+                <span className="branch-trigger__icon">
+                  {branchChoice?.worktreePath ? (
+                    <Folder size={13} style={{ color: 'var(--amber)' }} />
+                  ) : (
+                    <GitBranch size={13} style={{ color: branchChoice ? 'var(--ink-1)' : 'var(--ink-3)' }} />
+                  )}
+                </span>
+                <span className="branch-trigger__main">
+                  <span className="branch-trigger__name">
+                    {branchChoice ? (
+                      <>
+                        <span>{branchChoice.branch}</span>
+                        {branchChoice.mode === 'existing' && (
+                          <span className="branch-trigger__tag">worktree</span>
+                        )}
+                        {branchChoice.mode === 'create-worktree' && (
+                          <span className="branch-trigger__tag">checkout</span>
+                        )}
+                        {branchChoice.mode === 'new' && (
+                          <span className="branch-trigger__tag">new</span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--ink-3)' }}>Open repo as-is — pick branch to use a worktree…</span>
+                    )}
+                  </span>
+                  {branchChoice && (
+                    <span className="branch-trigger__sub">
+                      {branchChoice.worktreePath ?? 'a new worktree will be created on submit'}
+                    </span>
+                  )}
+                </span>
+                <span className="branch-trigger__kbd">
+                  <ChevronDown size={12} style={{ color: 'var(--ink-3)' }} />
+                </span>
+              </button>
             </div>
           )}
 
@@ -729,6 +671,75 @@ export default function NewSessionModal(): React.JSX.Element {
           </div>
         </form>
       </div>
+
+      {pickerOpen && workingDirectory.trim() && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: 'var(--modal-backdrop)',
+            backdropFilter: 'blur(3px)'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPickerOpen(false)
+          }}
+        >
+          <div
+            style={{
+              width: 760,
+              maxHeight: '85vh',
+              backgroundColor: 'var(--bg-1)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-modal)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'modal-enter 180ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+            }}
+          >
+            <div
+              className="flex items-center"
+              style={{ padding: '16px 18px 12px', gap: 10, borderBottom: '1px solid var(--line-soft)' }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-0)' }}>
+                Pick branch or worktree
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                for session in{' '}
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-1)' }}>
+                  {workingDirectory.trim()}
+                </span>
+              </div>
+              <div style={{ flex: 1 }} />
+              <button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                className="flex items-center justify-center rounded transition-colors duration-100"
+                style={{ width: 24, height: 24, color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-2)'
+                  e.currentTarget.style.color = 'var(--ink-0)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = 'var(--ink-3)'
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <BranchPicker
+              repoPath={workingDirectory.trim()}
+              remoteHost={remoteHost}
+              onCancel={() => setPickerOpen(false)}
+              onConfirm={(result) => {
+                setBranchChoice(result)
+                setPickerOpen(false)
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

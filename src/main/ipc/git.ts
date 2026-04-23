@@ -18,4 +18,8 @@ export function registerGitIpc(gitService: GitService): void {
   ipcMain.handle('git:list-branches', async (_event, repoPath: string, remoteHost?: string) => {
     return gitService.listBranches(repoPath, remoteHost)
   })
+
+  ipcMain.handle('git:branch-metadata', async (_event, repoPath: string, remoteHost?: string) => {
+    return gitService.getBranchMetadata(repoPath, remoteHost)
+  })
 }

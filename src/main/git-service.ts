@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
 import { basename, dirname, join } from 'path'
-import type { Worktree, CccConfig } from '../shared/types'
+import type { Worktree, BranchMetadata, CccConfig } from '../shared/types'
 import type { SshService } from './ssh-service'
 
 export class GitService {
@@ -185,6 +185,115 @@ export class GitService {
   getRepoRoot(dir: string, remoteHost?: string): string | null {
     const expanded = remoteHost ? dir : dir.replace(/^~/, process.env.HOME ?? '')
     return this.exec(['-C', expanded, 'rev-parse', '--show-toplevel'], remoteHost)
+  }
+
+  getBranchMetadata(repoPath: string, remoteHost?: string): BranchMetadata[] {
+    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+
+    const defaultBranch = this.getDefaultBranch(expanded, remoteHost)
+
+    const worktreeByBranch = new Map<string, Worktree>()
+    for (const wt of this.listWorktrees(repoPath, remoteHost)) {
+      if (wt.branch && wt.branch !== '(detached)' && wt.branch !== '(bare)') {
+        worktreeByBranch.set(wt.branch, wt)
+      }
+    }
+
+    const sep = '\x1f'
+    const format = [
+      '%(refname:short)',
+      '%(upstream:short)',
+      '%(upstream:track)',
+      '%(committerdate:unix)',
+      '%(authorname)',
+      '%(subject)'
+    ].join(sep)
+
+    const out = this.exec(
+      ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/heads'],
+      remoteHost
+    )
+    if (!out) return []
+
+    const now = Math.floor(Date.now() / 1000)
+    const thirtyDays = 60 * 60 * 24 * 30
+    const results: BranchMetadata[] = []
+
+    for (const line of out.split('\n')) {
+      if (!line.trim()) continue
+      const parts = line.split(sep)
+      const branch = parts[0] ?? ''
+      if (!branch) continue
+      const upstream = parts[1] ?? ''
+      const track = parts[2] ?? ''
+      const ts = parseInt(parts[3] ?? '0', 10) || 0
+      const author = parts[4] ?? ''
+      const subject = parts.slice(5).join(sep)
+
+      let ahead = 0
+      let behind = 0
+      const aMatch = track.match(/ahead (\d+)/)
+      const bMatch = track.match(/behind (\d+)/)
+      if (aMatch) ahead = parseInt(aMatch[1], 10)
+      if (bMatch) behind = parseInt(bMatch[1], 10)
+
+      const wt = worktreeByBranch.get(branch)
+      let dirty = false
+      if (wt) {
+        const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
+        dirty = !!status && status.trim().length > 0
+      }
+
+      const stale = behind > 40 || (ts > 0 && now - ts > thirtyDays && behind > 10)
+
+      results.push({
+        branch,
+        isMain: branch === defaultBranch,
+        hasWorktree: wt !== undefined,
+        worktreePath: wt?.path,
+        dirty,
+        ahead,
+        behind,
+        lastCommitSubject: subject,
+        lastCommitAuthor: author,
+        lastCommitTimestamp: ts,
+        remote: upstream || undefined,
+        stale
+      })
+    }
+
+    results.sort((a, b) => {
+      if (a.isMain !== b.isMain) return a.isMain ? -1 : 1
+      if (a.hasWorktree !== b.hasWorktree) return a.hasWorktree ? -1 : 1
+      return b.lastCommitTimestamp - a.lastCommitTimestamp
+    })
+
+    return results
+  }
+
+  private getDefaultBranch(repoPath: string, remoteHost?: string): string {
+    const headRef = this.exec(
+      ['-C', repoPath, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD'],
+      remoteHost
+    )
+    if (headRef) return headRef.replace(/^origin\//, '').trim()
+
+    const common = this.exec(
+      [
+        '-C',
+        repoPath,
+        'for-each-ref',
+        '--format=%(refname:short)',
+        'refs/heads/main',
+        'refs/heads/master'
+      ],
+      remoteHost
+    )
+    if (common) {
+      const first = common.split('\n').find((b) => b.trim())
+      if (first) return first.trim()
+    }
+    return 'main'
   }
 
   resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string): string {
