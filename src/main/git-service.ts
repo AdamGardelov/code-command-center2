@@ -20,7 +20,11 @@ export class GitService {
     return this.execDetailed(args, remoteHost).stdout
   }
 
-  private execDetailed(args: string[], remoteHost?: string): { stdout: string | null; stderr: string } {
+  private execDetailed(
+    args: string[],
+    remoteHost?: string,
+    timeoutMs = 10000
+  ): { stdout: string | null; stderr: string } {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
@@ -31,7 +35,7 @@ export class GitService {
     try {
       const stdout = execFileSync('git', args, {
         encoding: 'utf-8',
-        timeout: 10000,
+        timeout: timeoutMs,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim()
       return { stdout, stderr: '' }
@@ -182,7 +186,17 @@ export class GitService {
     return [...cleaned].sort()
   }
 
-  fetchRemotes(_repoPath: string, _remoteHost?: string): { ok: boolean; error?: string } {
+  fetchRemotes(repoPath: string, remoteHost?: string): { ok: boolean; error?: string } {
+    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+    const timeout = remoteHost ? 30000 : 15000
+    const result = this.execDetailed(
+      ['-C', expanded, 'fetch', '--prune', 'origin'],
+      remoteHost,
+      timeout
+    )
+    if (result.stdout === null) {
+      return { ok: false, error: result.stderr || 'fetch failed' }
+    }
     return { ok: true }
   }
 
