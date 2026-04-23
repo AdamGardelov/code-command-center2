@@ -22,7 +22,7 @@ interface BranchPickerProps {
   onConfirm: (result: BranchPickerResult) => void
 }
 
-type FilterMode = 'all' | 'worktrees' | 'in-use' | 'stale'
+type FilterMode = 'all' | 'worktrees' | 'in-use' | 'stale' | 'remote'
 
 interface MatchResult {
   score: number
@@ -385,7 +385,8 @@ export default function BranchPicker({
       all: branches.length,
       worktrees: branches.filter((b) => b.hasWorktree).length,
       stale: branches.filter((b) => b.stale).length,
-      inUse: branches.filter((b) => !!sessionUsingBranch(sessions, b)).length
+      inUse: branches.filter((b) => !!sessionUsingBranch(sessions, b)).length,
+      remote: branches.filter((b) => b.remoteOnly).length
     }),
     [branches, sessions]
   )
@@ -395,6 +396,7 @@ export default function BranchPicker({
       if (filterMode === 'worktrees') return b.hasWorktree
       if (filterMode === 'stale') return b.stale
       if (filterMode === 'in-use') return !!sessionUsingBranch(sessions, b)
+      if (filterMode === 'remote') return b.remoteOnly
       return true
     })
 
@@ -420,7 +422,7 @@ export default function BranchPicker({
       for (const row of matched) withMeta.push(row)
     }
 
-    const exact = base.some((b) => b.branch === query)
+    const exact = branches.some((b) => b.branch === query)
     return { scored: withMeta, isNew: query.length > 0 && !exact }
   }, [branches, filterMode, query, sessions])
 
@@ -523,6 +525,7 @@ export default function BranchPicker({
               ['all', 'All branches', counts.all],
               ['worktrees', 'With worktree', counts.worktrees],
               ['in-use', 'In use', counts.inUse],
+              ['remote', 'Remote', counts.remote],
               ['stale', 'Stale', counts.stale]
             ] as const
           ).map(([k, label, n]) => (
