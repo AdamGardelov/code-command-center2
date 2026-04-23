@@ -94,6 +94,21 @@ export interface Worktree {
   repoPath: string
 }
 
+export interface BranchMetadata {
+  branch: string
+  isMain: boolean
+  hasWorktree: boolean
+  worktreePath?: string
+  dirty: boolean
+  ahead: number
+  behind: number
+  lastCommitSubject: string
+  lastCommitAuthor: string
+  lastCommitTimestamp: number
+  remote?: string
+  stale: boolean
+}
+
 export interface PrReviewer {
   login: string
   state: 'pending' | 'approved' | 'changes_requested'
@@ -262,6 +277,7 @@ export interface CccAPI {
     addWorktree: (repoPath: string, branch: string, targetPath: string, remoteHost?: string) => Promise<Worktree>
     removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>
     listBranches: (repoPath: string, remoteHost?: string) => Promise<string[]>
+    getBranchMetadata: (repoPath: string, remoteHost?: string) => Promise<BranchMetadata[]>
   }
   group: {
     create: (name: string) => Promise<SessionGroup>

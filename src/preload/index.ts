@@ -122,7 +122,9 @@ const api: CccAPI = {
     removeWorktree: (worktreePath: string, remoteHost?: string) =>
       ipcRenderer.invoke('git:remove-worktree', worktreePath, remoteHost),
     listBranches: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:list-branches', repoPath, remoteHost)
+      ipcRenderer.invoke('git:list-branches', repoPath, remoteHost),
+    getBranchMetadata: (repoPath: string, remoteHost?: string) =>
+      ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost)
   },
   group: {
     create: (name: string): Promise<SessionGroup> => ipcRenderer.invoke('group:create', name),

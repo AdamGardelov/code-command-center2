@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X } from 'lucide-react'
+import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X, Server } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
@@ -37,36 +37,89 @@ const pulseStatuses = new Set(['working', 'waiting'])
 
 const showStatus = (session: Session): boolean => session.type !== 'shell'
 
-interface TagChipProps {
-  tone: 'auto' | 'skip' | 'container' | 'host'
+type FlagTone = 'auto' | 'skip' | 'container' | 'host'
+
+interface SessionFlag {
+  tone: FlagTone
+  label: string
+  title: string
   icon?: React.ReactNode
-  children: React.ReactNode
-  title?: string
 }
 
-function TagChip({ tone, icon, children, title }: TagChipProps): React.JSX.Element {
-  const palette: Record<TagChipProps['tone'], { bg: string; fg: string }> = {
-    auto: {
-      bg: 'color-mix(in srgb, var(--amber) 18%, transparent)',
-      fg: 'var(--amber)'
-    },
-    skip: {
-      bg: 'color-mix(in srgb, var(--s-error) 18%, transparent)',
-      fg: 'var(--s-error)'
-    },
-    container: {
-      bg: 'color-mix(in srgb, var(--container) 18%, transparent)',
-      fg: 'var(--container)'
-    },
-    host: {
-      bg: 'var(--bg-2)',
-      fg: 'var(--ink-2)'
-    }
+function collectFlags(session: Session): SessionFlag[] {
+  const flags: SessionFlag[] = []
+  if (session.enableAutoMode) {
+    flags.push({ tone: 'auto', label: 'auto', title: 'Auto mode enabled', icon: <Bot size={8} /> })
   }
-  const { bg, fg } = palette[tone]
+  if (session.skipPermissions) {
+    flags.push({ tone: 'skip', label: 'skip', title: 'Skip permissions enabled', icon: <Zap size={8} /> })
+  }
+  if (session.isContainer) {
+    flags.push({
+      tone: 'container',
+      label: session.containerName ?? 'box',
+      title: `Container: ${session.containerName ?? ''}`,
+      icon: <Box size={8} />
+    })
+  }
+  if (session.remoteHost) {
+    flags.push({
+      tone: 'host',
+      label: session.remoteHost,
+      title: `Remote host: ${session.remoteHost}`,
+      icon: <Server size={8} />
+    })
+  }
+  return flags
+}
+
+const flagPalette: Record<FlagTone, { bg: string; fg: string; dot: string }> = {
+  auto: {
+    bg: 'color-mix(in srgb, var(--amber) 18%, transparent)',
+    fg: 'var(--amber)',
+    dot: 'var(--amber)'
+  },
+  skip: {
+    bg: 'color-mix(in srgb, var(--s-error) 18%, transparent)',
+    fg: 'var(--s-error)',
+    dot: 'var(--s-error)'
+  },
+  container: {
+    bg: 'color-mix(in srgb, var(--container) 18%, transparent)',
+    fg: 'var(--container)',
+    dot: 'var(--container)'
+  },
+  host: {
+    bg: 'var(--bg-2)',
+    fg: 'var(--ink-2)',
+    dot: 'var(--ink-2)'
+  }
+}
+
+function FlagDot({ flag }: { flag: SessionFlag }): React.JSX.Element {
+  const { dot } = flagPalette[flag.tone]
+  const glow = flag.tone === 'auto' ? `0 0 4px color-mix(in srgb, ${dot} 60%, transparent)` : undefined
   return (
     <span
-      title={title}
+      aria-hidden
+      title={flag.title}
+      style={{
+        width: 5,
+        height: 5,
+        borderRadius: '50%',
+        backgroundColor: dot,
+        boxShadow: glow,
+        flexShrink: 0
+      }}
+    />
+  )
+}
+
+function FlagPill({ flag }: { flag: SessionFlag }): React.JSX.Element {
+  const { bg, fg } = flagPalette[flag.tone]
+  return (
+    <span
+      title={flag.title}
       className="inline-flex items-center flex-shrink-0"
       style={{
         fontFamily: 'var(--font-mono)',
@@ -79,8 +132,8 @@ function TagChip({ tone, icon, children, title }: TagChipProps): React.JSX.Eleme
         gap: 3
       }}
     >
-      {icon}
-      {children}
+      {flag.icon}
+      {flag.label}
     </span>
   )
 }
@@ -103,6 +156,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
   const dotColor = statusColors[session.status] ?? 'var(--ink-3)'
   const pulses = pulseStatuses.has(session.status)
   const excludedDashed = session.isExcluded && !session.isArchived
+  const flags = collectFlags(session)
 
   return (
     <>
@@ -112,7 +166,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
           e.preventDefault()
           setContextMenu({ x: e.clientX, y: e.clientY })
         }}
-        className="group relative w-full text-left transition-colors duration-100"
+        className={`scard group relative w-full text-left transition-colors duration-100${isActive ? ' active' : ''}`}
         style={{
           display: 'grid',
           gridTemplateColumns: '12px 1fr auto',
@@ -174,8 +228,8 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
 
         {/* Column 2: Name + meta */}
         <span className="flex flex-col min-w-0" style={{ gap: 1 }}>
-          {/* Name row */}
-          <span className="flex items-center min-w-0" style={{ gap: 5 }}>
+          {/* Row 1 — name + tiny flag dots */}
+          <span className="flex items-center min-w-0" style={{ gap: 6 }}>
             {renamingSessionId === session.id ? (
               <input
                 ref={renameInputRef}
@@ -205,12 +259,12 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
               />
             ) : (
               <span
-                className="truncate"
+                className="scard__name truncate"
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
                   color: isActive ? 'var(--amber-hi)' : 'var(--ink-0)',
-                  flex: '0 1 auto',
+                  flex: '1 1 auto',
                   minWidth: 0
                 }}
               >
@@ -218,25 +272,12 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
               </span>
             )}
 
-            {session.enableAutoMode && (
-              <TagChip tone="auto" icon={<Bot size={8} />} title="Auto mode enabled">
-                auto
-              </TagChip>
-            )}
-            {session.skipPermissions && (
-              <TagChip tone="skip" icon={<Zap size={8} />} title="Skip permissions enabled">
-                skip
-              </TagChip>
-            )}
-            {session.isContainer && (
-              <TagChip tone="container" icon={<Box size={8} />} title={`Container: ${session.containerName ?? ''}`}>
-                {session.containerName ?? 'box'}
-              </TagChip>
-            )}
-            {session.remoteHost && (
-              <TagChip tone="host" title={`Remote host: ${session.remoteHost}`}>
-                {session.remoteHost}
-              </TagChip>
+            {flags.length > 0 && (
+              <span className="scard__flags inline-flex items-center flex-shrink-0" style={{ gap: 3 }} aria-hidden>
+                {flags.map((f) => (
+                  <FlagDot key={f.tone + f.label} flag={f} />
+                ))}
+              </span>
             )}
             {session.isExcluded && !session.isArchived && (
               <span title="Excluded from grid" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
@@ -245,30 +286,50 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
             )}
           </span>
 
-          {/* Meta row */}
-          {(session.gitBranch || session.workingDirectory) && (
-            <span
-              className="flex items-center min-w-0"
-              style={{
-                gap: 4,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 9.5,
-                color: 'var(--ink-3)'
-              }}
-            >
-              {session.gitBranch ? (
-                <>
-                  <GitBranch size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                  <span className="truncate">{session.gitBranch}</span>
-                </>
-              ) : session.workingDirectory && session.workingDirectory !== '~' ? (
-                <>
-                  <Folder size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                  <span className="truncate">{shortenPath(session.workingDirectory)}</span>
-                </>
-              ) : null}
-            </span>
-          )}
+          {/* Row 2 — branch/dir + (on hover/active) labeled pills */}
+          {(() => {
+            const hasBranch = !!session.gitBranch
+            const hasDir = !!session.workingDirectory && session.workingDirectory !== '~'
+            const hasFlags = flags.length > 0
+            if (!hasBranch && !hasDir && !hasFlags) return null
+            return (
+              <span
+                className="flex items-center min-w-0"
+                style={{
+                  gap: 5,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 9.5,
+                  color: 'var(--ink-3)'
+                }}
+              >
+                {hasBranch ? (
+                  <>
+                    <GitBranch size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+                    <span className="truncate" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                      {session.gitBranch}
+                    </span>
+                  </>
+                ) : hasDir ? (
+                  <>
+                    <Folder size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+                    <span className="truncate" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                      {shortenPath(session.workingDirectory)}
+                    </span>
+                  </>
+                ) : (
+                  <span style={{ flex: '1 1 auto', minWidth: 0 }} />
+                )}
+
+                {hasFlags && (
+                  <span className="scard__tags inline-flex items-center flex-shrink-0" style={{ gap: 3 }}>
+                    {flags.map((f) => (
+                      <FlagPill key={f.tone + f.label} flag={f} />
+                    ))}
+                  </span>
+                )}
+              </span>
+            )
+          })()}
         </span>
 
         {/* Column 3: Elapsed / delete */}
