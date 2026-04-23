@@ -106,7 +106,7 @@ export class GitService {
     return worktrees
   }
 
-  addWorktree(repoPath: string, branch: string, targetPath: string, remoteHost?: string): Worktree {
+  addWorktree(repoPath: string, branch: string, targetPath: string, _mode?: 'existing-local' | 'track-remote' | 'new-branch', remoteHost?: string): Worktree {
     // Strip ref prefixes users may paste or pick from branch lists
     branch = branch.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
@@ -180,6 +180,10 @@ export class GitService {
       cleaned.add(b)
     }
     return [...cleaned].sort()
+  }
+
+  fetchRemotes(_repoPath: string, _remoteHost?: string): { ok: boolean; error?: string } {
+    return { ok: true }
   }
 
   getRepoRoot(dir: string, remoteHost?: string): string | null {

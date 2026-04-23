@@ -290,6 +290,7 @@ export default function NewSessionModal(): React.JSX.Element {
             workingDirectory.trim(),
             branchChoice.branch,
             '',
+            undefined,
             remoteHost
           )
           dir = worktree.path
