@@ -281,7 +281,7 @@ export interface CccAPI {
       repoPath: string,
       branch: string,
       targetPath: string,
-      mode?: WorktreeCreateMode,
+      mode: WorktreeCreateMode,
       remoteHost?: string
     ) => Promise<Worktree>
     removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>

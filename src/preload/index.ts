@@ -121,7 +121,7 @@ const api: CccAPI = {
       repoPath: string,
       branch: string,
       targetPath: string,
-      mode?: WorktreeCreateMode,
+      mode: WorktreeCreateMode,
       remoteHost?: string
     ) => ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, mode, remoteHost),
     removeWorktree: (worktreePath: string, remoteHost?: string) =>

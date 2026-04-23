@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
 import { basename, dirname, join } from 'path'
-import type { Worktree, BranchMetadata, CccConfig } from '../shared/types'
+import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode } from '../shared/types'
 import type { SshService } from './ssh-service'
 
 export class GitService {
@@ -110,13 +110,17 @@ export class GitService {
     return worktrees
   }
 
-  addWorktree(repoPath: string, branch: string, targetPath: string, _mode?: 'existing-local' | 'track-remote' | 'new-branch', remoteHost?: string): Worktree {
-    // Strip ref prefixes users may paste or pick from branch lists
+  addWorktree(
+    repoPath: string,
+    branch: string,
+    targetPath: string,
+    mode: WorktreeCreateMode,
+    remoteHost?: string
+  ): Worktree {
     branch = branch.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
     const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const expandedTarget = remoteHost ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
 
-    // Ensure parent directory exists — git worktree add requires it
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
@@ -130,17 +134,42 @@ export class GitService {
       }
     }
 
-    // Try existing branch first, fall back to new branch
-    const existing = this.execDetailed(['-C', expanded, 'worktree', 'add', expandedTarget, branch], remoteHost)
-    let result: string | null = existing.stdout
-    let lastStderr = existing.stderr
-    if (result === null) {
-      const created = this.execDetailed(['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget], remoteHost)
-      result = created.stdout
-      if (result === null) lastStderr = created.stderr || lastStderr
+    let result: { stdout: string | null; stderr: string }
+    if (mode === 'new-branch') {
+      result = this.execDetailed(
+        ['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget],
+        remoteHost
+      )
+    } else {
+      // existing-local OR track-remote — git DWIMs to origin/<branch> for track-remote
+      // because the remote ref is present (caller should have called fetchRemotes first).
+      result = this.execDetailed(
+        ['-C', expanded, 'worktree', 'add', expandedTarget, branch],
+        remoteHost
+      )
     }
-    if (result === null) {
-      throw new Error(`Failed to create worktree for branch "${branch}" at ${expandedTarget}: ${lastStderr}`)
+
+    if (result.stdout === null) {
+      throw new Error(
+        `Failed to create worktree for branch "${branch}" at ${expandedTarget}: ${result.stderr}`
+      )
+    }
+
+    if (mode === 'new-branch') {
+      // Preconfigure upstream so first `git push` (no -u) lands on origin/<branch>.
+      const setRemote = this.execDetailed(
+        ['-C', expanded, 'config', `branch.${branch}.remote`, 'origin'],
+        remoteHost
+      )
+      const setMerge = this.execDetailed(
+        ['-C', expanded, 'config', `branch.${branch}.merge`, `refs/heads/${branch}`],
+        remoteHost
+      )
+      if (setRemote.stdout === null || setMerge.stdout === null) {
+        console.warn(
+          `Worktree created but failed to preconfigure upstream for "${branch}". First push will need -u.`
+        )
+      }
     }
 
     this.syncPaths(expanded, expandedTarget, remoteHost)

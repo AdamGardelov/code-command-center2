@@ -14,7 +14,7 @@ export function registerGitIpc(gitService: GitService): void {
       repoPath: string,
       branch: string,
       targetPath: string,
-      mode?: WorktreeCreateMode,
+      mode: WorktreeCreateMode,
       remoteHost?: string
     ) => {
       const resolvedPath = targetPath || gitService.resolveWorktreePath(repoPath, branch, remoteHost)

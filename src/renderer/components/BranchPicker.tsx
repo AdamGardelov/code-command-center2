@@ -3,8 +3,14 @@ import { Folder, GitBranch, Plus, X } from 'lucide-react'
 import type { BranchMetadata, Session } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 
+export type BranchPickerMode =
+  | 'existing-worktree'
+  | 'existing-local'
+  | 'track-remote'
+  | 'new-branch'
+
 export interface BranchPickerResult {
-  mode: 'existing' | 'create-worktree' | 'new'
+  mode: BranchPickerMode
   branch: string
   worktreePath?: string
 }
@@ -392,8 +398,13 @@ export default function BranchPicker({
   const hovered = isNew && focusIdx === 0 ? null : scored[isNew ? focusIdx - 1 : focusIdx] ?? null
 
   const confirmRow = (row: ScoredBranch): void => {
+    let mode: BranchPickerMode
+    if (row.meta.hasWorktree) mode = 'existing-worktree'
+    else if (row.meta.remoteOnly) mode = 'track-remote'
+    else mode = 'existing-local'
+
     onConfirm({
-      mode: row.meta.hasWorktree ? 'existing' : 'create-worktree',
+      mode,
       branch: row.meta.branch,
       worktreePath: row.meta.worktreePath
     })
@@ -401,7 +412,7 @@ export default function BranchPicker({
 
   const confirmFocused = (): void => {
     if (isNew && focusIdx === 0) {
-      onConfirm({ mode: 'new', branch: query.trim() })
+      onConfirm({ mode: 'new-branch', branch: query.trim() })
       return
     }
     const row = scored[isNew ? focusIdx - 1 : focusIdx]
@@ -480,7 +491,7 @@ export default function BranchPicker({
         {!loading && isNew && (
           <div
             className={`bp-row new${focusIdx === 0 ? ' selected' : ''}`}
-            onClick={() => onConfirm({ mode: 'new', branch: query.trim() })}
+            onClick={() => onConfirm({ mode: 'new-branch', branch: query.trim() })}
             data-idx={0}
           >
             <div className="bp-row__icon">
