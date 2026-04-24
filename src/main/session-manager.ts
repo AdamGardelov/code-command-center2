@@ -110,11 +110,11 @@ function tmuxSessionName(name: string): string {
 export class SessionManager {
   private sessions: Map<string, Session> = new Map()
   private colorIndex = 0
-  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined } | null = null
+  private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined; pruneSessionName(sessionName: string): void } | null = null
   private sshService: SshService | null = null
   private containerService: ContainerService | null = null
 
-  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined }): void {
+  setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined; pruneSessionName(sessionName: string): void }): void {
     this.configService = service
   }
 
@@ -504,12 +504,7 @@ export class SessionManager {
     session.status = 'stopped'
     this.sessions.delete(id)
 
-    const config = this.configService?.get()
-    if (config?.containerSessions?.[session.name]) {
-      const containerSessions = { ...config.containerSessions }
-      delete containerSessions[session.name]
-      this.configService?.update({ containerSessions })
-    }
+    this.configService?.pruneSessionName(session.name)
   }
 
   getById(id: string): Session | undefined {

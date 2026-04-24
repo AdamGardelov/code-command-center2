@@ -227,6 +227,34 @@ export class ConfigService {
     this.save(this.config)
   }
 
+  pruneSessionName(sessionName: string): void {
+    let changed = false
+    if (this.config.sessionDisplayNames[sessionName] !== undefined) {
+      delete this.config.sessionDisplayNames[sessionName]
+      changed = true
+    }
+    if (this.config.containerSessions[sessionName] !== undefined) {
+      delete this.config.containerSessions[sessionName]
+      changed = true
+    }
+    const archivedIdx = this.config.archivedSessions.indexOf(sessionName)
+    if (archivedIdx >= 0) {
+      this.config.archivedSessions.splice(archivedIdx, 1)
+      changed = true
+    }
+    const excludedIdx = this.config.excludedSessions.indexOf(sessionName)
+    if (excludedIdx >= 0) {
+      this.config.excludedSessions.splice(excludedIdx, 1)
+      changed = true
+    }
+    const mutedIdx = this.config.mutedSessions.indexOf(sessionName)
+    if (mutedIdx >= 0) {
+      this.config.mutedSessions.splice(mutedIdx, 1)
+      changed = true
+    }
+    if (changed) this.save(this.config)
+  }
+
   get(): CccConfig {
     return this.config
   }
