@@ -16,15 +16,37 @@ export class GitService {
     this.configService = service
   }
 
-  private exec(args: string[], remoteHost?: string): string | null {
-    return this.execDetailed(args, remoteHost).stdout
+  private exec(args: string[], remoteHost?: string, containerName?: string): string | null {
+    return this.execDetailed(args, remoteHost, 10000, containerName).stdout
   }
 
   private execDetailed(
     args: string[],
     remoteHost?: string,
-    timeoutMs = 10000
+    timeoutMs = 10000,
+    containerName?: string
   ): { stdout: string | null; stderr: string } {
+    if (containerName) {
+      const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
+      if (remoteHost && this.sshService) {
+        const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+        const sshHost = hostConfig?.host ?? remoteHost
+        const stdout = this.sshService.exec(sshHost, `docker exec ${containerName} sh -c "git ${escaped}"`)
+        return { stdout, stderr: stdout === null ? 'remote docker exec git failed' : '' }
+      }
+      try {
+        const stdout = execFileSync('docker', ['exec', containerName, 'sh', '-c', `git ${escaped}`], {
+          encoding: 'utf-8',
+          timeout: timeoutMs,
+          stdio: ['pipe', 'pipe', 'pipe']
+        }).trim()
+        return { stdout, stderr: '' }
+      } catch (err) {
+        const e = err as { stderr?: Buffer | string; message?: string }
+        const stderr = (e.stderr ? e.stderr.toString() : e.message ?? 'unknown error').trim()
+        return { stdout: null, stderr }
+      }
+    }
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
