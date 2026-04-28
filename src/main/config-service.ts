@@ -32,6 +32,7 @@ const DEFAULT_CONFIG: CccConfig = {
   containerSessions: {},
   gridLayout: null,
   gridPresets: {},
+  defaultDestinationId: null,
 }
 
 export class ConfigService {
@@ -84,6 +85,7 @@ export class ConfigService {
           containerSessions: parsed.containerSessions && typeof parsed.containerSessions === 'object' ? parsed.containerSessions : {},
           gridLayout: parsed.gridLayout ?? null,
           gridPresets: parsed.gridPresets && typeof parsed.gridPresets === 'object' ? parsed.gridPresets : {},
+          defaultDestinationId: typeof parsed.defaultDestinationId === 'string' ? parsed.defaultDestinationId : null,
           prConfig: parsed.prConfig && typeof parsed.prConfig === 'object'
             ? {
                 githubOrg: typeof parsed.prConfig.githubOrg === 'string' ? parsed.prConfig.githubOrg : '',
@@ -165,6 +167,7 @@ export class ConfigService {
     if (partial.containerSessions !== undefined) this.config.containerSessions = partial.containerSessions
     if (partial.gridLayout !== undefined) this.config.gridLayout = partial.gridLayout
     if (partial.gridPresets !== undefined) this.config.gridPresets = partial.gridPresets
+    if (partial.defaultDestinationId !== undefined) this.config.defaultDestinationId = partial.defaultDestinationId
 
     this.save(this.config)
     return this.config

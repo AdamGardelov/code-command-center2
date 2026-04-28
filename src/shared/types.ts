@@ -212,6 +212,7 @@ export interface CccConfig {
   containerSessions: Record<string, string>
   gridLayout?: SplitNode | null
   gridPresets?: Record<string, string>
+  defaultDestinationId?: string | null
 }
 
 export type UpdaterStatus =
