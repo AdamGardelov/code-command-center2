@@ -116,6 +116,30 @@ export default function ContainersSettings(): React.JSX.Element {
                   <option key={h.name} value={h.name}>{h.name}</option>
                 ))}
               </select>
+              <label className="flex items-center gap-2 cursor-pointer mt-1">
+                <input
+                  type="checkbox"
+                  checked={!!newContainer.containerInternalPaths}
+                  onChange={(e) => setNewContainer({
+                    ...newContainer,
+                    containerInternalPaths: e.target.checked || undefined,
+                    worktreeBaseDir: e.target.checked ? newContainer.worktreeBaseDir : undefined
+                  })}
+                  className="accent-[var(--accent)]"
+                />
+                <span className="text-[11px]" style={{ color: 'var(--text-primary)' }}>
+                  Repos live inside container
+                </span>
+              </label>
+              {newContainer.containerInternalPaths && (
+                <input
+                  className="w-full text-[11px] px-2 py-1 rounded"
+                  style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                  placeholder="Worktree folder (e.g. /repos/worktrees)"
+                  value={newContainer.worktreeBaseDir ?? ''}
+                  onChange={(e) => setNewContainer({ ...newContainer, worktreeBaseDir: e.target.value || undefined })}
+                />
+              )}
               <div className="flex gap-2">
                 <button
                   className="text-[11px] px-2 py-1 rounded font-medium"
