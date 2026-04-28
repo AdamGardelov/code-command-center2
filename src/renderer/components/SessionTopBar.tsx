@@ -1,5 +1,6 @@
 import { GitBranch, Folder, Box, Bot, Zap } from 'lucide-react'
 import type { Session } from '../../shared/types'
+import { useSessionStore } from '../stores/session-store'
 
 interface SessionTopBarProps {
   session: Session
@@ -58,6 +59,11 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
   const isAi = session.type !== 'shell'
   const statusColor = statusColors[session.status] ?? 'var(--ink-3)'
   const statusLabel = statusLabels[session.status] ?? session.status
+  const containers = useSessionStore((s) => s.containers)
+  const container = session.isContainer
+    ? containers.find((c) => c.name === session.containerName)
+    : undefined
+  const containerLabel = container?.label?.trim() || session.containerName || 'container'
 
   return (
     <div
@@ -120,7 +126,7 @@ export default function SessionTopBar({ session }: SessionTopBarProps): React.JS
 
       {session.isContainer && (
         <Chip color="var(--container)" borderColor="color-mix(in srgb, var(--container) 40%, var(--line))">
-          <Box size={10} /> {session.containerName ?? 'container'}
+          <Box size={10} /> {containerLabel}
         </Chip>
       )}
 
