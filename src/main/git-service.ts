@@ -16,15 +16,37 @@ export class GitService {
     this.configService = service
   }
 
-  private exec(args: string[], remoteHost?: string): string | null {
-    return this.execDetailed(args, remoteHost).stdout
+  private exec(args: string[], remoteHost?: string, containerName?: string): string | null {
+    return this.execDetailed(args, remoteHost, 10000, containerName).stdout
   }
 
   private execDetailed(
     args: string[],
     remoteHost?: string,
-    timeoutMs = 10000
+    timeoutMs = 10000,
+    containerName?: string
   ): { stdout: string | null; stderr: string } {
+    if (containerName) {
+      const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
+      if (remoteHost && this.sshService) {
+        const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+        const sshHost = hostConfig?.host ?? remoteHost
+        const stdout = this.sshService.exec(sshHost, `docker exec ${containerName} sh -c "git ${escaped}"`)
+        return { stdout, stderr: stdout === null ? 'remote docker exec git failed' : '' }
+      }
+      try {
+        const stdout = execFileSync('docker', ['exec', containerName, 'sh', '-c', `git ${escaped}`], {
+          encoding: 'utf-8',
+          timeout: timeoutMs,
+          stdio: ['pipe', 'pipe', 'pipe']
+        }).trim()
+        return { stdout, stderr: '' }
+      } catch (err) {
+        const e = err as { stderr?: Buffer | string; message?: string }
+        const stderr = (e.stderr ? e.stderr.toString() : e.message ?? 'unknown error').trim()
+        return { stdout: null, stderr }
+      }
+    }
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
@@ -46,7 +68,8 @@ export class GitService {
     }
   }
 
-  private syncPaths(repoPath: string, worktreePath: string, remoteHost?: string): void {
+  private syncPaths(repoPath: string, worktreePath: string, remoteHost?: string, containerName?: string): void {
+    if (containerName) return // bunker worktrees do not get host-side path-syncing in v1
     const paths = this.configService?.get().worktreeSyncPaths ?? []
     if (paths.length === 0) return
 
@@ -78,9 +101,9 @@ export class GitService {
     }
   }
 
-  listWorktrees(repoPath: string, remoteHost?: string): Worktree[] {
-    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
-    const output = this.exec(['-C', expanded, 'worktree', 'list', '--porcelain'], remoteHost)
+  listWorktrees(repoPath: string, remoteHost?: string, containerName?: string): Worktree[] {
+    const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+    const output = this.exec(['-C', expanded, 'worktree', 'list', '--porcelain'], remoteHost, containerName)
     if (!output) return []
 
     const worktrees: Worktree[] = []
@@ -115,11 +138,12 @@ export class GitService {
     branch: string,
     targetPath: string,
     mode: WorktreeCreateMode,
-    remoteHost?: string
+    remoteHost?: string,
+    containerName?: string
   ): Worktree {
     branch = branch.replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^heads\//, '')
-    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
-    const expandedTarget = remoteHost ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
+    const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+    const expandedTarget = (remoteHost || containerName) ? targetPath : targetPath.replace(/^~/, process.env.HOME ?? '')
 
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
@@ -138,14 +162,18 @@ export class GitService {
     if (mode === 'new-branch') {
       result = this.execDetailed(
         ['-C', expanded, 'worktree', 'add', '-b', branch, expandedTarget],
-        remoteHost
+        remoteHost,
+        undefined,
+        containerName
       )
     } else {
       // existing-local OR track-remote — git DWIMs to origin/<branch> for track-remote
       // because the remote ref is present (caller should have called fetchRemotes first).
       result = this.execDetailed(
         ['-C', expanded, 'worktree', 'add', expandedTarget, branch],
-        remoteHost
+        remoteHost,
+        undefined,
+        containerName
       )
     }
 
@@ -159,11 +187,15 @@ export class GitService {
       // Preconfigure upstream so first `git push` (no -u) lands on origin/<branch>.
       const setRemote = this.execDetailed(
         ['-C', expanded, 'config', `branch.${branch}.remote`, 'origin'],
-        remoteHost
+        remoteHost,
+        undefined,
+        containerName
       )
       const setMerge = this.execDetailed(
         ['-C', expanded, 'config', `branch.${branch}.merge`, `refs/heads/${branch}`],
-        remoteHost
+        remoteHost,
+        undefined,
+        containerName
       )
       if (setRemote.stdout === null || setMerge.stdout === null) {
         console.warn(
@@ -172,7 +204,7 @@ export class GitService {
       }
     }
 
-    this.syncPaths(expanded, expandedTarget, remoteHost)
+    this.syncPaths(expanded, expandedTarget, remoteHost, containerName)
 
     return {
       path: expandedTarget,
@@ -182,26 +214,26 @@ export class GitService {
     }
   }
 
-  removeWorktree(worktreePath: string, remoteHost?: string): void {
-    const expanded = remoteHost ? worktreePath : worktreePath.replace(/^~/, process.env.HOME ?? '')
+  removeWorktree(worktreePath: string, remoteHost?: string, containerName?: string): void {
+    const expanded = (remoteHost || containerName) ? worktreePath : worktreePath.replace(/^~/, process.env.HOME ?? '')
     // Resolve repo root from the worktree path so git knows which repo to operate on
-    const repoRoot = this.getRepoRoot(expanded, remoteHost)
+    const repoRoot = this.getRepoRoot(expanded, remoteHost, containerName)
     if (!repoRoot) return
-    const result = this.exec(['-C', repoRoot, 'worktree', 'remove', expanded], remoteHost)
+    const result = this.exec(['-C', repoRoot, 'worktree', 'remove', expanded], remoteHost, containerName)
     if (result === null) {
-      this.exec(['-C', repoRoot, 'worktree', 'remove', '--force', expanded], remoteHost)
+      this.exec(['-C', repoRoot, 'worktree', 'remove', '--force', expanded], remoteHost, containerName)
     }
   }
 
-  getBranch(dir: string, remoteHost?: string): string | null {
-    const expanded = remoteHost ? dir : dir.replace(/^~/, process.env.HOME ?? '')
-    const result = this.exec(['-C', expanded, 'rev-parse', '--abbrev-ref', 'HEAD'], remoteHost)
+  getBranch(dir: string, remoteHost?: string, containerName?: string): string | null {
+    const expanded = (remoteHost || containerName) ? dir : dir.replace(/^~/, process.env.HOME ?? '')
+    const result = this.exec(['-C', expanded, 'rev-parse', '--abbrev-ref', 'HEAD'], remoteHost, containerName)
     return result || null
   }
 
-  listBranches(repoPath: string, remoteHost?: string): string[] {
-    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
-    const output = this.exec(['-C', expanded, 'branch', '-a', '--format=%(refname:short)'], remoteHost)
+  listBranches(repoPath: string, remoteHost?: string, containerName?: string): string[] {
+    const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+    const output = this.exec(['-C', expanded, 'branch', '-a', '--format=%(refname:short)'], remoteHost, containerName)
     if (!output) return []
     const cleaned = new Set<string>()
     for (const raw of output.split('\n')) {
@@ -215,13 +247,14 @@ export class GitService {
     return [...cleaned].sort()
   }
 
-  fetchRemotes(repoPath: string, remoteHost?: string): { ok: boolean; error?: string } {
-    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+  fetchRemotes(repoPath: string, remoteHost?: string, containerName?: string): { ok: boolean; error?: string } {
+    const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
     const timeout = remoteHost ? 30000 : 15000
     const result = this.execDetailed(
       ['-C', expanded, 'fetch', '--prune', 'origin'],
       remoteHost,
-      timeout
+      timeout,
+      containerName
     )
     if (result.stdout === null) {
       return { ok: false, error: result.stderr || 'fetch failed' }
@@ -229,18 +262,18 @@ export class GitService {
     return { ok: true }
   }
 
-  getRepoRoot(dir: string, remoteHost?: string): string | null {
-    const expanded = remoteHost ? dir : dir.replace(/^~/, process.env.HOME ?? '')
-    return this.exec(['-C', expanded, 'rev-parse', '--show-toplevel'], remoteHost)
+  getRepoRoot(dir: string, remoteHost?: string, containerName?: string): string | null {
+    const expanded = (remoteHost || containerName) ? dir : dir.replace(/^~/, process.env.HOME ?? '')
+    return this.exec(['-C', expanded, 'rev-parse', '--show-toplevel'], remoteHost, containerName)
   }
 
-  getBranchMetadata(repoPath: string, remoteHost?: string): BranchMetadata[] {
-    const expanded = remoteHost ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+  getBranchMetadata(repoPath: string, remoteHost?: string, containerName?: string): BranchMetadata[] {
+    const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
 
-    const defaultBranch = this.getDefaultBranch(expanded, remoteHost)
+    const defaultBranch = this.getDefaultBranch(expanded, remoteHost, containerName)
 
     const worktreeByBranch = new Map<string, Worktree>()
-    for (const wt of this.listWorktrees(repoPath, remoteHost)) {
+    for (const wt of this.listWorktrees(repoPath, remoteHost, containerName)) {
       if (wt.branch && wt.branch !== '(detached)' && wt.branch !== '(bare)') {
         worktreeByBranch.set(wt.branch, wt)
       }
@@ -258,7 +291,8 @@ export class GitService {
 
     const localOut = this.exec(
       ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/heads'],
-      remoteHost
+      remoteHost,
+      containerName
     )
 
     const now = Math.floor(Date.now() / 1000)
@@ -289,7 +323,7 @@ export class GitService {
         const wt = worktreeByBranch.get(branch)
         let dirty = false
         if (wt) {
-          const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost)
+          const status = this.exec(['-C', wt.path, 'status', '--porcelain'], remoteHost, containerName)
           dirty = !!status && status.trim().length > 0
         }
 
@@ -316,7 +350,8 @@ export class GitService {
     // Append remote-only branches (present on origin, no local counterpart)
     const remoteOut = this.exec(
       ['-C', expanded, 'for-each-ref', `--format=${format}`, 'refs/remotes/origin'],
-      remoteHost
+      remoteHost,
+      containerName
     )
 
     if (remoteOut) {
@@ -363,10 +398,11 @@ export class GitService {
     return results
   }
 
-  private getDefaultBranch(repoPath: string, remoteHost?: string): string {
+  private getDefaultBranch(repoPath: string, remoteHost?: string, containerName?: string): string {
     const headRef = this.exec(
       ['-C', repoPath, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD'],
-      remoteHost
+      remoteHost,
+      containerName
     )
     if (headRef) return headRef.replace(/^origin\//, '').trim()
 
@@ -379,7 +415,8 @@ export class GitService {
         'refs/heads/main',
         'refs/heads/master'
       ],
-      remoteHost
+      remoteHost,
+      containerName
     )
     if (common) {
       const first = common.split('\n').find((b) => b.trim())
@@ -388,7 +425,7 @@ export class GitService {
     return 'main'
   }
 
-  resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string): string {
+  resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string, containerName?: string): string {
     // Use the leaf segment of the branch name as the folder, stripping ref/remote prefixes
     const cleanBranch = branch
       .replace(/^refs\/heads\//, '')
@@ -399,12 +436,12 @@ export class GitService {
     const config = this.configService?.get()
     if (!config) return `${repoPath}/../${basename(repoPath)}-worktrees/${folder}`
 
-    const allFavorites = remoteHost
-      ? config.remoteHosts.find(h => h.name === remoteHost)?.favoriteFolders ?? []
+    const allFavorites = (remoteHost || containerName)
+      ? (remoteHost ? config.remoteHosts.find(h => h.name === remoteHost)?.favoriteFolders ?? [] : [])
       : config.favoriteFolders
     const matchingFav = allFavorites.find(f => {
-      const expandedFav = f.path.replace(/^~/, process.env.HOME ?? '')
-      const expandedRepo = repoPath.replace(/^~/, process.env.HOME ?? '')
+      const expandedFav = (remoteHost || containerName) ? f.path : f.path.replace(/^~/, process.env.HOME ?? '')
+      const expandedRepo = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
       return expandedFav === expandedRepo || f.path === repoPath
     })
     if (matchingFav?.worktreePath) {

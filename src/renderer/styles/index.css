@@ -768,6 +768,36 @@ body {
   box-shadow: none;
 }
 
+/* Chip row — used in New Session modal repo step */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 100ms, color 100ms, background 100ms;
+  font-family: var(--font-sans);
+}
+.chip:hover {
+  border-color: var(--ink-3);
+  color: var(--ink-1);
+}
+.chip.active {
+  background: var(--amber-wash);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
 /* Branch trigger button — inline in New Session modal */
 .branch-trigger {
   width: 100%;

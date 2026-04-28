@@ -157,6 +157,10 @@ ipcMain.handle('container:list-running', (_event, remoteHost?: string) => {
   return containerService.listRunning(remoteHost)
 })
 
+ipcMain.handle('container:list-repos', (_event, containerName: string, remoteHost?: string) => {
+  return containerService.listRepos(containerName, remoteHost)
+})
+
 ipcMain.on('pr:refresh', () => {
   void prService.refresh()
 })

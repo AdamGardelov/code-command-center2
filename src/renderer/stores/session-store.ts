@@ -35,6 +35,7 @@ interface SessionStore {
   features: FeaturesConfig
   containers: ContainerConfig[]
   enableContainers: boolean
+  defaultDestinationId: string | null
 
   platform: string
   gridLayout: SplitNode | null
@@ -86,6 +87,7 @@ interface SessionStore {
   setEnabledProviders: (providers: AiProvider[]) => Promise<void>
   setContainers: (containers: ContainerConfig[]) => Promise<void>
   setEnableContainers: (value: boolean) => Promise<void>
+  setDefaultDestinationId: (id: string | null) => Promise<void>
   persistSidebarWidth: () => Promise<void>
   updateSessionStatus: (sessionName: string, status: SessionStatus) => void
   loadHostStatuses: () => Promise<void>
@@ -128,6 +130,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   features: { pullRequests: false } as FeaturesConfig,
   containers: [],
   enableContainers: false,
+  defaultDestinationId: null,
   platform: '',
   gridLayout: null,
   gridPresets: {},
@@ -163,6 +166,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       features: config.features ?? { pullRequests: false },
       containers: config.containers ?? [],
       enableContainers: config.features?.containers ?? false,
+      defaultDestinationId: config.defaultDestinationId ?? null,
       gridLayout: config.gridLayout ?? null,
       gridPresets: config.gridPresets ?? {},
     })
@@ -247,6 +251,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const features = { ...get().features, containers: value }
     await window.cccAPI.config.update({ features })
     set({ features, enableContainers: value })
+  },
+  setDefaultDestinationId: async (id) => {
+    await window.cccAPI.config.update({ defaultDestinationId: id })
+    set({ defaultDestinationId: id })
   },
   persistSidebarWidth: async () => {
     const { sidebarWidth } = get()

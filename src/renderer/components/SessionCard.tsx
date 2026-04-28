@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X, Server } from 'lucide-react'
-import type { Session } from '../../shared/types'
+import type { Session, ContainerConfig } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
 
@@ -46,7 +46,7 @@ interface SessionFlag {
   icon?: React.ReactNode
 }
 
-function collectFlags(session: Session): SessionFlag[] {
+function collectFlags(session: Session, containers: ContainerConfig[]): SessionFlag[] {
   const flags: SessionFlag[] = []
   if (session.enableAutoMode) {
     flags.push({ tone: 'auto', label: 'auto', title: 'Auto mode enabled', icon: <Bot size={8} /> })
@@ -55,9 +55,11 @@ function collectFlags(session: Session): SessionFlag[] {
     flags.push({ tone: 'skip', label: 'skip', title: 'Skip permissions enabled', icon: <Zap size={8} /> })
   }
   if (session.isContainer) {
+    const container = containers.find((c) => c.name === session.containerName)
+    const display = container?.label?.trim() || session.containerName || 'box'
     flags.push({
       tone: 'container',
-      label: session.containerName ?? 'box',
+      label: display,
       title: `Container: ${session.containerName ?? ''}`,
       icon: <Box size={8} />
     })
@@ -143,6 +145,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
   const renamingSessionId = useSessionStore((s) => s.renamingSessionId)
   const setRenamingSessionId = useSessionStore((s) => s.setRenamingSessionId)
   const setDisplayName = useSessionStore((s) => s.setDisplayName)
+  const containers = useSessionStore((s) => s.containers)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
@@ -156,7 +159,7 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
   const dotColor = statusColors[session.status] ?? 'var(--ink-3)'
   const pulses = pulseStatuses.has(session.status)
   const excludedDashed = session.isExcluded && !session.isArchived
-  const flags = collectFlags(session)
+  const flags = collectFlags(session, containers)
 
   return (
     <>

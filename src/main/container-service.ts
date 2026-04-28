@@ -60,6 +60,27 @@ export class ContainerService {
     return running
   }
 
+  listRepos(containerName: string, remoteHost?: string): string[] {
+    if (!isValidContainerName(containerName)) return []
+    try {
+      if (remoteHost && this.sshService) {
+        const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
+        const sshHost = hostConfig?.host ?? remoteHost
+        const result = this.sshService.exec(sshHost, `docker exec ${containerName} ls -1 /repos`)
+        if (!result) return []
+        return result.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+      }
+      const result = execFileSync('docker', ['exec', containerName, 'ls', '-1', '/repos'], {
+        timeout: 5000,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+      return result.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+    } catch {
+      return []
+    }
+  }
+
   listRunning(remoteHost?: string): ContainerConfig[] {
     const containers = this.configService?.get().containers ?? []
     return containers

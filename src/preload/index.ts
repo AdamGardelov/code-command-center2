@@ -115,23 +115,24 @@ const api: CccAPI = {
     }
   },
   git: {
-    listWorktrees: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:list-worktrees', repoPath, remoteHost),
+    listWorktrees: (repoPath: string, remoteHost?: string, containerName?: string) =>
+      ipcRenderer.invoke('git:list-worktrees', repoPath, remoteHost, containerName),
     addWorktree: (
       repoPath: string,
       branch: string,
       targetPath: string,
       mode: WorktreeCreateMode,
-      remoteHost?: string
-    ) => ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, mode, remoteHost),
-    removeWorktree: (worktreePath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:remove-worktree', worktreePath, remoteHost),
-    listBranches: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:list-branches', repoPath, remoteHost),
-    getBranchMetadata: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost),
-    fetchRemotes: (repoPath: string, remoteHost?: string) =>
-      ipcRenderer.invoke('git:fetch-remotes', repoPath, remoteHost)
+      remoteHost?: string,
+      containerName?: string
+    ) => ipcRenderer.invoke('git:add-worktree', repoPath, branch, targetPath, mode, remoteHost, containerName),
+    removeWorktree: (worktreePath: string, remoteHost?: string, containerName?: string) =>
+      ipcRenderer.invoke('git:remove-worktree', worktreePath, remoteHost, containerName),
+    listBranches: (repoPath: string, remoteHost?: string, containerName?: string) =>
+      ipcRenderer.invoke('git:list-branches', repoPath, remoteHost, containerName),
+    getBranchMetadata: (repoPath: string, remoteHost?: string, containerName?: string) =>
+      ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost, containerName),
+    fetchRemotes: (repoPath: string, remoteHost?: string, containerName?: string) =>
+      ipcRenderer.invoke('git:fetch-remotes', repoPath, remoteHost, containerName)
   },
   group: {
     create: (name: string): Promise<SessionGroup> => ipcRenderer.invoke('group:create', name),
@@ -170,7 +171,9 @@ const api: CccAPI = {
   },
   container: {
     listRunning: (remoteHost?: string): Promise<ContainerConfig[]> =>
-      ipcRenderer.invoke('container:list-running', remoteHost)
+      ipcRenderer.invoke('container:list-running', remoteHost),
+    listRepos: (containerName: string, remoteHost?: string): Promise<string[]> =>
+      ipcRenderer.invoke('container:list-repos', containerName, remoteHost)
   },
   app: {
     platform: (): Promise<string> => ipcRenderer.invoke('app:platform'),

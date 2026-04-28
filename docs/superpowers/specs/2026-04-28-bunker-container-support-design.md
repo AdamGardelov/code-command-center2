@@ -18,7 +18,7 @@ Extend the existing container model with two new opt-in fields on `ContainerConf
 
 ## Mechanism
 
-A container becomes a "bunker-style" container when `containerInternalPaths` is `true` on its config. That single flag changes four behaviors: working-directory discovery, worktree backend, state-detection effective source, and PR polling (skipped). `worktreeBaseDir` then says where to put worktrees inside the container. Both fields are user-configured per container in Settings; CCC does not auto-detect or sniff bunker layouts.
+A container becomes a "bunker-style" container when `containerInternalPaths` is `true` on its config. That single flag changes three behaviors: working-directory discovery, worktree backend, and state-detection effective source. `worktreeBaseDir` then says where to put worktrees inside the container. Both fields are user-configured per container in Settings; CCC does not auto-detect or sniff bunker layouts.
 
 ## Data Model
 
@@ -75,11 +75,11 @@ For sessions where the target container has `containerInternalPaths=true`:
 
 This is a deliberate single-source state for bunker sessions. Removing the host-side hook detector entirely is a separate decision out of scope for this spec.
 
-## PR Polling
+## PR Display
 
-`pr-service.ts` filters out sessions whose target container has `containerInternalPaths=true`. Branch name still appears on the session card via the existing branch-display path. PR badges and PR-counts will not appear for bunker sessions in v1.
+No work needed. CCC has no per-session PR badges today — `pr-service.ts` polls GitHub at the org level for pinned repos, and PRs are surfaced in their own sidebar (`PrSidebar`), not coupled to local session cards. Bunker sessions therefore neither gain nor lose PR display. PrSidebar's worktree-creation continues to write to host folders only; extending it to create worktrees inside a chosen bunker is out of scope for v1.
 
-Rationale: the bunker dashboard already exposes per-repo GitHub state, so this is not a functional gap. Adding PR polling would require docker-exec-based remote-URL discovery and a separate code path in pr-service — deferred until real usage proves it's missed.
+This was discovered during plan self-review — the original Q6 in brainstorming asked about "PR badges on sessions" as if they existed, which they do not.
 
 ## Settings UI
 
@@ -104,10 +104,11 @@ No "Add Bunker" button, no pre-configured templates. The user enters the contain
 - Pre-filling defaults from bunker conventions or remote endpoints
 - PR badges / GitHub state for bunker sessions
 - File-transfer integration with bunker dashboard's `~/inbox`
+- Extending `PrSidebar` worktree-creation to target a bunker container
 - Group concept in sidebar ("Bunker: main", "Bunker: support")
 - Surfacing the bunker dashboard URL or a launch link inside CCC
 - A separate "Bunker" type or any Wint-specific naming in CCC code
 
 ## Estimated Size
 
-Approximately 300–400 LOC of production code across roughly 6–8 files: `ContainerConfig` type + Settings UI row + NewSessionModal repo dropdown + git-service docker-exec dispatch (six methods) + pr-service filter + repo-discovery in ContainerService.
+Approximately 300–400 LOC of production code across roughly 6–8 files: `ContainerConfig` type + Settings UI row + NewSessionModal repo dropdown + git-service docker-exec dispatch (six methods) + repo-discovery in ContainerService. PR-service is untouched.

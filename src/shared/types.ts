@@ -74,6 +74,10 @@ export interface ContainerConfig {
   name: string
   label?: string
   remoteHost?: string
+  // Bunker-style hermetic containers: repos live inside the container,
+  // worktrees are created inside it via docker exec, PR polling is skipped.
+  containerInternalPaths?: boolean
+  worktreeBaseDir?: string
 }
 
 export interface SessionGroup {
@@ -208,6 +212,7 @@ export interface CccConfig {
   containerSessions: Record<string, string>
   gridLayout?: SplitNode | null
   gridPresets?: Record<string, string>
+  defaultDestinationId?: string | null
 }
 
 export type UpdaterStatus =
@@ -276,18 +281,19 @@ export interface CccAPI {
     onStatusChanged: (callback: (name: string, online: boolean) => void) => () => void
   }
   git: {
-    listWorktrees: (repoPath: string, remoteHost?: string) => Promise<Worktree[]>
+    listWorktrees: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<Worktree[]>
     addWorktree: (
       repoPath: string,
       branch: string,
       targetPath: string,
       mode: WorktreeCreateMode,
-      remoteHost?: string
+      remoteHost?: string,
+      containerName?: string
     ) => Promise<Worktree>
-    removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>
-    listBranches: (repoPath: string, remoteHost?: string) => Promise<string[]>
-    getBranchMetadata: (repoPath: string, remoteHost?: string) => Promise<BranchMetadata[]>
-    fetchRemotes: (repoPath: string, remoteHost?: string) => Promise<{ ok: boolean; error?: string }>
+    removeWorktree: (worktreePath: string, remoteHost?: string, containerName?: string) => Promise<void>
+    listBranches: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<string[]>
+    getBranchMetadata: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<BranchMetadata[]>
+    fetchRemotes: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<{ ok: boolean; error?: string }>
   }
   group: {
     create: (name: string) => Promise<SessionGroup>
@@ -310,6 +316,7 @@ export interface CccAPI {
   }
   container: {
     listRunning: (remoteHost?: string) => Promise<ContainerConfig[]>
+    listRepos: (containerName: string, remoteHost?: string) => Promise<string[]>
   }
   app: {
     platform: () => Promise<string>
