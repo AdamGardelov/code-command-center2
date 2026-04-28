@@ -244,6 +244,12 @@ export default function NewSessionModal(): React.JSX.Element {
   const [runningContainers, setRunningContainers] = useState<ContainerConfig[]>([])
   const [selectedContainer, setSelectedContainer] = useState<string | undefined>(undefined)
 
+  const activeContainer = runningContainers.find((c) => c.name === selectedContainer)
+  const isBunkerContainer = !!activeContainer?.containerInternalPaths
+
+  const [bunkerRepos, setBunkerRepos] = useState<string[]>([])
+  const [bunkerReposLoading, setBunkerReposLoading] = useState(false)
+
   useEffect(() => {
     if (modalOpen) {
       setEnableAutoMode(defaultAutoMode)
@@ -268,6 +274,18 @@ export default function NewSessionModal(): React.JSX.Element {
       }
     })
   }, [modalOpen, enableContainers, remoteHost])
+
+  useEffect(() => {
+    if (!isBunkerContainer || !activeContainer) {
+      setBunkerRepos([])
+      return
+    }
+    setBunkerReposLoading(true)
+    window.cccAPI.container
+      .listRepos(activeContainer.name, activeContainer.remoteHost)
+      .then((repos) => setBunkerRepos(repos))
+      .finally(() => setBunkerReposLoading(false))
+  }, [isBunkerContainer, activeContainer?.name, activeContainer?.remoteHost])
 
   if (!modalOpen) return <></>
 
@@ -531,21 +549,45 @@ export default function NewSessionModal(): React.JSX.Element {
 
           {/* Working directory */}
           {type !== 'shell' && (
-            <div>
-              <FieldLabel>Working Directory</FieldLabel>
-              <input
-                type="text"
-                value={workingDirectory}
-                onChange={(e) => {
-                  setWorkingDirectory(e.target.value)
-                  setBranchChoice(null)
-                }}
-                placeholder="e.g. ~/projects/my-app"
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--amber-rim)' }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--line)' }}
-              />
-            </div>
+            isBunkerContainer ? (
+              <div>
+                <FieldLabel>Repo</FieldLabel>
+                {bunkerReposLoading ? (
+                  <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Loading repos…</div>
+                ) : bunkerRepos.length === 0 ? (
+                  <div className="text-[11px]" style={{ color: 'var(--error)' }}>
+                    No repos found in container at /repos
+                  </div>
+                ) : (
+                  <select
+                    style={inputStyle}
+                    value={workingDirectory}
+                    onChange={(e) => setWorkingDirectory(e.target.value)}
+                  >
+                    <option value="">Select a repo…</option>
+                    {bunkerRepos.map((r) => (
+                      <option key={r} value={`/repos/${r}`}>{r}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ) : (
+              <div>
+                <FieldLabel>Working Directory</FieldLabel>
+                <input
+                  type="text"
+                  value={workingDirectory}
+                  onChange={(e) => {
+                    setWorkingDirectory(e.target.value)
+                    setBranchChoice(null)
+                  }}
+                  placeholder="e.g. ~/projects/my-app"
+                  style={inputStyle}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--amber-rim)' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--line)' }}
+                />
+              </div>
+            )
           )}
 
           {/* Branch / Worktree trigger */}
@@ -650,7 +692,7 @@ export default function NewSessionModal(): React.JSX.Element {
             </button>
             <button
               type="submit"
-              disabled={creating || !name.trim()}
+              disabled={creating || !name.trim() || (isBunkerContainer && !workingDirectory.startsWith('/repos/'))}
               style={{
                 padding: '9px 14px',
                 borderRadius: 7,
@@ -658,17 +700,17 @@ export default function NewSessionModal(): React.JSX.Element {
                 fontWeight: 600,
                 border: 'none',
                 fontFamily: 'var(--font-sans)',
-                backgroundColor: !name.trim() || creating ? 'var(--bg-3)' : 'var(--amber)',
-                color: !name.trim() || creating ? 'var(--ink-3)' : 'var(--bg-0)',
-                cursor: !name.trim() || creating ? 'not-allowed' : 'pointer',
-                boxShadow: !name.trim() || creating ? 'none' : '0 4px 14px -4px color-mix(in srgb, var(--amber) 60%, transparent)',
+                backgroundColor: !name.trim() || creating || (isBunkerContainer && !workingDirectory.startsWith('/repos/')) ? 'var(--bg-3)' : 'var(--amber)',
+                color: !name.trim() || creating || (isBunkerContainer && !workingDirectory.startsWith('/repos/')) ? 'var(--ink-3)' : 'var(--bg-0)',
+                cursor: !name.trim() || creating || (isBunkerContainer && !workingDirectory.startsWith('/repos/')) ? 'not-allowed' : 'pointer',
+                boxShadow: !name.trim() || creating || (isBunkerContainer && !workingDirectory.startsWith('/repos/')) ? 'none' : '0 4px 14px -4px color-mix(in srgb, var(--amber) 60%, transparent)',
                 transition: 'background 120ms'
               }}
               onMouseEnter={(e) => {
-                if (!creating && name.trim()) e.currentTarget.style.backgroundColor = 'var(--amber-hi)'
+                if (!creating && name.trim() && !(isBunkerContainer && !workingDirectory.startsWith('/repos/'))) e.currentTarget.style.backgroundColor = 'var(--amber-hi)'
               }}
               onMouseLeave={(e) => {
-                if (!creating && name.trim()) e.currentTarget.style.backgroundColor = 'var(--amber)'
+                if (!creating && name.trim() && !(isBunkerContainer && !workingDirectory.startsWith('/repos/'))) e.currentTarget.style.backgroundColor = 'var(--amber)'
               }}
             >
               {creating ? 'Creating…' : 'Create session'}
