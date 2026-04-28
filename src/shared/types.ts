@@ -280,18 +280,19 @@ export interface CccAPI {
     onStatusChanged: (callback: (name: string, online: boolean) => void) => () => void
   }
   git: {
-    listWorktrees: (repoPath: string, remoteHost?: string) => Promise<Worktree[]>
+    listWorktrees: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<Worktree[]>
     addWorktree: (
       repoPath: string,
       branch: string,
       targetPath: string,
       mode: WorktreeCreateMode,
-      remoteHost?: string
+      remoteHost?: string,
+      containerName?: string
     ) => Promise<Worktree>
-    removeWorktree: (worktreePath: string, remoteHost?: string) => Promise<void>
-    listBranches: (repoPath: string, remoteHost?: string) => Promise<string[]>
-    getBranchMetadata: (repoPath: string, remoteHost?: string) => Promise<BranchMetadata[]>
-    fetchRemotes: (repoPath: string, remoteHost?: string) => Promise<{ ok: boolean; error?: string }>
+    removeWorktree: (worktreePath: string, remoteHost?: string, containerName?: string) => Promise<void>
+    listBranches: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<string[]>
+    getBranchMetadata: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<BranchMetadata[]>
+    fetchRemotes: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<{ ok: boolean; error?: string }>
   }
   group: {
     create: (name: string) => Promise<SessionGroup>
