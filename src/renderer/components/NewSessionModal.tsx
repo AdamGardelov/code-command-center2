@@ -308,12 +308,18 @@ export default function NewSessionModal(): React.JSX.Element {
           branchChoice.mode === 'track-remote' ||
           branchChoice.mode === 'new-branch'
         ) {
+          const repoName = workingDirectory.trim().split('/').filter(Boolean).pop() ?? 'repo'
+          const bunkerTargetPath = activeContainer?.containerInternalPaths
+            ? `${activeContainer.worktreeBaseDir ?? '/repos/worktrees'}/${branchChoice.branch}/${repoName}`
+            : ''
+
           const worktree = await window.cccAPI.git.addWorktree(
             workingDirectory.trim(),
             branchChoice.branch,
-            '',
+            bunkerTargetPath,
             branchChoice.mode,
-            remoteHost
+            remoteHost,
+            activeContainer?.containerInternalPaths ? activeContainer.name : undefined
           )
           dir = worktree.path
         }
@@ -778,6 +784,7 @@ export default function NewSessionModal(): React.JSX.Element {
             <BranchPicker
               repoPath={workingDirectory.trim()}
               remoteHost={remoteHost}
+              containerName={isBunkerContainer ? activeContainer?.name : undefined}
               onCancel={() => setPickerOpen(false)}
               onConfirm={(result) => {
                 setBranchChoice(result)

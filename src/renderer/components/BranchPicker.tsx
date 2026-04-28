@@ -18,6 +18,7 @@ export interface BranchPickerResult {
 interface BranchPickerProps {
   repoPath: string
   remoteHost?: string
+  containerName?: string
   onCancel: () => void
   onConfirm: (result: BranchPickerResult) => void
 }
@@ -301,6 +302,7 @@ function Preview({ item, query, isNewFocused }: PreviewProps): React.JSX.Element
 export default function BranchPicker({
   repoPath,
   remoteHost,
+  containerName,
   onCancel,
   onConfirm
 }: BranchPickerProps): React.JSX.Element {
@@ -323,7 +325,7 @@ export default function BranchPicker({
     setLoading(true)
     setLoadError(null)
     window.cccAPI.git
-      .getBranchMetadata(repoPath, remoteHost)
+      .getBranchMetadata(repoPath, remoteHost, containerName)
       .then((data) => {
         if (cancelled) return
         setBranches(data)
@@ -339,14 +341,14 @@ export default function BranchPicker({
     return () => {
       cancelled = true
     }
-  }, [repoPath, remoteHost, refreshTick])
+  }, [repoPath, remoteHost, containerName, refreshTick])
 
   useEffect(() => {
     let cancelled = false
     setFetching(true)
     setFetchFailed(false)
     window.cccAPI.git
-      .fetchRemotes(repoPath, remoteHost)
+      .fetchRemotes(repoPath, remoteHost, containerName)
       .then((res) => {
         if (cancelled) return
         if (!res.ok) {
@@ -364,11 +366,11 @@ export default function BranchPicker({
     return () => {
       cancelled = true
     }
-  }, [repoPath, remoteHost, fetchTick])
+  }, [repoPath, remoteHost, containerName, fetchTick])
 
   const handleDelete = (path: string): void => {
     void window.cccAPI.git
-      .removeWorktree(path, remoteHost)
+      .removeWorktree(path, remoteHost, containerName)
       .then(() => setRefreshTick((n) => n + 1))
   }
 
