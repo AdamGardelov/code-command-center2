@@ -42,13 +42,45 @@ export default function ContainersSettings(): React.JSX.Element {
               <Box size={12} style={{ color: 'var(--container)' }} />
               {editContainerIdx === idx ? (
                 <>
-                  <input
-                    className="flex-1 text-[11px] px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
-                    value={editContainerLabel}
-                    onChange={(e) => setEditContainerLabel(e.target.value)}
-                    placeholder="Label"
-                  />
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <input
+                      className="w-full text-[11px] px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                      value={editContainerLabel}
+                      onChange={(e) => setEditContainerLabel(e.target.value)}
+                      placeholder="Label"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!container.containerInternalPaths}
+                        onChange={(e) => {
+                          const updated = [...containers]
+                          updated[idx] = {
+                            ...updated[idx],
+                            containerInternalPaths: e.target.checked || undefined,
+                            worktreeBaseDir: e.target.checked ? updated[idx].worktreeBaseDir : undefined
+                          }
+                          void setContainers(updated)
+                        }}
+                        className="accent-[var(--accent)]"
+                      />
+                      <span className="text-[10px]" style={{ color: 'var(--text-primary)' }}>Repos live inside container</span>
+                    </label>
+                    {container.containerInternalPaths && (
+                      <input
+                        className="w-full text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-primary)' }}
+                        placeholder="Worktree folder (e.g. /repos/worktrees)"
+                        value={container.worktreeBaseDir ?? ''}
+                        onChange={(e) => {
+                          const updated = [...containers]
+                          updated[idx] = { ...updated[idx], worktreeBaseDir: e.target.value || undefined }
+                          void setContainers(updated)
+                        }}
+                      />
+                    )}
+                  </div>
                   <button onClick={() => {
                     const updated = [...containers]
                     updated[editContainerIdx!] = { ...updated[editContainerIdx!], label: editContainerLabel || undefined }
@@ -69,6 +101,11 @@ export default function ContainersSettings(): React.JSX.Element {
                   {container.remoteHost && (
                     <span className="text-[9px] px-1 py-px rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }}>
                       @{container.remoteHost}
+                    </span>
+                  )}
+                  {container.containerInternalPaths && (
+                    <span className="text-[9px] px-1 py-px rounded" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-raised)' }} title="Repos live inside container">
+                      /repos{container.worktreeBaseDir ? ` · wt:${container.worktreeBaseDir}` : ''}
                     </span>
                   )}
                   <button onClick={() => {
