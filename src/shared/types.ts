@@ -314,6 +314,7 @@ export interface CccAPI {
   }
   container: {
     listRunning: (remoteHost?: string) => Promise<ContainerConfig[]>
+    listRepos: (containerName: string, remoteHost?: string) => Promise<string[]>
   }
   app: {
     platform: () => Promise<string>

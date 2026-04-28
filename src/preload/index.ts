@@ -170,7 +170,9 @@ const api: CccAPI = {
   },
   container: {
     listRunning: (remoteHost?: string): Promise<ContainerConfig[]> =>
-      ipcRenderer.invoke('container:list-running', remoteHost)
+      ipcRenderer.invoke('container:list-running', remoteHost),
+    listRepos: (containerName: string, remoteHost?: string): Promise<string[]> =>
+      ipcRenderer.invoke('container:list-repos', containerName, remoteHost)
   },
   app: {
     platform: (): Promise<string> => ipcRenderer.invoke('app:platform'),
