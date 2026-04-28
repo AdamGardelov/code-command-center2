@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
@@ -105,6 +106,9 @@ export function useTerminal(
     terminal.loadAddon(fitAddon)
 
     terminal.open(container)
+
+    terminal.loadAddon(new UnicodeGraphemesAddon())
+    terminal.unicode.activeVersion = '15'
 
     try {
       const webglAddon = new WebglAddon()
