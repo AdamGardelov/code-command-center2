@@ -74,6 +74,10 @@ export interface ContainerConfig {
   name: string
   label?: string
   remoteHost?: string
+  // Bunker-style hermetic containers: repos live inside the container,
+  // worktrees are created inside it via docker exec, PR polling is skipped.
+  containerInternalPaths?: boolean
+  worktreeBaseDir?: string
 }
 
 export interface SessionGroup {
