@@ -118,3 +118,72 @@ describe('GitService.addWorktreeBatch', () => {
     expect(results.find((r) => r.repoPath === '/nonexistent/repo/path')?.ok).toBe(false)
   })
 })
+
+describe('GitService.resolveWorktreePath', () => {
+  let scratch: string
+  let base: string
+  let svc: GitService
+
+  beforeEach(() => {
+    scratch = mkdtempSync(join(tmpdir(), 'ccc2-resolve-'))
+    base = join(scratch, 'wt')
+    svc = new GitService()
+    // Minimal config: just a base path. No favorites, no remote hosts.
+    svc.setConfigService({
+      get: () => ({
+        worktreeBasePath: base,
+        worktreeSyncPaths: [],
+        favoriteFolders: [],
+        remoteHosts: [],
+        // The rest of CccConfig isn't used by resolveWorktreePath; the unsafe
+        // cast keeps the test focused on the fields under exercise.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as any,
+    })
+  })
+  afterEach(() => {
+    rmSync(scratch, { recursive: true, force: true })
+  })
+
+  it('uses the leaf of the branch as folder when no taskName is given', () => {
+    const repo = join(scratch, 'Wint.Salary')
+    const path = svc.resolveWorktreePath(repo, 'feat/refund-flow')
+    expect(path).toBe(`${base}/refund-flow/Wint.Salary`)
+  })
+
+  it('uses taskName as folder when provided, ignoring the branch slug', () => {
+    const repo = join(scratch, 'Wint.Salary')
+    const path = svc.resolveWorktreePath(repo, 'feat/refund-flow', undefined, undefined, 'feat-refund-flow')
+    expect(path).toBe(`${base}/feat-refund-flow/Wint.Salary`)
+  })
+
+  it('falls back to branch leaf when taskName is whitespace-only', () => {
+    const repo = join(scratch, 'Core')
+    const path = svc.resolveWorktreePath(repo, 'feat/x', undefined, undefined, '   ')
+    expect(path).toBe(`${base}/x/Core`)
+  })
+
+  it('groups two repos under the same task folder when batched with taskName', () => {
+    const repoA = makeRepo(scratch, 'a')
+    const repoB = makeRepo(scratch, 'b')
+    const results = svc.addWorktreeBatch(
+      {
+        repos: [
+          { repoPath: repoA, mode: 'new-branch' },
+          { repoPath: repoB, mode: 'new-branch' },
+        ],
+        branch: 'feat/refund-flow',
+        taskName: 'feat-refund-flow',
+      },
+      (repoPath) =>
+        svc.resolveWorktreePath(repoPath, 'feat/refund-flow', undefined, undefined, 'feat-refund-flow'),
+    )
+
+    expect(results).toHaveLength(2)
+    expect(results.every((r) => r.ok)).toBe(true)
+    const okA = results.find((r) => r.repoPath === repoA)
+    const okB = results.find((r) => r.repoPath === repoB)
+    if (okA?.ok) expect(okA.worktree.path).toBe(`${base}/feat-refund-flow/a`)
+    if (okB?.ok) expect(okB.worktree.path).toBe(`${base}/feat-refund-flow/b`)
+  })
+})

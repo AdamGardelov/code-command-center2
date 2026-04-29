@@ -357,10 +357,24 @@ export default function NewSessionModal(): React.JSX.Element {
   const [resolutions, setResolutions] = useState<Map<string, WorktreeCreateMode>>(new Map())
   const [creationErrors, setCreationErrors] = useState<Map<string, string>>(new Map())
   const [branchInput, setBranchInput] = useState('')
+  // Task folder is the parent dir that groups per-repo worktrees on disk.
+  // Tracks the branch slug until the user edits it explicitly.
+  const [taskName, setTaskName] = useState('')
+  const [taskNameDirty, setTaskNameDirty] = useState(false)
   const [freeFormPath, setFreeFormPath] = useState('')
 
   const workingDirectory = selectedRepos[0] ?? freeFormPath
   const isMulti = selectedRepos.length >= 2
+
+  const branchSlug = useMemo<string>(() => {
+    const cleaned = branchInput
+      .replace(/^refs\/heads\//, '')
+      .replace(/^refs\/remotes\//, '')
+      .replace(/^heads\//, '')
+      .trim()
+    return cleaned.split('/').filter(Boolean).pop() ?? ''
+  }, [branchInput])
+  const effectiveTaskName = (taskNameDirty ? taskName : branchSlug).trim()
   const [type, setType] = useState<SessionType>(enabledProviders[0] ?? 'claude')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -496,6 +510,8 @@ export default function NewSessionModal(): React.JSX.Element {
     setSelectedRepos([])
     setPrimaryRepo(null)
     setBranchInput('')
+    setTaskName('')
+    setTaskNameDirty(false)
     setFreeFormPath('')
     setResolutions(new Map())
     setCreationErrors(new Map())
@@ -691,6 +707,7 @@ export default function NewSessionModal(): React.JSX.Element {
         const wtResults = await window.cccAPI.git.addWorktreeBatch({
           repos: reposToCreate,
           branch: branchInput.trim(),
+          taskName: effectiveTaskName || undefined,
           remoteHost,
           containerName: isBunkerContainer ? activeContainer?.name : undefined,
         })
@@ -712,10 +729,20 @@ export default function NewSessionModal(): React.JSX.Element {
         const sessionType = type
         const containerName = dest?.kind === 'container' ? activeContainer?.name : undefined
 
+        // The task folder is the parent of every per-repo worktree path.
+        const taskFolderPath = (() => {
+          const sample = oks.values().next().value as string | undefined
+          if (!sample) return ''
+          const parts = sample.split('/')
+          parts.pop()
+          return parts.join('/')
+        })()
+        const groupName = effectiveTaskName || branchInput.trim()
+
         if (perRepoSessions) {
           const createdIds: string[] = []
           for (const [repoPath, wtPath] of oks) {
-            const sessionName = `${branchInput.trim()} · ${repoLeaf(repoPath)}`
+            const sessionName = `${groupName} · ${repoLeaf(repoPath)}`
             const session = await createSession({
               name: sessionName,
               workingDirectory: wtPath,
@@ -731,7 +758,7 @@ export default function NewSessionModal(): React.JSX.Element {
           }
           if (createdIds.length > 0) {
             try {
-              const group = await window.cccAPI.group.create(branchInput.trim())
+              const group = await window.cccAPI.group.create(groupName)
               for (const id of createdIds) {
                 await window.cccAPI.group.addSession(group.id, id)
               }
@@ -740,11 +767,11 @@ export default function NewSessionModal(): React.JSX.Element {
             }
           }
         } else {
-          const primaryPath = primaryRepo && oks.has(primaryRepo) ? primaryRepo : [...oks.keys()][0]
-          const wtPath = oks.get(primaryPath)!
+          // Shared session opens at the task folder so the agent sees every
+          // per-repo worktree as a sibling — the "one agent, all repos" mode.
           await createSession({
-            name: name.trim() || branchInput.trim(),
-            workingDirectory: wtPath,
+            name: name.trim() || groupName,
+            workingDirectory: taskFolderPath,
             type: sessionType,
             remoteHost,
             enableAutoMode: sessionType === 'claude' ? enableAutoMode : undefined,
@@ -767,7 +794,8 @@ export default function NewSessionModal(): React.JSX.Element {
       name, creating, type, workingDirectory, isBunkerContainer, branchChoice,
       activeContainer, remoteHost, dest, createSession, toggleModal,
       enableAutoMode, skipPermissions, codexFullAuto, codexDangerBypass,
-      isMulti, branchInput, selectedRepos, resolutions, perRepoSessions, primaryRepo,
+      isMulti, branchInput, effectiveTaskName, selectedRepos, resolutions,
+      perRepoSessions, primaryRepo,
     ],
   )
 
@@ -1203,13 +1231,32 @@ export default function NewSessionModal(): React.JSX.Element {
             <div>
               <FieldLabel style={{ marginBottom: 6 }}>3 · Branch{isMulti ? '' : ' / worktree'}</FieldLabel>
               {isMulti ? (
-                <input
-                  type="text"
-                  value={branchInput}
-                  onChange={(e) => setBranchInput(e.target.value)}
-                  placeholder="feat/refund-flow"
-                  className="branch-multi-input"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={branchInput}
+                    onChange={(e) => setBranchInput(e.target.value)}
+                    placeholder="feat/refund-flow"
+                    className="branch-multi-input"
+                  />
+                  <div className="task-folder-row">
+                    <FieldLabel style={{ marginBottom: 0, flexShrink: 0 }}>
+                      Task folder
+                    </FieldLabel>
+                    <span className="task-folder-row__hint">parent of all worktrees</span>
+                    <div className="task-folder-input">
+                      <span className="task-folder-input__prefix">
+                        {(worktreeBasePathFromStore ?? '~/Dev/worktrees')}/
+                      </span>
+                      <input
+                        type="text"
+                        value={taskNameDirty ? taskName : branchSlug}
+                        placeholder={branchSlug || 'task-name'}
+                        onChange={(e) => { setTaskName(e.target.value); setTaskNameDirty(true) }}
+                      />
+                    </div>
+                  </div>
+                </>
               ) : (
                 <button
                   type="button"
@@ -1368,6 +1415,7 @@ export default function NewSessionModal(): React.JSX.Element {
             selectedRepos={selectedRepos}
             primaryRepo={primaryRepo}
             branch={branchInput}
+            taskFolder={effectiveTaskName}
             resolutions={resolutions}
             perRepoSessions={perRepoSessions}
             worktreeBasePath={worktreeBasePathFromStore ?? '~/Dev/worktrees'}
@@ -1380,7 +1428,7 @@ export default function NewSessionModal(): React.JSX.Element {
                 return next ?? null
               })
             }}
-            onTogglePerRepo={() => setPerRepoSessions((v) => !v)}
+            onSetPerRepo={(v) => setPerRepoSessions(v)}
             onRetry={(p) => {
               setCreationErrors((prev) => { const n = new Map(prev); n.delete(p); return n })
             }}

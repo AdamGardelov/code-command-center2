@@ -482,13 +482,23 @@ export class GitService {
     })
   }
 
-  resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string, containerName?: string): string {
-    // Use the leaf segment of the branch name as the folder, stripping ref/remote prefixes
+  resolveWorktreePath(
+    repoPath: string,
+    branch: string,
+    remoteHost?: string,
+    containerName?: string,
+    taskName?: string
+  ): string {
+    // The folder segment between the base and the repo dir.
+    // Defaults to the leaf of the branch name; an explicit taskName overrides it.
     const cleanBranch = branch
       .replace(/^refs\/heads\//, '')
       .replace(/^refs\/remotes\//, '')
       .replace(/^heads\//, '')
-    const folder = basename(cleanBranch) || cleanBranch
+    const trimmedTask = taskName?.trim()
+    const folder = trimmedTask && trimmedTask.length > 0
+      ? trimmedTask
+      : (basename(cleanBranch) || cleanBranch)
 
     const config = this.configService?.get()
     if (!config) return `${repoPath}/../${basename(repoPath)}-worktrees/${folder}`

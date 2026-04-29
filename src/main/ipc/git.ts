@@ -56,7 +56,13 @@ export function registerGitIpc(gitService: GitService): void {
     'git:add-worktree-batch',
     async (_event, request: BatchWorktreeRequest) => {
       return gitService.addWorktreeBatch(request, (repoPath) =>
-        gitService.resolveWorktreePath(repoPath, request.branch, request.remoteHost, request.containerName)
+        gitService.resolveWorktreePath(
+          repoPath,
+          request.branch,
+          request.remoteHost,
+          request.containerName,
+          request.taskName
+        )
       )
     }
   )

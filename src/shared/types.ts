@@ -124,6 +124,12 @@ export interface BatchWorktreeRepoRequest {
 export interface BatchWorktreeRequest {
   repos: BatchWorktreeRepoRequest[]
   branch: string
+  /**
+   * Optional folder name placed between the worktree base and the per-repo
+   * directory. When set, paths are `<base>/<taskName>/<repo>/`; when omitted
+   * the leaf of `branch` is used (back-compat).
+   */
+  taskName?: string
   remoteHost?: string
   containerName?: string
 }

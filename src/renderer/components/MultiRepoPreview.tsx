@@ -1,25 +1,26 @@
-import { Star, X as XIcon, LayoutGrid } from 'lucide-react'
+import { Star, X as XIcon, LayoutGrid, Layers } from 'lucide-react'
 import type { WorktreeCreateMode } from '../../shared/types'
 
 export interface MultiRepoPreviewProps {
   selectedRepos: string[]
   primaryRepo: string | null
   branch: string
+  taskFolder: string
   resolutions: Map<string, WorktreeCreateMode>
   perRepoSessions: boolean
   worktreeBasePath: string
   creationErrors: Map<string, string>
   onSetPrimary: (repo: string) => void
   onRemove: (repo: string) => void
-  onTogglePerRepo: () => void
+  onSetPerRepo: (perRepo: boolean) => void
   onRetry: (repo: string) => void
 }
 
 export default function MultiRepoPreview(props: MultiRepoPreviewProps): React.JSX.Element {
   const {
-    selectedRepos, primaryRepo, branch, resolutions, perRepoSessions,
+    selectedRepos, primaryRepo, branch, taskFolder, resolutions, perRepoSessions,
     worktreeBasePath, creationErrors,
-    onSetPrimary, onRemove, onTogglePerRepo, onRetry,
+    onSetPrimary, onRemove, onSetPerRepo, onRetry,
   } = props
 
   const repoLeaf = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -66,16 +67,16 @@ export default function MultiRepoPreview(props: MultiRepoPreviewProps): React.JS
                   {mode === 'track-remote' && `track origin/${branch}`}
                   {!mode && '…'}
                 </span>
-                <span className={`session-flag${perRepoSessions || isPrimary ? '' : ' silent'}`}>
+                <span className={`session-flag${perRepoSessions ? '' : ' silent'}`}>
                   <span className="session-flag__pip" />
                   {perRepoSessions
                     ? `session: ${branch} · ${repoName}`
-                    : isPrimary ? 'session here' : 'worktree only'}
+                    : 'worktree only'}
                 </span>
               </div>
               <div className="wt-path">
                 <span className="seg-base">{worktreeBasePath}/</span>
-                <span className="seg-branch">{branch}</span>
+                <span className="seg-task">{taskFolder || branch}</span>
                 <span className="seg-base">/</span>
                 <span className="seg-repo">{repoName}</span>
               </div>
@@ -91,23 +92,43 @@ export default function MultiRepoPreview(props: MultiRepoPreviewProps): React.JS
       </div>
 
       <div className="ccc-multi-rail__mode">
-        <button
-          type="button"
-          className={`tg${perRepoSessions ? ' on' : ''}`}
-          onClick={onTogglePerRepo}
-        >
-          <span className="sw" />
-          <span className="lbl-text">
-            <LayoutGrid size={11} />
-            Spawn one session per repo
-          </span>
-        </button>
-        <div className="ccc-multi-rail__summary">
-          {perRepoSessions ? (
-            <><b>{selectedRepos.length} worktrees</b> + <b>{selectedRepos.length} sessions</b> grouped as <b>{branch}</b></>
-          ) : (
-            <><b>{selectedRepos.length} worktrees</b>, <b>1 session</b> in <b>{primaryRepo ? repoLeaf(primaryRepo) : '—'}</b></>
-          )}
+        <div className="mode-cards">
+          <label className={`mode-card${!perRepoSessions ? ' selected' : ''}`}>
+            <input
+              type="radio"
+              name="ccc-session-mode"
+              checked={!perRepoSessions}
+              onChange={() => onSetPerRepo(false)}
+            />
+            <div className="mode-card__top">
+              <span className="mode-card__glyph"><Layers size={12} /></span>
+              <span className="mode-card__name">One session, all repos</span>
+            </div>
+            <p className="mode-card__desc">
+              Open the task folder so one agent sees every worktree as a sibling.
+            </p>
+            <div className="mode-card__stat">
+              1 session · {selectedRepos.length} worktrees
+            </div>
+          </label>
+          <label className={`mode-card${perRepoSessions ? ' selected' : ''}`}>
+            <input
+              type="radio"
+              name="ccc-session-mode"
+              checked={perRepoSessions}
+              onChange={() => onSetPerRepo(true)}
+            />
+            <div className="mode-card__top">
+              <span className="mode-card__glyph"><LayoutGrid size={12} /></span>
+              <span className="mode-card__name">One session per repo</span>
+            </div>
+            <p className="mode-card__desc">
+              Spawn an isolated agent in each repo. Same task folder, separate contexts.
+            </p>
+            <div className="mode-card__stat">
+              {selectedRepos.length} sessions · {selectedRepos.length} worktrees
+            </div>
+          </label>
         </div>
       </div>
     </aside>
