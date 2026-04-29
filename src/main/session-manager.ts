@@ -236,13 +236,39 @@ export class SessionManager {
 
   /**
    * Lock window naming and keep the client alive when individual windows die.
-   * Without these, Claude/codex constantly rename the window (clobbering the
+   * Without these, agent TUIs constantly rename the window (clobbering the
    * status-bar color) and the client detaches the moment a session's last
    * window exits — wiping the layout the user just built.
+   *
+   * Also bumps history-limit so capture-pane previews have real scrollback to
+   * draw from, and renders the agent state in the pane border so the session
+   * status is visible inside tmux itself (useful when attached headless over
+   * SSH without the Electron UI).
    */
   private installSessionDefaults(remoteHost: string | undefined, tmuxName: string): void {
     this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, '-w', 'automatic-rename', 'off')
     this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'detach-on-destroy', 'off')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'history-limit', '50000')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, '-w', 'pane-border-status', 'top')
+    this.tmuxCmd(
+      remoteHost,
+      'set-option',
+      '-t',
+      tmuxName,
+      '-w',
+      'pane-border-format',
+      ' #{@ccc-state} • #{session_name} '
+    )
+  }
+
+  /**
+   * Server-wide options that should hold for every CCC session. Idempotent —
+   * safe to call on every create. Currently: kill the 500 ms escape-key delay
+   * tmux uses to disambiguate Esc from arrow keys (matters for vim/neovim
+   * users and anyone who hits Esc a lot).
+   */
+  private installServerOptions(remoteHost: string | undefined): void {
+    this.tmuxCmd(remoteHost, 'set-option', '-g', 'escape-time', '0')
   }
 
   /**
@@ -568,6 +594,7 @@ export class SessionManager {
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
       this.installServerHooks(opts.remoteHost)
+      this.installServerOptions(opts.remoteHost)
       this.installSessionMonitors(opts.remoteHost, tmuxName)
       this.installSessionDefaults(opts.remoteHost, tmuxName)
       this.enableOutputStreaming(opts.remoteHost, tmuxName)
@@ -640,6 +667,7 @@ export class SessionManager {
       tmux('set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       tmux('set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
       this.installServerHooks(undefined)
+      this.installServerOptions(undefined)
       this.installSessionMonitors(undefined, tmuxName)
       this.installSessionDefaults(undefined, tmuxName)
       this.enableOutputStreaming(undefined, tmuxName)
@@ -747,6 +775,11 @@ export class SessionManager {
       if (session.name === sessionName) {
         session.status = status
         this.setUserOption(session.remoteHost, tmuxSessionName(session.name), '@ccc-state', status)
+        // Push a status-line redraw so attached clients see the new state
+        // immediately. pane-border-format / status-format reference @ccc-state,
+        // and tmux only re-renders on its own cadence (status-interval, default
+        // 15s) without an explicit refresh.
+        this.tmuxCmd(session.remoteHost, 'refresh-client', '-S')
         break
       }
     }
