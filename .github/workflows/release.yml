@@ -17,7 +17,7 @@ jobs:
       tag: ${{ steps.bump.outputs.tag }}
       skipped: ${{ steps.bump.outputs.skipped }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -68,14 +68,11 @@ jobs:
           - os: macos-latest
             build: pnpm build:mac
             artifact: dist/*.dmg
-          - os: windows-latest
-            build: pnpm build:win
-            artifact: dist/*.exe
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.version.outputs.tag || github.ref }}
 
@@ -83,7 +80,7 @@ jobs:
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm

@@ -12,14 +12,9 @@ curl -fsSL https://raw.githubusercontent.com/AdamGardelov/code-command-center2/m
 
 This downloads the latest `.deb` (Linux) or `.dmg` (macOS) from GitHub Releases and installs it. Re-run the same command any time to update — or use the in-app "Update now" button (Settings → About).
 
-### Windows
-
-Download the latest `.exe` installer from the [Releases page](https://github.com/AdamGardelov/code-command-center2/releases/latest).
-
 ### Known limitations
 
-- macOS and Windows builds are unsigned. You'll see Gatekeeper / SmartScreen warnings on first install.
-- In-app "Update now" is automated on Linux and macOS; on Windows it shows a copy-paste install command.
+- macOS builds are unsigned. You'll see a Gatekeeper warning on first install.
 
 ## Development
 
@@ -38,7 +33,6 @@ Platform-specific builds:
 ```bash
 pnpm build:linux
 pnpm build:mac
-pnpm build:win
 ```
 
 ## Architecture
