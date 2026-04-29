@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
 import { basename, dirname, join } from 'path'
-import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode, BranchResolution } from '../shared/types'
+import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode, BranchResolution, BatchWorktreeRequest, BatchWorktreeResult } from '../shared/types'
 import type { SshService } from './ssh-service'
 
 export class GitService {
@@ -212,6 +212,23 @@ export class GitService {
       isMain: false,
       repoPath: expanded
     }
+  }
+
+  addWorktreeBatch(
+    request: BatchWorktreeRequest,
+    resolveTargetPath: (repoPath: string) => string
+  ): BatchWorktreeResult[] {
+    const { repos, branch, remoteHost, containerName } = request
+    return repos.map(({ repoPath, mode }) => {
+      try {
+        const target = resolveTargetPath(repoPath)
+        const worktree = this.addWorktree(repoPath, branch, target, mode, remoteHost, containerName)
+        return { repoPath, ok: true, worktree }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { repoPath, ok: false, error: msg }
+      }
+    })
   }
 
   removeWorktree(worktreePath: string, remoteHost?: string, containerName?: string): void {

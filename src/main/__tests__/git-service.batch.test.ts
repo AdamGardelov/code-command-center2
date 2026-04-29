@@ -73,3 +73,48 @@ describe('GitService.resolveBranchAcrossRepos', () => {
     expect(results.find((r) => r.repoPath === repoC)).toMatchObject({ mode: 'track-remote' })
   })
 })
+
+describe('GitService.addWorktreeBatch', () => {
+  let scratch: string
+  let svc: GitService
+
+  beforeEach(() => {
+    scratch = mkdtempSync(join(tmpdir(), 'ccc2-batch-'))
+    svc = new GitService()
+  })
+  afterEach(() => {
+    rmSync(scratch, { recursive: true, force: true })
+  })
+
+  it('creates worktrees for all repos when all succeed', () => {
+    const repoA = makeRepo(scratch, 'a')
+    const repoB = makeRepo(scratch, 'b')
+    const out = join(scratch, 'wt')
+    const results = svc.addWorktreeBatch({
+      repos: [
+        { repoPath: repoA, mode: 'new-branch' },
+        { repoPath: repoB, mode: 'new-branch' },
+      ],
+      branch: 'feat/x',
+    }, (repoPath) => `${out}/feat-x/${repoPath.split('/').pop()}`)
+
+    expect(results).toHaveLength(2)
+    expect(results.every((r) => r.ok)).toBe(true)
+  })
+
+  it('returns per-repo errors without aborting other repos', () => {
+    const repoA = makeRepo(scratch, 'a')
+    const out = join(scratch, 'wt')
+    const results = svc.addWorktreeBatch({
+      repos: [
+        { repoPath: repoA, mode: 'new-branch' },
+        { repoPath: '/nonexistent/repo/path', mode: 'new-branch' },
+      ],
+      branch: 'feat/x',
+    }, (repoPath) => `${out}/feat-x/${repoPath.split('/').pop()}`)
+
+    expect(results).toHaveLength(2)
+    expect(results.find((r) => r.repoPath === repoA)?.ok).toBe(true)
+    expect(results.find((r) => r.repoPath === '/nonexistent/repo/path')?.ok).toBe(false)
+  })
+})
