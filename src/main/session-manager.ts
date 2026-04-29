@@ -7,6 +7,7 @@ import type { TmuxControl } from './tmux-control'
 import { tmuxArgs, tmuxArgsForRemote } from './tmux-socket'
 
 const EVENT_SOCKET_PATH = join(process.env.HOME ?? '', '.ccc', 'events.sock')
+const OUTPUT_SOCKET_PATH = join(process.env.HOME ?? '', '.ccc', 'output.sock')
 
 const HOOK_EVENTS = [
   'alert-activity',
@@ -242,6 +243,61 @@ export class SessionManager {
   private installSessionDefaults(remoteHost: string | undefined, tmuxName: string): void {
     this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, '-w', 'automatic-rename', 'off')
     this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'detach-on-destroy', 'off')
+  }
+
+  /**
+   * Stream the active pane's output to the unix socket consumed by
+   * OutputStream → OscParser. The shell wrapper writes a one-line header
+   * naming the session, then `cat`s the pane bytes into `nc -U`. `-O` skips
+   * replaying the existing scrollback so we don't get a wall of stale data.
+   *
+   * Idempotent — calling pipe-pane while an existing pipe is active toggles
+   * it off and back on, but tmux re-establishes the pipe on the same
+   * connection cleanly.
+   */
+  enableOutputStreaming(remoteHost: string | undefined, tmuxName: string): void {
+    // Remote streaming would require a unix-domain SSH tunnel to forward the
+    // remote pipe target back to our local OutputStream socket — out of scope
+    // for this iteration. Remote sessions still get OSC parsing via the
+    // attached PTY exactly as before.
+    if (remoteHost) return
+    const cmd = `{ printf 'session:#{session_name}\\n'; cat; } | nc -U '${OUTPUT_SOCKET_PATH}' 2>/dev/null`
+    this.tmuxCmd(undefined, 'pipe-pane', '-O', '-t', `=${tmuxName}:`, cmd)
+  }
+
+  /** Toggle the pipe-pane off for a session (no-op if it wasn't running). */
+  disableOutputStreaming(remoteHost: string | undefined, tmuxName: string): void {
+    if (remoteHost) return
+    this.tmuxCmd(undefined, 'pipe-pane', '-t', `=${tmuxName}:`)
+  }
+
+  /**
+   * Re-enable streaming for every CCC-managed session that is currently alive.
+   * Called on app start so existing sessions (created in a prior run) get their
+   * pipe restored. Walks list-sessions directly to avoid depending on the
+   * in-memory cache that may not be hydrated yet.
+   */
+  enableOutputStreamingForExistingSessions(): void {
+    const output = tmux('list-sessions', '-F', '#{session_name}')
+    if (!output) return
+    for (const name of output.split('\n')) {
+      if (name.startsWith(PREFIX) && name !== '__ccc-ctl') {
+        this.enableOutputStreaming(undefined, name)
+      }
+    }
+  }
+
+  /**
+   * Resolve a tmux session name (e.g. `ccc-foo`) to a tracked session id, for
+   * routing OutputStream chunks back into the right OscParser slot. Local-only.
+   */
+  findIdByLocalTmuxName(tmuxName: string): string | undefined {
+    for (const session of this.sessions.values()) {
+      if (!session.remoteHost && tmuxSessionName(session.name) === tmuxName) {
+        return session.id
+      }
+    }
+    return undefined
   }
 
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
@@ -514,6 +570,7 @@ export class SessionManager {
       this.installServerHooks(opts.remoteHost)
       this.installSessionMonitors(opts.remoteHost, tmuxName)
       this.installSessionDefaults(opts.remoteHost, tmuxName)
+      this.enableOutputStreaming(opts.remoteHost, tmuxName)
 
       const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', tmuxName)
       if (check === null) {
@@ -585,6 +642,7 @@ export class SessionManager {
       this.installServerHooks(undefined)
       this.installSessionMonitors(undefined, tmuxName)
       this.installSessionDefaults(undefined, tmuxName)
+      this.enableOutputStreaming(undefined, tmuxName)
 
       const check = tmux('has-session', '-t', `=${tmuxName}`)
       if (check === null) {
@@ -667,6 +725,7 @@ export class SessionManager {
     if (!session) return
 
     const tmuxName = tmuxSessionName(session.name)
+    this.disableOutputStreaming(session.remoteHost, tmuxName)
     this.tmuxCmd(session.remoteHost, 'kill-session', '-t', `=${tmuxName}`)
     session.status = 'stopped'
     this.sessions.delete(id)

@@ -151,4 +151,14 @@ export class PtyManager {
       this.detach(id)
     }
   }
+
+  /**
+   * Run pane data through the OSC parser without an attached PTY — used by
+   * the OutputStream pipe-pane consumer so detached sessions still get state
+   * hints and clipboard updates. The parser dedupes status changes per
+   * sessionId, so calling this in parallel with an attached PTY is safe.
+   */
+  parseOutput(sessionId: string, data: string): void {
+    this.oscParser.parse(sessionId, data)
+  }
 }
