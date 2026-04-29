@@ -115,6 +115,21 @@ const PREFIX = 'ccc-'
 /** Separator used in tmux list-sessions format strings — must not appear in session names or paths */
 const SEP = '|||'
 
+const LIST_FMT = `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}${SEP}#{@ccc-state}${SEP}#{@ccc-type}`
+
+const VALID_STATUSES = new Set<Session['status']>(['idle', 'working', 'waiting', 'stopped', 'error'])
+const VALID_TYPES = new Set<SessionType>(['claude', 'gemini', 'shell', 'codex'])
+
+function parseStatus(raw: string | undefined): Session['status'] | undefined {
+  if (!raw) return undefined
+  return VALID_STATUSES.has(raw as Session['status']) ? (raw as Session['status']) : undefined
+}
+
+function parseType(raw: string | undefined): SessionType | undefined {
+  if (!raw) return undefined
+  return VALID_TYPES.has(raw as SessionType) ? (raw as SessionType) : undefined
+}
+
 /** Tmux replaces dots with underscores in session names, so we must do the same */
 function tmuxSessionName(name: string): string {
   return PREFIX + name.replace(/\./g, '_')
@@ -218,6 +233,17 @@ export class SessionManager {
     this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'silence-action', 'none')
   }
 
+  /**
+   * Lock window naming and keep the client alive when individual windows die.
+   * Without these, Claude/codex constantly rename the window (clobbering the
+   * status-bar color) and the client detaches the moment a session's last
+   * window exits — wiping the layout the user just built.
+   */
+  private installSessionDefaults(remoteHost: string | undefined, tmuxName: string): void {
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, '-w', 'automatic-rename', 'off')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'detach-on-destroy', 'off')
+  }
+
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
@@ -251,20 +277,18 @@ export class SessionManager {
     if (!this.sshService) return []
     const output = this.sshService.exec(
       sshHost,
-      tmuxArgsForRemote(
-        'list-sessions',
-        '-F',
-        `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}`
-      )
+      tmuxArgsForRemote('list-sessions', '-F', LIST_FMT)
     )
     if (!output) return []
 
     const sessions: Session[] = []
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath] = line.split(SEP)
+      const [name, createdStr, currentPath, cccState, cccType] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       const sessionName = name.slice(PREFIX.length)
+      const restoredStatus = parseStatus(cccState)
+      const restoredType = parseType(cccType)
       // Check if we already track this remote session
       const existing = this.findByTmuxNameAndHost(sessionName, hostName)
       const containerSessions = this.configService?.get().containerSessions ?? {}
@@ -289,8 +313,8 @@ export class SessionManager {
           id: generateId(),
           name: sessionName,
           workingDirectory: currentPath || '~',
-          status: 'idle',
-          type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
+          status: restoredStatus ?? 'idle',
+          type: restoredType ?? this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           remoteHost: hostName,
           isContainer: !!remoteContainerName,
@@ -323,21 +347,19 @@ export class SessionManager {
   }
 
   private async doList(): Promise<Session[]> {
-    const output = tmux(
-      'list-sessions',
-      '-F',
-      `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}`
-    )
+    const output = tmux('list-sessions', '-F', LIST_FMT)
     if (!output) return Array.from(this.sessions.values()).filter((s) => s.status !== 'stopped')
 
     const tmuxSessions = new Set<string>()
 
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath] = line.split(SEP)
+      const [name, createdStr, currentPath, cccState, cccType] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       tmuxSessions.add(name)
       const existing = this.findByTmuxName(name)
+      const restoredStatus = parseStatus(cccState)
+      const restoredType = parseType(cccType)
 
       const containerSessions = this.configService?.get().containerSessions ?? {}
       if (existing) {
@@ -364,8 +386,8 @@ export class SessionManager {
           id: generateId(),
           name: sessionName,
           workingDirectory: currentPath || '~',
-          status: 'idle',
-          type: this.configService?.get().sessionTypes[sessionName] ?? 'claude',
+          status: restoredStatus ?? 'idle',
+          type: restoredType ?? this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           isContainer: !!containerName,
           containerName,
@@ -491,6 +513,7 @@ export class SessionManager {
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
       this.installServerHooks(opts.remoteHost)
       this.installSessionMonitors(opts.remoteHost, tmuxName)
+      this.installSessionDefaults(opts.remoteHost, tmuxName)
 
       const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', tmuxName)
       if (check === null) {
@@ -561,6 +584,7 @@ export class SessionManager {
       tmux('set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
       this.installServerHooks(undefined)
       this.installSessionMonitors(undefined, tmuxName)
+      this.installSessionDefaults(undefined, tmuxName)
 
       const check = tmux('has-session', '-t', `=${tmuxName}`)
       if (check === null) {
