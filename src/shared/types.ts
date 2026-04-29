@@ -314,6 +314,13 @@ export interface CccAPI {
     listBranches: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<string[]>
     getBranchMetadata: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<BranchMetadata[]>
     fetchRemotes: (repoPath: string, remoteHost?: string, containerName?: string) => Promise<{ ok: boolean; error?: string }>
+    resolveBranchBatch: (
+      repoPaths: string[],
+      branch: string,
+      remoteHost?: string,
+      containerName?: string
+    ) => Promise<BranchResolution[]>
+    addWorktreeBatch: (request: BatchWorktreeRequest) => Promise<BatchWorktreeResult[]>
   }
   group: {
     create: (name: string) => Promise<SessionGroup>

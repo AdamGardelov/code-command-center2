@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
-import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState, WorktreeCreateMode } from '../shared/types'
+import type { CccAPI, CccConfig, SessionCreate, SessionStatus, SessionGroup, ContainerConfig, UpdaterState, WorktreeCreateMode, BatchWorktreeRequest } from '../shared/types'
 
 // Single-dispatcher for terminal:data IPC events.
 // Routes each chunk to the callbacks subscribed for that sessionId,
@@ -132,7 +132,15 @@ const api: CccAPI = {
     getBranchMetadata: (repoPath: string, remoteHost?: string, containerName?: string) =>
       ipcRenderer.invoke('git:branch-metadata', repoPath, remoteHost, containerName),
     fetchRemotes: (repoPath: string, remoteHost?: string, containerName?: string) =>
-      ipcRenderer.invoke('git:fetch-remotes', repoPath, remoteHost, containerName)
+      ipcRenderer.invoke('git:fetch-remotes', repoPath, remoteHost, containerName),
+    resolveBranchBatch: (
+      repoPaths: string[],
+      branch: string,
+      remoteHost?: string,
+      containerName?: string
+    ) => ipcRenderer.invoke('git:resolve-branch-batch', repoPaths, branch, remoteHost, containerName),
+    addWorktreeBatch: (request: BatchWorktreeRequest) =>
+      ipcRenderer.invoke('git:add-worktree-batch', request)
   },
   group: {
     create: (name: string): Promise<SessionGroup> => ipcRenderer.invoke('group:create', name),
