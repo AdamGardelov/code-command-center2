@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process'
 import { existsSync, statSync, cpSync, mkdirSync } from 'fs'
 import { basename, dirname, join } from 'path'
-import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode } from '../shared/types'
+import type { Worktree, BranchMetadata, CccConfig, WorktreeCreateMode, BranchResolution } from '../shared/types'
 import type { SshService } from './ssh-service'
 
 export class GitService {
@@ -423,6 +423,46 @@ export class GitService {
       if (first) return first.trim()
     }
     return 'main'
+  }
+
+  resolveBranchAcrossRepos(
+    repoPaths: string[],
+    branch: string,
+    remoteHost?: string,
+    containerName?: string
+  ): BranchResolution[] {
+    const cleanBranch = branch
+      .replace(/^refs\/heads\//, '')
+      .replace(/^refs\/remotes\//, '')
+      .replace(/^heads\//, '')
+
+    return repoPaths.map((repoPath) => {
+      const expanded = (remoteHost || containerName) ? repoPath : repoPath.replace(/^~/, process.env.HOME ?? '')
+      try {
+        const localExists = this.exec(
+          ['-C', expanded, 'rev-parse', '--verify', `refs/heads/${cleanBranch}`],
+          remoteHost,
+          containerName
+        )
+        if (localExists) {
+          const wt = this.listWorktrees(repoPath, remoteHost, containerName)
+            .find((w) => w.branch === cleanBranch)
+          return { repoPath, ok: true, mode: 'existing-local', existingWorktreePath: wt?.path }
+        }
+        const remoteExists = this.exec(
+          ['-C', expanded, 'rev-parse', '--verify', `refs/remotes/origin/${cleanBranch}`],
+          remoteHost,
+          containerName
+        )
+        if (remoteExists) {
+          return { repoPath, ok: true, mode: 'track-remote' }
+        }
+        return { repoPath, ok: true, mode: 'new-branch' }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { repoPath, ok: false, error: msg }
+      }
+    })
   }
 
   resolveWorktreePath(repoPath: string, branch: string, remoteHost?: string, containerName?: string): string {
