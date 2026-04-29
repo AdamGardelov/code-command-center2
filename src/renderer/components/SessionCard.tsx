@@ -148,6 +148,34 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
   const containers = useSessionStore((s) => s.containers)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [preview, setPreview] = useState<{ text: string; top: number; left: number } | null>(null)
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const cancelPreview = (): void => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current)
+      previewTimerRef.current = null
+    }
+    setPreview(null)
+  }
+
+  const schedulePreview = (rect: DOMRect): void => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+    previewTimerRef.current = setTimeout(async () => {
+      const text = await window.cccAPI.session.capturePane(session.id, 30)
+      if (!text) {
+        setPreview(null)
+        return
+      }
+      setPreview({ text, top: rect.top, left: rect.right + 8 })
+    }, 600)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (renamingSessionId === session.id && renameInputRef.current) {
@@ -184,9 +212,11 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
         }}
         onMouseEnter={(e) => {
           if (!isActive) e.currentTarget.style.backgroundColor = 'var(--line-soft)'
+          schedulePreview(e.currentTarget.getBoundingClientRect())
         }}
         onMouseLeave={(e) => {
           if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
+          cancelPreview()
         }}
       >
         {/* Left accent rail (active only) */}
@@ -368,6 +398,40 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
         />
+      )}
+      {preview && (
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            top: preview.top,
+            left: preview.left,
+            zIndex: 50,
+            maxWidth: 480,
+            maxHeight: 220,
+            overflow: 'hidden',
+            padding: '6px 8px',
+            borderRadius: 6,
+            backgroundColor: 'var(--bg-2)',
+            border: '1px solid var(--line-soft)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            pointerEvents: 'none'
+          }}
+        >
+          <pre
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10.5,
+              lineHeight: 1.35,
+              color: 'var(--ink-1)',
+              whiteSpace: 'pre',
+              overflow: 'hidden'
+            }}
+          >
+            {preview.text}
+          </pre>
+        </div>
       )}
     </>
   )

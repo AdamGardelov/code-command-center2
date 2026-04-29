@@ -37,6 +37,24 @@ const DEFAULT_CONFIG: CccConfig = {
 
 export class ConfigService {
   private config: CccConfig = { ...DEFAULT_CONFIG }
+  private listeners: Set<(config: CccConfig) => void> = new Set()
+
+  onChange(listener: (config: CccConfig) => void): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  private notifyChange(): void {
+    for (const l of this.listeners) {
+      try {
+        l(this.config)
+      } catch {
+        // Listener error must not block the update.
+      }
+    }
+  }
 
   load(): CccConfig {
     try {
@@ -170,6 +188,7 @@ export class ConfigService {
     if (partial.defaultDestinationId !== undefined) this.config.defaultDestinationId = partial.defaultDestinationId
 
     this.save(this.config)
+    this.notifyChange()
     return this.config
   }
 

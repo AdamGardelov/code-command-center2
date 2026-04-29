@@ -281,6 +281,8 @@ export interface CccAPI {
     detach: (id: string) => void
     openInIde: (id: string) => Promise<void>
     openFolder: (id: string) => Promise<void>
+    capturePane: (id: string, lines?: number) => Promise<string>
+    onListChanged: (callback: () => void) => () => void
   }
   terminal: {
     write: (sessionId: string, data: string) => void

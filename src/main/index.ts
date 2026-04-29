@@ -30,6 +30,8 @@ import { is } from '@electron-toolkit/utils'
 import { SessionManager } from './session-manager'
 import { PtyManager } from './pty-manager'
 import { StateDetector } from './state-detector'
+import { TmuxControl } from './tmux-control'
+import { EventSocket } from './event-socket'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerConfigIpc } from './ipc/config'
@@ -47,6 +49,29 @@ import { PrService } from './pr-service'
 import { ContainerService } from './container-service'
 import { initUpdater } from './updater'
 import { log, readLogs, getLogPath } from './log-service'
+import { existsSync, readdirSync } from 'fs'
+
+function warnIfLegacyStateFiles(): void {
+  const dir = join(process.env.HOME ?? '', '.ccc', 'states')
+  if (!existsSync(dir)) return
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return
+  }
+  if (entries.length === 0) return
+  const sock = join(process.env.HOME ?? '', '.ccc', 'events.sock')
+  log.warn(
+    `${entries.length} legacy state file(s) found in ${dir}. ` +
+      `CCC no longer reads them — update your tool's hook config (Claude Code, ` +
+      `Codex, Gemini, or any TUI you have wired into CCC) to write to the unix ` +
+      `socket instead. Replace commands like ` +
+      `\`echo working > ~/.ccc/states/$CCC_SESSION_NAME\` with ` +
+      `\`printf 'agent-working:%s\\n' "$CCC_SESSION_NAME" | nc -U ${sock} -w1\`. ` +
+      `See scripts/migrate-legacy-state-hooks.sh for an example migration.`
+  )
+}
 
 const configService = new ConfigService()
 configService.load()
@@ -69,6 +94,51 @@ const containerService = new ContainerService()
 containerService.setSshService(sshService)
 containerService.setConfigService(configService)
 sessionManager.setContainerService(containerService)
+
+const localControl = new TmuxControl()
+sessionManager.setLocalControl(localControl)
+void localControl.start().catch((err) => log.error(`local tmux control failed: ${err}`))
+
+const remoteControls = new Map<string, TmuxControl>()
+function syncRemoteControls(): void {
+  const hosts = configService.get().remoteHosts ?? []
+  for (const h of hosts) {
+    if (remoteControls.has(h.name)) continue
+    const sshPrefix = [
+      'ssh',
+      '-o', 'ControlMaster=auto',
+      '-o', `ControlPath=${join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')}`,
+      '-o', 'ControlPersist=300',
+      '-o', 'BatchMode=yes',
+      h.host
+    ]
+    const ctl = new TmuxControl({ sshPrefix })
+    sessionManager.setRemoteControl(h.name, ctl)
+    void ctl.start().catch((err) =>
+      log.error(`remote tmux control for ${h.name} failed: ${err}`)
+    )
+    remoteControls.set(h.name, ctl)
+  }
+  for (const name of Array.from(remoteControls.keys())) {
+    if (!hosts.some((h) => h.name === name)) {
+      const ctl = remoteControls.get(name)
+      if (ctl) void ctl.stop()
+      sessionManager.removeRemoteControl(name)
+      remoteControls.delete(name)
+    }
+  }
+}
+syncRemoteControls()
+configService.onChange(() => syncRemoteControls())
+
+const PREFIX = 'ccc-'
+const eventSocket = new EventSocket(join(process.env.HOME ?? '', '.ccc', 'events.sock'))
+eventSocket.on('event', (kind: string, sessionName: string) => {
+  // Tmux session names are `ccc-<name>`; StateDetector keys are the bare name.
+  const name = sessionName.startsWith(PREFIX) ? sessionName.slice(PREFIX.length) : sessionName
+  stateDetector.handleHookEvent(kind, name)
+})
+void eventSocket.start().catch((err) => log.error(`event socket failed: ${err}`))
 
 const isMac = process.platform === 'darwin'
 
@@ -96,6 +166,12 @@ function createWindow(): void {
   stateDetector.setWindow(mainWindow)
   notificationService.setWindow(mainWindow)
   prService.setWindow(mainWindow)
+
+  sessionManager.onSessionsChanged(() => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('session:list-changed')
+    }
+  })
   if (configService.get().features.pullRequests) {
     prService.start()
   }
@@ -175,8 +251,10 @@ ipcMain.handle('app:logs', (_event, lines?: number) => readLogs(lines))
 
 ipcMain.handle('app:log-path', () => getLogPath())
 
-// Hook-based detection as secondary source (overrides OSC if configured)
-stateDetector.start()
+// State now arrives via the unix socket (tmux hooks + Claude hooks).
+// If the legacy ~/.ccc/states/ directory still has files, the user has
+// not yet migrated their Claude hook config — surface a clear hint.
+warnIfLegacyStateFiles()
 
 app.whenReady().then(() => {
   log.info(`CCC starting on ${process.platform} (${process.arch})`)
@@ -203,8 +281,13 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   sshService.stopMonitoring()
-  stateDetector.stop()
   ptyManager.detachAll()
   prService.stop()
+  void localControl.stop()
+  for (const ctl of remoteControls.values()) {
+    void ctl.stop()
+  }
+  remoteControls.clear()
+  void eventSocket.stop()
   if (process.platform !== 'darwin') app.quit()
 })
