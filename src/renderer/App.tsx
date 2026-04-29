@@ -20,7 +20,12 @@ export default function App(): React.JSX.Element {
       loadHostStatuses()
     })
 
-    const interval = setInterval(loadSessions, 5000)
+    // Push-based refresh from tmux control mode. Falls back to a slow poll for
+    // safety in case the control connection is briefly unavailable.
+    const unsubList = window.cccAPI.session.onListChanged(() => {
+      loadSessions()
+    })
+    const interval = setInterval(loadSessions, 30000)
 
     const unsubState = window.cccAPI.state.onStateChanged((sessionName, status) => {
       updateSessionStatus(sessionName, status)
@@ -32,6 +37,7 @@ export default function App(): React.JSX.Element {
 
     return () => {
       clearInterval(interval)
+      unsubList()
       unsubState()
       unsubHost()
     }

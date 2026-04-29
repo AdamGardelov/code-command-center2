@@ -2,6 +2,7 @@ import { execFileSync, spawn } from 'child_process'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
 import type { ContainerService } from './container-service'
+import type { TmuxControl } from './tmux-control'
 import { tmuxArgs, tmuxArgsForRemote } from './tmux-socket'
 
 function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
@@ -114,6 +115,11 @@ export class SessionManager {
   private configService: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined; pruneSessionName(sessionName: string): void } | null = null
   private sshService: SshService | null = null
   private containerService: ContainerService | null = null
+  private localControl: TmuxControl | null = null
+  private remoteControls: Map<string, TmuxControl> = new Map()
+  private listCacheStale = true
+  private listInFlight: Promise<Session[]> | null = null
+  private onSessionsChangedCallback: (() => void) | null = null
 
   setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined; pruneSessionName(sessionName: string): void }): void {
     this.configService = service
@@ -125,6 +131,52 @@ export class SessionManager {
 
   setContainerService(service: ContainerService): void {
     this.containerService = service
+  }
+
+  setLocalControl(control: TmuxControl): void {
+    this.localControl = control
+    control.on('sessions-changed', () => {
+      this.listCacheStale = true
+      this.onSessionsChangedCallback?.()
+    })
+    control.on('session-closed', (name: string) => {
+      for (const s of this.sessions.values()) {
+        if (!s.remoteHost && tmuxSessionName(s.name) === name) {
+          s.status = 'stopped'
+        }
+      }
+      this.listCacheStale = true
+      this.onSessionsChangedCallback?.()
+    })
+  }
+
+  setRemoteControl(hostName: string, control: TmuxControl): void {
+    this.remoteControls.set(hostName, control)
+    control.on('sessions-changed', () => {
+      this.listCacheStale = true
+      this.onSessionsChangedCallback?.()
+    })
+    control.on('session-closed', (name: string) => {
+      for (const s of this.sessions.values()) {
+        if (s.remoteHost === hostName && tmuxSessionName(s.name) === name) {
+          s.status = 'stopped'
+        }
+      }
+      this.listCacheStale = true
+      this.onSessionsChangedCallback?.()
+    })
+  }
+
+  removeRemoteControl(hostName: string): void {
+    this.remoteControls.delete(hostName)
+  }
+
+  onSessionsChanged(callback: () => void): void {
+    this.onSessionsChangedCallback = callback
+  }
+
+  invalidateCache(): void {
+    this.listCacheStale = true
   }
 
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
@@ -215,6 +267,23 @@ export class SessionManager {
   }
 
   async list(): Promise<Session[]> {
+    if (!this.listCacheStale && this.localControl?.isRunning()) {
+      return Array.from(this.sessions.values())
+        .filter((s) => s.status !== 'stopped')
+        .sort((a, b) => a.createdAt - b.createdAt)
+    }
+    if (this.listInFlight) return this.listInFlight
+    const inFlight = this.doList()
+    this.listInFlight = inFlight
+    try {
+      return await inFlight
+    } finally {
+      this.listInFlight = null
+      this.listCacheStale = false
+    }
+  }
+
+  private async doList(): Promise<Session[]> {
     const output = tmux(
       'list-sessions',
       '-F',

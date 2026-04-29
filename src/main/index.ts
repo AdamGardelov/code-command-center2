@@ -30,6 +30,7 @@ import { is } from '@electron-toolkit/utils'
 import { SessionManager } from './session-manager'
 import { PtyManager } from './pty-manager'
 import { StateDetector } from './state-detector'
+import { TmuxControl } from './tmux-control'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerConfigIpc } from './ipc/config'
@@ -70,6 +71,42 @@ containerService.setSshService(sshService)
 containerService.setConfigService(configService)
 sessionManager.setContainerService(containerService)
 
+const localControl = new TmuxControl()
+sessionManager.setLocalControl(localControl)
+void localControl.start().catch((err) => log.error(`local tmux control failed: ${err}`))
+
+const remoteControls = new Map<string, TmuxControl>()
+function syncRemoteControls(): void {
+  const hosts = configService.get().remoteHosts ?? []
+  for (const h of hosts) {
+    if (remoteControls.has(h.name)) continue
+    const sshPrefix = [
+      'ssh',
+      '-o', 'ControlMaster=auto',
+      '-o', `ControlPath=${join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')}`,
+      '-o', 'ControlPersist=300',
+      '-o', 'BatchMode=yes',
+      h.host
+    ]
+    const ctl = new TmuxControl({ sshPrefix })
+    sessionManager.setRemoteControl(h.name, ctl)
+    void ctl.start().catch((err) =>
+      log.error(`remote tmux control for ${h.name} failed: ${err}`)
+    )
+    remoteControls.set(h.name, ctl)
+  }
+  for (const name of Array.from(remoteControls.keys())) {
+    if (!hosts.some((h) => h.name === name)) {
+      const ctl = remoteControls.get(name)
+      if (ctl) void ctl.stop()
+      sessionManager.removeRemoteControl(name)
+      remoteControls.delete(name)
+    }
+  }
+}
+syncRemoteControls()
+configService.onChange(() => syncRemoteControls())
+
 const isMac = process.platform === 'darwin'
 
 function createWindow(): void {
@@ -96,6 +133,12 @@ function createWindow(): void {
   stateDetector.setWindow(mainWindow)
   notificationService.setWindow(mainWindow)
   prService.setWindow(mainWindow)
+
+  sessionManager.onSessionsChanged(() => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('session:list-changed')
+    }
+  })
   if (configService.get().features.pullRequests) {
     prService.start()
   }
@@ -206,5 +249,10 @@ app.on('window-all-closed', () => {
   stateDetector.stop()
   ptyManager.detachAll()
   prService.stop()
+  void localControl.stop()
+  for (const ctl of remoteControls.values()) {
+    void ctl.stop()
+  }
+  remoteControls.clear()
   if (process.platform !== 'darwin') app.quit()
 })

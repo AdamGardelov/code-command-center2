@@ -34,7 +34,12 @@ const api: CccAPI = {
     attach: (id: string, cols?: number, rows?: number) => ipcRenderer.send('session:attach', id, cols, rows),
     detach: (id: string) => ipcRenderer.send('session:detach', id),
     openInIde: (id: string): Promise<void> => ipcRenderer.invoke('session:open-ide', id),
-    openFolder: (id: string): Promise<void> => ipcRenderer.invoke('session:open-folder', id)
+    openFolder: (id: string): Promise<void> => ipcRenderer.invoke('session:open-folder', id),
+    onListChanged: (callback: () => void) => {
+      const handler = (): void => callback()
+      ipcRenderer.on('session:list-changed', handler)
+      return () => ipcRenderer.removeListener('session:list-changed', handler)
+    }
   },
   terminal: {
     write: (sessionId: string, data: string) =>
