@@ -4,6 +4,7 @@ import { join } from 'path'
 import { clipboard, type BrowserWindow } from 'electron'
 import type { SessionStatus } from '../shared/types'
 import { OscParser } from './osc-parser'
+import { TMUX_SOCKET_NAME, tmuxArgs } from './tmux-socket'
 
 interface ActivePty {
   pty: pty.IPty
@@ -46,18 +47,19 @@ export class PtyManager {
     const r = rows ?? 30
 
     // Ensure tmux server supports truecolor and forwards OSC 52 clipboard (affects all sessions, idempotent)
+    const remoteTmux = `tmux -L ${TMUX_SOCKET_NAME}`
     if (remoteHost) {
       const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
       const sshBase = `ssh -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 -o BatchMode=yes`
       try {
-        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set -g default-terminal 'xterm-256color' 2>/dev/null; tmux set -ga terminal-overrides ',xterm-256color:Tc' 2>/dev/null; tmux set -g set-clipboard on 2>/dev/null; tmux set -ga terminal-overrides ',xterm-256color:Ms=\\\\E]52;%p1%s;%p2%s\\\\7' 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "${remoteTmux} set -g default-terminal 'xterm-256color' 2>/dev/null; ${remoteTmux} set -ga terminal-overrides ',xterm-256color:Tc' 2>/dev/null; ${remoteTmux} set -g set-clipboard on 2>/dev/null; ${remoteTmux} set -ga terminal-overrides ',xterm-256color:Ms=\\\\E]52;%p1%s;%p2%s\\\\7' 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     } else {
       try {
-        execFileSync('tmux', ['set', '-g', 'default-terminal', 'xterm-256color'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set', '-ga', 'terminal-overrides', ',xterm-256color:Tc'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set', '-g', 'set-clipboard', 'on'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set', '-ga', 'terminal-overrides', ',xterm-256color:Ms=\\E]52;%p1%s;%p2%s\\7'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set', '-g', 'default-terminal', 'xterm-256color'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set', '-ga', 'terminal-overrides', ',xterm-256color:Tc'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set', '-g', 'set-clipboard', 'on'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set', '-ga', 'terminal-overrides', ',xterm-256color:Ms=\\E]52;%p1%s;%p2%s\\7'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     }
 
@@ -66,23 +68,23 @@ export class PtyManager {
       const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
       const sshBase = `ssh -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 -o BatchMode=yes`
       try {
-        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "tmux set-option -t '=${tmuxSessionName}' window-size latest 2>/dev/null; tmux set-option -t '=${tmuxSessionName}' aggressive-resize on 2>/dev/null; tmux set-environment -t '=${tmuxSessionName}' COLORTERM truecolor 2>/dev/null; tmux set-environment -t '=${tmuxSessionName}' TERM xterm-256color 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('bash', ['-c', `${sshBase} ${remoteHost} "${remoteTmux} set-option -t '=${tmuxSessionName}' window-size latest 2>/dev/null; ${remoteTmux} set-option -t '=${tmuxSessionName}' aggressive-resize on 2>/dev/null; ${remoteTmux} set-environment -t '=${tmuxSessionName}' COLORTERM truecolor 2>/dev/null; ${remoteTmux} set-environment -t '=${tmuxSessionName}' TERM xterm-256color 2>/dev/null"`], { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     } else {
       try {
-        execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'window-size', 'latest'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set-option', '-t', `=${tmuxSessionName}`, 'aggressive-resize', 'on'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set-environment', '-t', `=${tmuxSessionName}`, 'COLORTERM', 'truecolor'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-        execFileSync('tmux', ['set-environment', '-t', `=${tmuxSessionName}`, 'TERM', 'xterm-256color'], { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set-option', '-t', `=${tmuxSessionName}`, 'window-size', 'latest'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set-option', '-t', `=${tmuxSessionName}`, 'aggressive-resize', 'on'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set-environment', '-t', `=${tmuxSessionName}`, 'COLORTERM', 'truecolor'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
+        execFileSync('tmux', tmuxArgs('set-environment', '-t', `=${tmuxSessionName}`, 'TERM', 'xterm-256color'), { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
       } catch { /* ignore */ }
     }
 
     let ptyArgs: string[]
     if (remoteHost) {
       const controlPath = join(process.env.HOME ?? '', '.ccc', 'ssh-%r@%h:%p')
-      ptyArgs = ['-lc', `ssh -t -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 ${remoteHost} "tmux attach-session -d -t '=${tmuxSessionName}'"`]
+      ptyArgs = ['-lc', `ssh -t -o ControlMaster=auto -o 'ControlPath=${controlPath}' -o ControlPersist=300 ${remoteHost} "${remoteTmux} attach-session -d -t '=${tmuxSessionName}'"`]
     } else {
-      ptyArgs = ['-lc', `tmux attach-session -d -t '=${tmuxSessionName}'`]
+      ptyArgs = ['-lc', `${remoteTmux} attach-session -d -t '=${tmuxSessionName}'`]
     }
 
     const ptyProcess = pty.spawn(shell, ptyArgs, {
