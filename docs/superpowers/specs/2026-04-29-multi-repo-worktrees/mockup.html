@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CCC2 — Multi-repo task modal mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #0a0a0b;
+    --bg-1: #111214;
+    --bg-2: #1a1b1e;
+    --bg-3: #24262a;
+    --ink-0: #ebe9e3;
+    --ink-1: #c4c2bb;
+    --ink-2: #918f88;
+    --ink-3: #5e5d57;
+    --ink-4: #3a3935;
+    --line: #25272a;
+    --line-soft: #181a1c;
+    --amber: #e3a55b;
+    --amber-hi: #f1ba73;
+    --amber-wash: rgba(227, 165, 91, 0.10);
+    --amber-rim: rgba(227, 165, 91, 0.32);
+    --s-error: #d8635e;
+    --s-done: #74b370;
+    --s-warn: #d8a35e;
+    --container: #7ec8c8;
+    --modal-backdrop: rgba(0, 0, 0, 0.62);
+    --shadow-modal: 0 30px 80px -20px rgba(0,0,0,0.6), 0 8px 24px -8px rgba(0,0,0,0.5);
+    --radius-lg: 10px;
+    --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+    --font-mono: "Geist Mono", "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg-0);
+    color: var(--ink-1);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fake app behind the modal */
+  .app-bg {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(1200px 600px at 80% 10%, rgba(227,165,91,0.04), transparent 60%),
+      radial-gradient(800px 600px at 10% 80%, rgba(126,200,200,0.03), transparent 60%),
+      var(--bg-0);
+    overflow: hidden;
+  }
+  .app-bg::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent 80%);
+  }
+  .titlebar {
+    height: 36px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 14px;
+    color: var(--ink-3);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    background: var(--bg-1);
+  }
+  .traffic { display: flex; gap: 7px; }
+  .traffic span { width: 11px; height: 11px; border-radius: 50%; background: var(--bg-3); display: block; }
+  .traffic span:nth-child(1) { background: #ed6a5e; }
+  .traffic span:nth-child(2) { background: #f4be4f; }
+  .traffic span:nth-child(3) { background: #61c554; }
+  .titlebar .crumb { color: var(--ink-2); }
+  .titlebar .crumb b { color: var(--ink-1); font-weight: 500; }
+  .sidebar-fake {
+    position: absolute; left: 0; top: 36px; bottom: 0; width: 240px;
+    background: var(--bg-1);
+    border-right: 1px solid var(--line);
+    padding: 14px 12px;
+  }
+  .sidebar-fake .lbl {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-4); margin: 16px 0 8px;
+  }
+  .sidebar-fake .item {
+    display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 5px;
+    color: var(--ink-2); font-family: var(--font-mono); font-size: 11px;
+  }
+  .sidebar-fake .item .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .sidebar-fake .item.active { background: var(--bg-2); color: var(--ink-0); }
+  .sidebar-fake .item:not(.active):hover { background: var(--bg-2); }
+
+  /* Modal backdrop */
+  .backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background-color: var(--modal-backdrop);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fade 220ms ease;
+  }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes lift { from { opacity: 0; transform: translateY(8px) scale(0.985) } to { opacity: 1; transform: none } }
+
+  /* Modal shell */
+  .modal {
+    width: 560px;
+    max-height: 92vh;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-modal);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: lift 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: width 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .modal[data-multi="true"] { width: 880px; }
+
+  /* Header */
+  .head {
+    padding: 14px 22px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .head h1 {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink-0);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .head h1 .pill {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-wash);
+    border: 1px solid var(--amber-rim);
+    padding: 2px 7px;
+    border-radius: 4px;
+    transform: translateY(-1px);
+  }
+  .head .spacer { flex: 1; }
+  .kbd-hints {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--ink-1);
+  }
+  .head .x {
+    width: 24px; height: 24px;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    background: transparent; border: none; cursor: pointer;
+    border-radius: 4px; margin-left: 4px;
+  }
+  .head .x:hover { background: var(--bg-2); color: var(--ink-0); }
+
+  /* Body */
+  .body-wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+  }
+  .modal[data-multi="true"] .body-wrap {
+    grid-template-columns: 1fr 360px;
+  }
+  form.body {
+    padding: 14px 22px 4px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+
+  /* Right rail */
+  aside.preview {
+    border-left: 1px solid var(--line-soft);
+    background:
+      linear-gradient(180deg, rgba(227,165,91,0.025), transparent 22%),
+      var(--bg-0);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .modal[data-multi="true"] aside.preview {
+    display: flex;
+    animation: rail-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes rail-in {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Field labels */
+  .fl {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+  }
+  .fl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .fl-row .hint {
+    font-size: 10px; color: var(--ink-4);
+    font-weight: 400; letter-spacing: 0; text-transform: none;
+  }
+  .fl-row .grow { flex: 1; }
+
+  /* Recent chips */
+  .recents {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .recent-chip {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--bg-0);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+    transition: border-color 120ms;
+    min-width: 0;
+  }
+  .recent-chip:hover { border-color: var(--amber-rim); }
+  .recent-chip .top { display: flex; align-items: center; gap: 6px; }
+  .recent-chip .name { font-family: var(--font-mono); font-size: 11px; color: var(--ink-0); }
+  .recent-chip .ago { font-size: 9.5px; color: var(--ink-4); }
+  .recent-chip .sub { font-size: 9.5px; color: var(--ink-3); font-family: var(--font-mono); margin-top: 2px; white-space: nowrap; }
+
+  /* Destination block */
+  .dest-list {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-0);
+    padding: 4px;
+    max-height: 138px;
+    overflow-y: auto;
+  }
+  .dest-row {
+    display: grid; grid-template-columns: 24px 1fr auto auto; gap: 10px;
+    align-items: center; padding: 7px 10px; border-radius: 6px;
+    cursor: pointer; transition: background 80ms;
+    border: 1px solid transparent;
+  }
+  .dest-row:hover { background: var(--bg-2); }
+  .dest-row.active { background: var(--amber-wash); border-color: var(--amber-rim); }
+  .dest-row .icon {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--bg-2);
+    display: grid; place-items: center; border: 1px solid var(--line);
+    color: var(--ink-1);
+  }
+  .dest-row.active .icon { color: var(--amber); }
+  .dest-row .name { font-family: var(--font-mono); font-size: 12px; color: var(--ink-0); }
+  .dest-row.active .name { color: var(--amber-hi); }
+  .dest-row .sub { font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); margin-top: 1px; }
+  .dest-row .badge-row { display: flex; align-items: center; gap: 8px; }
+  .badge {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line);
+    color: var(--ink-3);
+  }
+  .badge.local { color: var(--ink-3); }
+  .badge.default { color: var(--amber); border-color: var(--amber-rim); background: var(--amber-wash); display: inline-flex; align-items: center; gap: 3px; }
+  .dest-row .ready {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; color: var(--ink-3);
+    font-family: var(--font-mono);
+  }
+  .dest-row .ready .pulse {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--s-done);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--s-done) 60%, transparent);
+  }
+  .dest-row.offline { opacity: 0.42; cursor: not-allowed; }
+  .dest-row.offline .pulse { background: var(--s-error); box-shadow: none; }
+  .dest-row.offline .ready { color: var(--s-error); }
+
+  /* Repo chips */
+  .repo-grid {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .repo-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 11px; border-radius: 6px;
+    background: var(--bg-0);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    color: var(--ink-1);
+    transition: all 120ms ease;
+    position: relative;
+  }
+  .repo-chip:hover { border-color: var(--amber-rim); color: var(--ink-0); }
+  .repo-chip.active {
+    background: var(--amber-wash);
+    border-color: var(--amber-rim);
+    color: var(--amber-hi);
+  }
+  .repo-chip .check {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+    border: 1px solid var(--ink-4);
+    display: grid; place-items: center;
+    transition: all 120ms ease;
+  }
+  .repo-chip.active .check {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--bg-0);
+  }
+  .repo-chip.active .check svg { display: block; }
+  .repo-chip .check svg { display: none; }
+  .repo-chip .order {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--amber);
+    background: var(--bg-0);
+    border: 1px solid var(--amber-rim);
+    border-radius: 3px;
+    padding: 1px 4px;
+    display: none;
+  }
+  .repo-chip.active .order { display: inline-block; }
+  .repo-chip.primary .order::after { content: " ★"; color: var(--amber); }
+  .repo-chip .ext-input {
+    flex: 1 1 160px;
+    padding: 6px 11px;
+    background: var(--bg-0);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    outline: none;
+    color: var(--ink-1);
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+
+  /* Branch input */
+  .branch-input-wrap {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 0;
+    background: var(--bg-0);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    align-items: stretch;
+    overflow: hidden;
+    transition: border-color 120ms;
+  }
+  .branch-input-wrap:focus-within { border-color: var(--amber-rim); }
+  .branch-input-wrap .ico {
+    padding: 0 11px; display: grid; place-items: center;
+    color: var(--ink-3);
+    border-right: 1px solid var(--line);
+  }
+  .branch-input-wrap input {
+    background: transparent; border: none; outline: none;
+    color: var(--ink-0); font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 9px 11px;
+    width: 100%;
+  }
+  .branch-input-wrap input::placeholder { color: var(--ink-4); }
+  .branch-input-wrap .reso {
+    padding: 0 12px; display: grid; place-items: center;
+    font-family: var(--font-mono);
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--ink-3);
+    border-left: 1px solid var(--line);
+    background: var(--bg-1);
+  }
+  .branch-input-wrap .reso[data-state="new"] { color: var(--amber); }
+  .branch-input-wrap .reso[data-state="checkout"] { color: var(--ink-1); }
+  .branch-input-wrap .reso[data-state="track"] { color: var(--container); }
+
+  .branch-help {
+    margin-top: 6px;
+    font-size: 10px; color: var(--ink-4);
+    font-family: var(--font-mono);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .branch-help .key { color: var(--ink-2); }
+
+  /* Agent + name row */
+  .agent-row {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+  }
+  .agent-pick {
+    display: flex; gap: 3px; padding: 3px;
+    background: var(--bg-0); border: 1px solid var(--line); border-radius: 7px;
+  }
+  .agent-pick button {
+    width: 32px; height: 28px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    background: transparent; color: var(--ink-2);
+    border: 1px solid transparent; cursor: pointer;
+    transition: all 100ms;
+  }
+  .agent-pick button.active {
+    background: var(--amber-wash);
+    color: var(--amber);
+    border-color: var(--amber-rim);
+  }
+  .name-input {
+    width: 100%;
+    padding: 8px 11px;
+    border-radius: 7px;
+    background: var(--bg-0);
+    border: 1px solid var(--line);
+    color: var(--ink-0);
+    font-size: 12.5px;
+    font-family: var(--font-sans);
+    outline: none;
+    transition: border-color 120ms;
+  }
+  .name-input:focus { border-color: var(--amber-rim); }
+  .name-input::placeholder { color: var(--ink-4); }
+
+  /* Toggles */
+  .toggles { display: flex; gap: 18px; margin-top: 10px; align-items: center; }
+  .tg {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--ink-2); font-size: 11.5px; font-family: inherit;
+    padding: 4px 0;
+  }
+  .tg .sw {
+    position: relative; display: inline-block;
+    width: 26px; height: 14px; border-radius: 8px;
+    background: var(--bg-3);
+    transition: background 150ms;
+    flex-shrink: 0;
+  }
+  .tg .sw::after {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink-2);
+    transition: transform 150ms, background 150ms;
+  }
+  .tg.on .sw { background: var(--amber); }
+  .tg.on .sw::after { transform: translateX(12px); background: var(--bg-0); }
+  .tg.warn.on .sw { background: var(--s-error); }
+  .tg .lbl-text { display: inline-flex; align-items: center; gap: 6px; }
+  .tg svg { color: currentColor; }
+
+  /* Right rail (preview) */
+  aside.preview .head {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  aside.preview .head h2 {
+    margin: 0;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  aside.preview .head .count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--amber);
+  }
+  .preview-body {
+    overflow-y: auto;
+    padding: 10px 14px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .repo-card {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--bg-1);
+    padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative;
+    overflow: hidden;
+    animation: card-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .repo-card.primary {
+    border-color: var(--amber-rim);
+    background: linear-gradient(180deg, var(--amber-wash) 0%, transparent 60%), var(--bg-1);
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  .repo-card .row1 { display: flex; align-items: center; gap: 8px; }
+  .repo-card .repo-name {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-0);
+    flex: 1;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .repo-card.primary .repo-name { color: var(--amber-hi); }
+  .repo-card .star {
+    color: var(--amber);
+    cursor: pointer;
+    background: transparent; border: none;
+    padding: 2px;
+    display: grid; place-items: center;
+    border-radius: 4px;
+    opacity: 0.25;
+    transition: opacity 120ms;
+  }
+  .repo-card .star:hover { opacity: 1; }
+  .repo-card.primary .star { opacity: 1; }
+  .repo-card .x-rm {
+    color: var(--ink-4);
+    cursor: pointer;
+    background: transparent; border: none;
+    padding: 2px;
+    display: grid; place-items: center;
+    border-radius: 4px;
+    transition: color 100ms, background 100ms;
+  }
+  .repo-card .x-rm:hover { color: var(--s-error); background: var(--bg-2); }
+
+  .resolution {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 3px;
+    width: fit-content;
+    font-family: var(--font-mono);
+  }
+  .resolution[data-state="new"] {
+    color: var(--amber);
+    background: var(--amber-wash);
+    border: 1px solid var(--amber-rim);
+  }
+  .resolution[data-state="checkout"] {
+    color: var(--ink-1);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .resolution[data-state="track"] {
+    color: var(--container);
+    background: color-mix(in srgb, var(--container) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--container) 30%, transparent);
+  }
+
+  .wt-path {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    line-height: 1.55;
+    word-break: break-all;
+  }
+  .wt-path .seg-base { color: var(--ink-4); }
+  .wt-path .seg-branch { color: var(--amber); }
+  .wt-path .seg-repo { color: var(--ink-1); }
+
+  .session-flag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-family: var(--font-mono);
+  }
+  .session-flag.silent { color: var(--ink-4); }
+  .session-flag .pip {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber-rim);
+  }
+  .session-flag.silent .pip {
+    background: transparent;
+    box-shadow: none;
+    border: 1px dashed var(--ink-4);
+  }
+
+  /* Empty preview state */
+  .preview-empty {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+  .preview-empty .big {
+    font-size: 28px;
+    color: var(--ink-4);
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+
+  /* Mode bar (under preview) */
+  .mode-bar {
+    border-top: 1px solid var(--line-soft);
+    padding: 12px 16px;
+    background: var(--bg-1);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .mode-bar .row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .mode-bar .summary {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-1);
+    line-height: 1.55;
+  }
+  .mode-bar .summary b { color: var(--amber); font-weight: 600; }
+  .mode-bar .summary .muted { color: var(--ink-3); }
+
+  /* Footer */
+  .foot {
+    padding: 10px 22px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-0);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .foot .status {
+    flex: 1; min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .foot .status .arrow { color: var(--s-done); }
+  .foot .status .name { color: var(--ink-1); }
+  .foot .status .dot { color: var(--ink-4); }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 120ms;
+  }
+  .btn.cancel { background: var(--bg-2); color: var(--ink-1); }
+  .btn.cancel:hover { background: var(--bg-3); }
+  .btn.primary {
+    background: var(--amber);
+    color: var(--bg-0);
+    box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--amber) 60%, transparent);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn.primary:hover { background: var(--amber-hi); }
+  .btn.primary .kbd { background: rgba(0,0,0,0.18); border-color: rgba(0,0,0,0.25); color: rgba(0,0,0,0.6); }
+
+  /* Misc */
+  .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /* Toolbar to demo states */
+  .demo-toolbar {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 8px 24px -10px rgba(0,0,0,0.6);
+    font-size: 11px;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+  }
+  .demo-toolbar .label { color: var(--ink-4); }
+  .demo-toolbar button {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    padding: 4px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+  }
+  .demo-toolbar button.on {
+    background: var(--amber-wash);
+    border-color: var(--amber-rim);
+    color: var(--amber);
+  }
+</style>
+</head>
+<body>
+
+<div class="app-bg" aria-hidden="true">
+  <div class="titlebar">
+    <div class="traffic"><span></span><span></span><span></span></div>
+    <span class="crumb">code-command-center · <b>main</b></span>
+  </div>
+  <div class="sidebar-fake">
+    <div class="lbl">Sessions</div>
+    <div class="item active"><span class="dot" style="background:var(--amber)"></span>salary · feat/reports</div>
+    <div class="item"><span class="dot" style="background:var(--s-done)"></span>core · main</div>
+    <div class="item"><span class="dot" style="background:var(--ink-4)"></span>web · idle</div>
+    <div class="lbl">Pull requests</div>
+    <div class="item"><span class="dot" style="background:var(--s-warn)"></span>#412 review</div>
+  </div>
+</div>
+
+<div class="backdrop">
+  <div class="modal" id="modal" data-multi="false">
+
+    <!-- Header -->
+    <div class="head">
+      <h1>
+        <span id="title-text">New session</span>
+        <span class="pill" id="head-pill" style="display:none">multi-repo</span>
+      </h1>
+      <div class="spacer"></div>
+      <div class="kbd-hints">
+        <span class="kbd">esc</span> close · <span class="kbd">⌘⏎</span> create
+      </div>
+      <button class="x" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="body-wrap">
+
+      <form class="body scroll" onsubmit="event.preventDefault()">
+
+        <!-- 1 · Destination -->
+        <div>
+          <div class="fl-row">
+            <span class="fl">1 · Destination</span>
+            <span class="hint">★ star one to set as default</span>
+            <div class="grow"></div>
+          </div>
+          <div class="dest-list scroll">
+            <div class="dest-row active">
+              <div class="icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>
+              </div>
+              <div>
+                <div class="badge-row">
+                  <span class="name">Local</span>
+                  <span class="badge local">local</span>
+                  <span class="badge default"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 17l-6.5 4 2-7.5L2 9h7z"/></svg>default</span>
+                </div>
+                <div class="sub">this machine</div>
+              </div>
+              <div></div>
+              <div class="ready"><span class="pulse"></span>ready</div>
+            </div>
+            <div class="dest-row">
+              <div class="icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/></svg>
+              </div>
+              <div>
+                <div class="badge-row">
+                  <span class="name">workhorse</span>
+                </div>
+                <div class="sub">workhorse.lan</div>
+              </div>
+              <div></div>
+              <div class="ready"><span class="pulse"></span>ready</div>
+            </div>
+            <div class="dest-row offline">
+              <div class="icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/></svg>
+              </div>
+              <div>
+                <div class="badge-row">
+                  <span class="name">thinkpad</span>
+                </div>
+                <div class="sub">thinkpad.lan</div>
+              </div>
+              <div></div>
+              <div class="ready"><span class="pulse"></span>offline</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 · Repos -->
+        <div>
+          <div class="fl-row">
+            <span class="fl" id="repos-label">2 · Repo</span>
+            <span class="hint" id="repos-hint">repos on <span style="color:var(--ink-2)">Local</span> — <span style="color:var(--amber)">click to multi-select</span></span>
+          </div>
+          <div class="repo-grid" id="repoGrid">
+            <!-- chips populated by JS -->
+          </div>
+        </div>
+
+        <!-- 3 · Branch -->
+        <div>
+          <div class="fl-row">
+            <span class="fl">3 · Branch</span>
+            <span class="hint" id="branch-hint">name applies to all selected repos · mode auto-resolves per repo</span>
+          </div>
+          <div class="branch-input-wrap">
+            <span class="ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 8v8M18 8c0 6-12 4-12 10"/></svg>
+            </span>
+            <input id="branchInput" type="text" placeholder="feat/refund-flow" value="feat/refund-flow" autocomplete="off" />
+            <span class="reso" data-state="new" id="branchReso">new</span>
+          </div>
+          <div class="branch-help">
+            <span>existing branches in any selected repo will be checked out — others get created</span>
+          </div>
+        </div>
+
+        <!-- 4 · Agent + name -->
+        <div>
+          <div class="fl-row" style="margin-bottom:6px"><span class="fl">4 · Agent &amp; name</span></div>
+          <div class="agent-row">
+            <div class="agent-pick">
+              <button class="active" title="Claude">
+                <svg width="14" height="14" viewBox="0 0 1200 1200" fill="#d97757"><path d="M600 100c275 0 500 225 500 500s-225 500-500 500S100 875 100 600 325 100 600 100zm-50 200v600h100V300z"/></svg>
+              </button>
+              <button title="Gemini">
+                <svg width="14" height="14" viewBox="0 0 28 28" fill="#6ea3f2"><path d="M14 28C14 21.77 9.94 16.66 4.42 15.08C2.91 14.64 1.36 14.38 0 14.25V13.75C1.36 13.62 2.91 13.36 4.42 12.92C9.94 11.34 14 6.23 14 0C14 6.23 18.06 11.34 23.58 12.92C25.09 13.36 26.64 13.62 28 13.75V14.25C26.64 14.38 25.09 14.64 23.58 15.08C18.06 16.66 14 21.77 14 28Z"/></svg>
+              </button>
+              <button title="Codex">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-3 7l-2 3 2 3M15 12h-4"/></svg>
+              </button>
+              <button title="Shell">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg>
+              </button>
+            </div>
+            <input class="name-input" id="nameInput" placeholder="session name (e.g. salary)" value="refund-flow" />
+          </div>
+          <div class="toggles">
+            <button class="tg on" id="tgAuto">
+              <span class="sw"></span>
+              <span class="lbl-text">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+                Auto mode
+              </span>
+            </button>
+            <button class="tg warn" id="tgSkip">
+              <span class="sw"></span>
+              <span class="lbl-text">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-12h-7z"/></svg>
+                Skip permissions
+              </span>
+            </button>
+          </div>
+        </div>
+
+      </form>
+
+      <!-- Right rail: preview -->
+      <aside class="preview" id="preview">
+        <div class="head">
+          <h2>Task preview</h2>
+          <span class="count" id="previewCount">0 repos</span>
+        </div>
+        <div class="preview-body scroll" id="previewBody">
+          <!-- cards populated by JS -->
+        </div>
+        <div class="mode-bar">
+          <div class="row">
+            <button class="tg" id="tgPerRepo" style="margin: 0">
+              <span class="sw"></span>
+              <span class="lbl-text">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Spawn one session per repo
+              </span>
+            </button>
+          </div>
+          <div class="summary" id="summaryLine"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <div class="foot">
+      <div class="status" id="footStatus">
+        <span class="arrow">→</span>
+        <span class="name">refund-flow</span>
+        <span class="dot"> · </span>claude<span class="dot"> · </span>Local<span class="dot"> · </span>—
+      </div>
+      <button class="btn cancel">Cancel</button>
+      <button class="btn primary" id="primaryBtn">
+        <span id="primaryBtnLabel">Create session</span>
+        <span class="kbd">⌘⏎</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<div class="demo-toolbar">
+  <span class="label">demo · click chips to (de)select</span>
+  <button id="demo1">1 repo</button>
+  <button id="demo3">3 repos</button>
+  <button id="demoMode" class="">toggle per-repo sessions</button>
+</div>
+
+<script>
+  // ---------- mock data ----------
+  const repos = [
+    { name: "Wint.Salary",      path: "~/Dev/Wint/Wint.Salary",      branches: ["main","develop","feat/refund-flow"] },
+    { name: "Wint.Core",        path: "~/Dev/Wint/Wint.Core",        branches: ["main","feat/api-tokens"] },
+    { name: "Wint.Client.Web",  path: "~/Dev/Wint/Wint.Client.Web",  branches: ["main","feat/refund-flow"] },
+    { name: "Wint.Server.API",  path: "~/Dev/Wint/Wint.Server.API",  branches: ["main","develop"] },
+    { name: "Wint.Mobile",      path: "~/Dev/Wint/Wint.Mobile",      branches: ["main"] },
+  ];
+  const worktreeBase = "~/Dev/Wint/worktrees";
+
+  // ---------- state ----------
+  let selected = []; // ordered list of repo names
+  let primary = null; // repo name
+  let perRepo = false; // mode B (false) or mode C (true)
+
+  const $ = (q, root=document) => root.querySelector(q);
+  const $$ = (q, root=document) => Array.from(root.querySelectorAll(q));
+
+  // ---------- chips ----------
+  const chipGrid = $("#repoGrid");
+  function renderChips() {
+    chipGrid.innerHTML = "";
+    repos.forEach(r => {
+      const idx = selected.indexOf(r.name);
+      const active = idx >= 0;
+      const isPrimary = active && r.name === primary;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `repo-chip${active ? " active" : ""}${isPrimary ? " primary" : ""}`;
+      btn.innerHTML = `
+        <span class="check">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        </span>
+        <span>${r.name}</span>
+        <span class="order">${active ? (idx + 1) : ""}</span>
+      `;
+      btn.addEventListener("click", () => toggleRepo(r.name));
+      chipGrid.appendChild(btn);
+    });
+    // free-form path input as last "chip"
+    const free = document.createElement("input");
+    free.type = "text";
+    free.placeholder = "or browse path…";
+    free.className = "ext-input";
+    chipGrid.appendChild(free);
+  }
+
+  function toggleRepo(name) {
+    const idx = selected.indexOf(name);
+    if (idx >= 0) {
+      selected.splice(idx, 1);
+      if (primary === name) primary = selected[0] ?? null;
+    } else {
+      selected.push(name);
+      if (!primary) primary = name;
+    }
+    sync();
+  }
+
+  function setPrimary(name) {
+    if (selected.includes(name)) primary = name;
+    sync();
+  }
+  function removeFromSelection(name) { toggleRepo(name); }
+
+  // ---------- branch resolution ----------
+  function resolutionFor(repoName, branchName) {
+    const r = repos.find(x => x.name === repoName);
+    if (!r) return "new";
+    if (r.branches.includes(branchName)) return "checkout";
+    if (Math.random() < 0) return "track"; // (unused — placeholder for "remote-only" detection)
+    // Fake: mark Wint.Server.API + main as track-remote demo
+    if (repoName === "Wint.Server.API" && branchName === "develop") return "track";
+    return "new";
+  }
+
+  // ---------- preview rail ----------
+  const previewBody = $("#previewBody");
+  const previewCount = $("#previewCount");
+
+  function renderPreview() {
+    const branch = $("#branchInput").value.trim() || "—";
+    previewCount.textContent = selected.length === 1 ? "1 repo" : `${selected.length} repos`;
+    previewBody.innerHTML = "";
+    if (selected.length === 0) {
+      previewBody.innerHTML = `
+        <div class="preview-empty">
+          <div class="big">∅</div>
+          Pick at least two repos<br/>to plan a multi-repo task.
+        </div>`;
+      return;
+    }
+    selected.forEach((name, i) => {
+      const reso = resolutionFor(name, branch);
+      const isPrimary = name === primary;
+      const card = document.createElement("div");
+      card.className = `repo-card${isPrimary ? " primary" : ""}`;
+
+      const hasSession = perRepo || isPrimary;
+      const sessionLabel = perRepo
+        ? `session: ${branch.split('/').pop() || "task"} · ${name.split('.').pop()}`
+        : (isPrimary ? "session here" : "worktree only");
+
+      card.innerHTML = `
+        <div class="row1">
+          <span class="repo-name">${name}</span>
+          <button class="star" title="${isPrimary ? "Primary" : "Make primary"}" data-name="${name}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="${isPrimary ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 17l-6.5 4 2-7.5L2 9h7z"/></svg>
+          </button>
+          <button class="x-rm" title="Remove" data-name="${name}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="resolution" data-state="${reso}">
+            ${reso === "new" ? "+ new branch" : reso === "checkout" ? "checkout existing" : "track origin/"+branch}
+          </span>
+          <span class="session-flag ${hasSession ? "" : "silent"}">
+            <span class="pip"></span>${sessionLabel}
+          </span>
+        </div>
+        <div class="wt-path">
+          <span class="seg-base">${worktreeBase}/</span><span class="seg-branch">${branch}</span><span class="seg-base">/</span><span class="seg-repo">${name}</span>
+        </div>
+      `;
+      previewBody.appendChild(card);
+
+      card.querySelector(".star").addEventListener("click", () => {
+        if (perRepo) return;
+        setPrimary(name);
+      });
+      card.querySelector(".x-rm").addEventListener("click", () => removeFromSelection(name));
+    });
+  }
+
+  // ---------- summary line ----------
+  function renderSummary() {
+    const summaryLine = $("#summaryLine");
+    const branch = $("#branchInput").value.trim() || "—";
+    if (selected.length === 0) {
+      summaryLine.innerHTML = `<span class="muted">No repos selected.</span>`;
+      return;
+    }
+    if (perRepo) {
+      summaryLine.innerHTML = `
+        <b>${selected.length} worktrees</b> + <b>${selected.length} sessions</b>
+        <span class="muted">grouped as</span> <b>${branch}</b>
+      `;
+    } else {
+      const otherCount = Math.max(0, selected.length - 1);
+      summaryLine.innerHTML = `
+        <b>${selected.length} worktrees</b>, <b>1 session</b> in
+        <b>${primary ?? "—"}</b>
+        ${otherCount ? `<span class="muted">· ${otherCount} sibling${otherCount > 1 ? "s" : ""} idle</span>` : ""}
+      `;
+    }
+  }
+
+  // ---------- top + footer ----------
+  function renderTitle() {
+    const isMulti = selected.length >= 2;
+    $("#modal").dataset.multi = isMulti ? "true" : "false";
+    $("#title-text").textContent = isMulti ? "New multi-repo task" : "New session";
+    $("#head-pill").style.display = isMulti ? "inline-block" : "none";
+    $("#repos-label").textContent = isMulti
+      ? `2 · Repos (${selected.length})`
+      : "2 · Repo";
+    $("#repos-hint").innerHTML = isMulti
+      ? `selected ${selected.length} on <span style="color:var(--ink-2)">Local</span> · click again to deselect`
+      : `repos on <span style="color:var(--ink-2)">Local</span> — <span style="color:var(--amber)">click to multi-select</span>`;
+  }
+
+  function renderBranchReso() {
+    const branch = $("#branchInput").value.trim();
+    const reso = $("#branchReso");
+    if (!branch) { reso.textContent = "—"; reso.dataset.state = ""; return; }
+    if (selected.length === 0) {
+      reso.textContent = "new";
+      reso.dataset.state = "new";
+      return;
+    }
+    // Aggregate: if any will be "new", say "mixed (n new)"
+    const states = selected.map(s => resolutionFor(s, branch));
+    const newCt = states.filter(s => s === "new").length;
+    const checkoutCt = states.filter(s => s === "checkout").length;
+    const trackCt = states.filter(s => s === "track").length;
+    if (selected.length <= 1) {
+      reso.textContent = states[0] || "—";
+      reso.dataset.state = states[0] || "";
+      return;
+    }
+    if (newCt === selected.length) { reso.textContent = `${newCt}× new`; reso.dataset.state = "new"; return; }
+    if (checkoutCt === selected.length) { reso.textContent = `${checkoutCt}× checkout`; reso.dataset.state = "checkout"; return; }
+    reso.textContent = `${newCt}n / ${checkoutCt}co${trackCt ? " / "+trackCt+"tr" : ""}`;
+    reso.dataset.state = "new";
+  }
+
+  function renderFooter() {
+    const status = $("#footStatus");
+    const branch = $("#branchInput").value.trim();
+    const name = $("#nameInput").value.trim();
+    const primaryBtn = $("#primaryBtnLabel");
+    if (selected.length === 0) {
+      status.innerHTML = `<span class="arrow" style="color:var(--ink-4)">→</span> <span class="name">${name || "(untitled)"}</span><span class="dot"> · </span>claude<span class="dot"> · </span>Local<span class="dot"> · </span>—`;
+      primaryBtn.textContent = "Create session";
+      return;
+    }
+    if (selected.length === 1) {
+      const r = selected[0];
+      status.innerHTML = `<span class="arrow">→</span> <span class="name">${name || "(untitled)"}</span><span class="dot"> · </span>claude<span class="dot"> · </span>Local<span class="dot"> · </span>${r}<span class="dot">@</span>${branch || "main"}`;
+      primaryBtn.textContent = "Create session";
+      return;
+    }
+    if (perRepo) {
+      status.innerHTML = `<span class="arrow">→</span> <span class="name">${branch || name}</span><span class="dot"> · </span>group of ${selected.length}<span class="dot"> · </span>${selected.join(" + ")}`;
+      primaryBtn.textContent = `Create ${selected.length} sessions`;
+      return;
+    }
+    status.innerHTML = `<span class="arrow">→</span> <span class="name">${name || "(untitled)"}</span><span class="dot"> · </span>1 session in ${primary ?? "?"}<span class="dot"> · </span>+${selected.length - 1} sibling worktree${selected.length - 1 > 1 ? "s" : ""}`;
+    primaryBtn.textContent = `Create task · ${selected.length} worktrees`;
+  }
+
+  function syncPerRepoToggle() {
+    const tg = $("#tgPerRepo");
+    tg.classList.toggle("on", perRepo);
+  }
+
+  // ---------- glue ----------
+  function sync() {
+    renderChips();
+    renderTitle();
+    renderBranchReso();
+    renderPreview();
+    renderSummary();
+    renderFooter();
+    syncPerRepoToggle();
+  }
+
+  $("#branchInput").addEventListener("input", () => { renderBranchReso(); renderPreview(); renderSummary(); renderFooter(); });
+  $("#nameInput").addEventListener("input", renderFooter);
+  $("#tgAuto").addEventListener("click", e => e.currentTarget.classList.toggle("on"));
+  $("#tgSkip").addEventListener("click", e => e.currentTarget.classList.toggle("on"));
+  $("#tgPerRepo").addEventListener("click", () => {
+    perRepo = !perRepo;
+    sync();
+  });
+
+  // demo controls
+  $("#demo1").addEventListener("click", () => {
+    selected = ["Wint.Salary"];
+    primary = "Wint.Salary";
+    perRepo = false;
+    sync();
+  });
+  $("#demo3").addEventListener("click", () => {
+    selected = ["Wint.Salary", "Wint.Core", "Wint.Client.Web"];
+    primary = "Wint.Salary";
+    perRepo = false;
+    sync();
+  });
+  $("#demoMode").addEventListener("click", () => {
+    perRepo = !perRepo;
+    sync();
+  });
+
+  // initial state — show 3-repo case
+  selected = ["Wint.Salary", "Wint.Core", "Wint.Client.Web"];
+  primary = "Wint.Salary";
+  sync();
+</script>
+
+</body>
+</html>

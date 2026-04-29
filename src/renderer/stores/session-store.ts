@@ -72,7 +72,7 @@ interface SessionStore {
     ungrouped: string[]
   }
   loadSessions: () => Promise<void>
-  createSession: (opts: SessionCreate) => Promise<void>
+  createSession: (opts: SessionCreate) => Promise<Session>
   removeSession: (id: string) => Promise<void>
   setActiveSession: (id: string) => void
   setViewMode: (mode: ViewMode) => void
@@ -199,6 +199,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sessions: [...state.sessions, session],
       activeSessionId: session.id
     }))
+    return session
   },
 
   removeSession: async (id) => {

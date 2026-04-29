@@ -14,8 +14,9 @@ import {
   Search,
 } from 'lucide-react'
 import { useSessionStore } from '../stores/session-store'
-import type { SessionType, ContainerConfig, FavoriteFolder, Session } from '../../shared/types'
+import type { SessionType, ContainerConfig, FavoriteFolder, Session, WorktreeCreateMode } from '../../shared/types'
 import BranchPicker, { type BranchPickerResult } from './BranchPicker'
+import MultiRepoPreview from './MultiRepoPreview'
 
 function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
   return (
@@ -347,9 +348,19 @@ export default function NewSessionModal(): React.JSX.Element {
   const defaultCodexDangerBypass = useSessionStore((s) => s.codexDangerouslyBypassApprovals)
   const defaultDestinationId = useSessionStore((s) => s.defaultDestinationId)
   const setDefaultDestinationId = useSessionStore((s) => s.setDefaultDestinationId)
+  const worktreeBasePathFromStore = useSessionStore((s) => s.worktreeBasePath)
 
   const [name, setName] = useState('')
-  const [workingDirectory, setWorkingDirectory] = useState('')
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([])
+  const [primaryRepo, setPrimaryRepo] = useState<string | null>(null)
+  const [perRepoSessions, setPerRepoSessions] = useState(false)
+  const [resolutions, setResolutions] = useState<Map<string, WorktreeCreateMode>>(new Map())
+  const [creationErrors, setCreationErrors] = useState<Map<string, string>>(new Map())
+  const [branchInput, setBranchInput] = useState('')
+  const [freeFormPath, setFreeFormPath] = useState('')
+
+  const workingDirectory = selectedRepos[0] ?? freeFormPath
+  const isMulti = selectedRepos.length >= 2
   const [type, setType] = useState<SessionType>(enabledProviders[0] ?? 'claude')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -482,7 +493,13 @@ export default function NewSessionModal(): React.JSX.Element {
     setBranchChoice(null)
     setDestQuery('')
     setName('')
-    setWorkingDirectory('')
+    setSelectedRepos([])
+    setPrimaryRepo(null)
+    setBranchInput('')
+    setFreeFormPath('')
+    setResolutions(new Map())
+    setCreationErrors(new Map())
+    setPerRepoSessions(false)
   }, [modalOpen, defaultAutoMode, defaultSkipPermissions, defaultCodexFullAuto, defaultCodexDangerBypass])
 
   // Pick default destination on open. If the default points at a container that
@@ -565,11 +582,33 @@ export default function NewSessionModal(): React.JSX.Element {
       .finally(() => setBunkerReposLoading(false))
   }, [isBunkerContainer, activeContainer?.name, activeContainer?.remoteHost])
 
+  // Debounced branch resolution for multi-repo mode
+  useEffect(() => {
+    if (!isMulti || !branchInput.trim()) {
+      setResolutions(new Map())
+      return
+    }
+    const handle = setTimeout(() => {
+      void window.cccAPI.git
+        .resolveBranchBatch(selectedRepos, branchInput.trim(), remoteHost, isBunkerContainer ? activeContainer?.name : undefined)
+        .then((results) => {
+          const next = new Map<string, WorktreeCreateMode>()
+          for (const r of results) {
+            if (r.ok) next.set(r.repoPath, r.mode)
+          }
+          setResolutions(next)
+        })
+    }, 250)
+    return () => clearTimeout(handle)
+  }, [isMulti, branchInput, selectedRepos, remoteHost, isBunkerContainer, activeContainer?.name])
+
   const selectDest = useCallback((id: string): void => {
     resolvedRef.current = true
     setDestId((prev) => {
       if (prev !== id) {
-        setWorkingDirectory('')
+        setSelectedRepos([])
+        setPrimaryRepo(null)
+        setFreeFormPath('')
         setBranchChoice(null)
       }
       return id
@@ -579,75 +618,156 @@ export default function NewSessionModal(): React.JSX.Element {
   const handleSubmit = useCallback(
     async (e?: React.FormEvent): Promise<void> => {
       if (e) e.preventDefault()
-      if (!name.trim() || creating) return
-      if (type !== 'shell' && !workingDirectory.trim()) return
-      if (isBunkerContainer && !workingDirectory.startsWith('/repos/')) return
+      if (!name.trim() && !isMulti) return
+      if (creating) return
+
+      // Single-repo path — preserves existing behavior exactly
+      if (!isMulti) {
+        if (type !== 'shell' && !workingDirectory.trim()) return
+        if (isBunkerContainer && !workingDirectory.startsWith('/repos/')) return
+
+        setCreating(true)
+        setError(null)
+        try {
+          let dir = workingDirectory.trim() || '~'
+          if (branchChoice && type !== 'shell' && workingDirectory.trim()) {
+            if (branchChoice.mode === 'existing-worktree' && branchChoice.worktreePath) {
+              dir = branchChoice.worktreePath
+            } else if (
+              branchChoice.mode === 'existing-local' ||
+              branchChoice.mode === 'track-remote' ||
+              branchChoice.mode === 'new-branch'
+            ) {
+              const repoName = workingDirectory.trim().split('/').filter(Boolean).pop() ?? 'repo'
+              const bunkerTargetPath = isBunkerContainer && activeContainer
+                ? `${activeContainer.worktreeBaseDir ?? '/repos/worktrees'}/${branchChoice.branch}/${repoName}`
+                : ''
+              const worktree = await window.cccAPI.git.addWorktree(
+                workingDirectory.trim(),
+                branchChoice.branch,
+                bunkerTargetPath,
+                branchChoice.mode,
+                remoteHost,
+                isBunkerContainer ? activeContainer?.name : undefined,
+              )
+              dir = worktree.path
+            }
+          }
+          await createSession({
+            name: name.trim(),
+            workingDirectory: dir,
+            type,
+            remoteHost,
+            enableAutoMode: type === 'claude' ? enableAutoMode : undefined,
+            skipPermissions: type === 'claude' ? skipPermissions : undefined,
+            codexFullAuto: type === 'codex' ? codexFullAuto : undefined,
+            codexDangerBypass: type === 'codex' ? codexDangerBypass : undefined,
+            containerName: dest?.kind === 'container' ? activeContainer?.name : undefined,
+          })
+          toggleModal()
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to create session')
+        } finally {
+          setCreating(false)
+        }
+        return
+      }
+
+      // Multi-repo path
+      if (!branchInput.trim()) {
+        setError('Branch name is required for multi-repo tasks')
+        return
+      }
 
       setCreating(true)
       setError(null)
-
+      setCreationErrors(new Map())
       try {
-        let dir = workingDirectory.trim() || '~'
+        // 1. Create worktrees in parallel-per-repo (the IPC fans them out sequentially server-side)
+        const reposToCreate = selectedRepos.map((repoPath) => ({
+          repoPath,
+          mode: resolutions.get(repoPath) ?? 'new-branch' as WorktreeCreateMode,
+        }))
+        const wtResults = await window.cccAPI.git.addWorktreeBatch({
+          repos: reposToCreate,
+          branch: branchInput.trim(),
+          remoteHost,
+          containerName: isBunkerContainer ? activeContainer?.name : undefined,
+        })
 
-        if (branchChoice && type !== 'shell' && workingDirectory.trim()) {
-          if (branchChoice.mode === 'existing-worktree' && branchChoice.worktreePath) {
-            dir = branchChoice.worktreePath
-          } else if (
-            branchChoice.mode === 'existing-local' ||
-            branchChoice.mode === 'track-remote' ||
-            branchChoice.mode === 'new-branch'
-          ) {
-            const repoName = workingDirectory.trim().split('/').filter(Boolean).pop() ?? 'repo'
-            const bunkerTargetPath = isBunkerContainer && activeContainer
-              ? `${activeContainer.worktreeBaseDir ?? '/repos/worktrees'}/${branchChoice.branch}/${repoName}`
-              : ''
-
-            const worktree = await window.cccAPI.git.addWorktree(
-              workingDirectory.trim(),
-              branchChoice.branch,
-              bunkerTargetPath,
-              branchChoice.mode,
-              remoteHost,
-              isBunkerContainer ? activeContainer?.name : undefined,
-            )
-            dir = worktree.path
-          }
+        const errs = new Map<string, string>()
+        const oks = new Map<string, string>() // repoPath -> worktreePath
+        for (const r of wtResults) {
+          if (r.ok) oks.set(r.repoPath, r.worktree.path)
+          else errs.set(r.repoPath, r.error)
+        }
+        if (errs.size > 0) setCreationErrors(errs)
+        if (oks.size === 0) {
+          setError('All worktree creations failed.')
+          return
         }
 
-        await createSession({
-          name: name.trim(),
-          workingDirectory: dir,
-          type,
-          remoteHost,
-          enableAutoMode: type === 'claude' ? enableAutoMode : undefined,
-          skipPermissions: type === 'claude' ? skipPermissions : undefined,
-          codexFullAuto: type === 'codex' ? codexFullAuto : undefined,
-          codexDangerBypass: type === 'codex' ? codexDangerBypass : undefined,
-          containerName: dest?.kind === 'container' ? activeContainer?.name : undefined,
-        })
-        toggleModal()
+        // 2. Create sessions
+        const repoLeaf = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
+        const sessionType = type
+        const containerName = dest?.kind === 'container' ? activeContainer?.name : undefined
+
+        if (perRepoSessions) {
+          const createdIds: string[] = []
+          for (const [repoPath, wtPath] of oks) {
+            const sessionName = `${branchInput.trim()} · ${repoLeaf(repoPath)}`
+            const session = await createSession({
+              name: sessionName,
+              workingDirectory: wtPath,
+              type: sessionType,
+              remoteHost,
+              enableAutoMode: sessionType === 'claude' ? enableAutoMode : undefined,
+              skipPermissions: sessionType === 'claude' ? skipPermissions : undefined,
+              codexFullAuto: sessionType === 'codex' ? codexFullAuto : undefined,
+              codexDangerBypass: sessionType === 'codex' ? codexDangerBypass : undefined,
+              containerName,
+            })
+            if (session?.id) createdIds.push(session.id)
+          }
+          if (createdIds.length > 0) {
+            try {
+              const group = await window.cccAPI.group.create(branchInput.trim())
+              for (const id of createdIds) {
+                await window.cccAPI.group.addSession(group.id, id)
+              }
+            } catch (groupErr) {
+              console.warn('Sessions created but grouping failed:', groupErr)
+            }
+          }
+        } else {
+          const primaryPath = primaryRepo && oks.has(primaryRepo) ? primaryRepo : [...oks.keys()][0]
+          const wtPath = oks.get(primaryPath)!
+          await createSession({
+            name: name.trim() || branchInput.trim(),
+            workingDirectory: wtPath,
+            type: sessionType,
+            remoteHost,
+            enableAutoMode: sessionType === 'claude' ? enableAutoMode : undefined,
+            skipPermissions: sessionType === 'claude' ? skipPermissions : undefined,
+            codexFullAuto: sessionType === 'codex' ? codexFullAuto : undefined,
+            codexDangerBypass: sessionType === 'codex' ? codexDangerBypass : undefined,
+            containerName,
+          })
+        }
+
+        if (errs.size === 0) toggleModal()
+        // If errs.size > 0 we keep the modal open so user can retry the failures.
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create session')
+        setError(err instanceof Error ? err.message : 'Failed to create multi-repo task')
       } finally {
         setCreating(false)
       }
     },
     [
-      name,
-      creating,
-      type,
-      workingDirectory,
-      isBunkerContainer,
-      branchChoice,
-      activeContainer,
-      remoteHost,
-      dest,
-      createSession,
-      toggleModal,
-      enableAutoMode,
-      skipPermissions,
-      codexFullAuto,
-      codexDangerBypass,
+      name, creating, type, workingDirectory, isBunkerContainer, branchChoice,
+      activeContainer, remoteHost, dest, createSession, toggleModal,
+      enableAutoMode, skipPermissions, codexFullAuto, codexDangerBypass,
+      isMulti, branchInput, selectedRepos, resolutions, perRepoSessions, primaryRepo,
     ],
   )
 
@@ -680,7 +800,9 @@ export default function NewSessionModal(): React.JSX.Element {
     if (flatDests.some((d) => d.id === r.destId && d.online)) {
       setDestId(r.destId)
     }
-    setWorkingDirectory(r.workingDirectory)
+    setSelectedRepos([])
+    setPrimaryRepo(null)
+    setFreeFormPath(r.workingDirectory)
     setBranchChoice(null)
   }
 
@@ -695,23 +817,27 @@ export default function NewSessionModal(): React.JSX.Element {
     : (dest?.hostFavorites ?? []).map((f) => f.path)
 
   const handleRepoChipClick = (val: string): void => {
-    if (isBunkerContainer) {
-      setWorkingDirectory(`/repos/${val}`)
-    } else {
-      const fav = (dest?.hostFavorites ?? []).find((f) => f.path === val)
-      if (fav) {
-        setWorkingDirectory(fav.path)
-        if (!name.trim()) setName(fav.name)
-      } else {
-        setWorkingDirectory(val)
+    const path = isBunkerContainer ? `/repos/${val}` : val
+    setSelectedRepos((prev) => {
+      const idx = prev.indexOf(path)
+      if (idx >= 0) {
+        const next = [...prev.slice(0, idx), ...prev.slice(idx + 1)]
+        if (primaryRepo === path) setPrimaryRepo(next[0] ?? null)
+        return next
       }
-    }
+      if (!isBunkerContainer) {
+        const fav = (dest?.hostFavorites ?? []).find((f) => f.path === path)
+        if (fav && !name.trim()) setName(fav.name)
+      }
+      setPrimaryRepo((p) => p ?? path)
+      return [...prev, path]
+    })
     setBranchChoice(null)
   }
 
   const repoIsActive = (val: string): boolean => {
-    if (isBunkerContainer) return workingDirectory === `/repos/${val}`
-    return workingDirectory === val
+    const path = isBunkerContainer ? `/repos/${val}` : val
+    return selectedRepos.includes(path)
   }
 
   const branchPathPreview = branchChoice
@@ -720,10 +846,9 @@ export default function NewSessionModal(): React.JSX.Element {
         : 'a new worktree will be created on submit'))
     : null
 
-  const ready =
-    !!name.trim() &&
-    (type === 'shell' || !!workingDirectory.trim()) &&
-    !(isBunkerContainer && !workingDirectory.startsWith('/repos/'))
+  const ready = isMulti
+    ? selectedRepos.length >= 2 && !!branchInput.trim()
+    : !!name.trim() && (type === 'shell' || !!workingDirectory.trim()) && !(isBunkerContainer && !workingDirectory.startsWith('/repos/'))
 
   return (
     <div
@@ -736,6 +861,8 @@ export default function NewSessionModal(): React.JSX.Element {
       onClick={handleBackdropClick}
     >
       <div
+        className="modal-shell"
+        data-multi={isMulti ? 'true' : 'false'}
         style={{
           width: 560,
           maxHeight: '92vh',
@@ -759,7 +886,12 @@ export default function NewSessionModal(): React.JSX.Element {
             gap: 10,
           }}
         >
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-0)', letterSpacing: '-0.005em' }}>New session</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-0)', letterSpacing: '-0.005em' }}>
+            {isMulti ? 'New multi-repo task' : 'New session'}
+            {isMulti && (
+              <span className="modal-pill">multi-repo</span>
+            )}
+          </div>
           <div style={{ flex: 1 }} />
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-3)' }}>
             <kbd style={kbdStyle}>esc</kbd> close · <kbd style={kbdStyle}>⌘⏎</kbd> create
@@ -777,6 +909,7 @@ export default function NewSessionModal(): React.JSX.Element {
         </div>
 
         {/* Body */}
+        <div className="modal-body-wrap">
         <form
           onSubmit={handleSubmit}
           className="ccc-scroll"
@@ -984,8 +1117,8 @@ export default function NewSessionModal(): React.JSX.Element {
                   <span>No favorites on {dest?.displayName}.</span>
                   <input
                     type="text"
-                    value={workingDirectory}
-                    onChange={(e) => { setWorkingDirectory(e.target.value); setBranchChoice(null) }}
+                    value={freeFormPath}
+                    onChange={(e) => { setFreeFormPath(e.target.value); setBranchChoice(null) }}
                     placeholder="enter a path…"
                     style={{
                       flex: 1,
@@ -1025,8 +1158,8 @@ export default function NewSessionModal(): React.JSX.Element {
                   {isSandboxContainer && (
                     <input
                       type="text"
-                      value={workingDirectory}
-                      onChange={(e) => { setWorkingDirectory(e.target.value); setBranchChoice(null) }}
+                      value={freeFormPath}
+                      onChange={(e) => { setFreeFormPath(e.target.value); setBranchChoice(null) }}
                       placeholder="working directory in container…"
                       style={{
                         flex: '1 1 200px',
@@ -1044,8 +1177,8 @@ export default function NewSessionModal(): React.JSX.Element {
                   {!isBunkerContainer && !isSandboxContainer && repoChoices.length > 0 && (
                     <input
                       type="text"
-                      value={!repoChoices.includes(workingDirectory) ? workingDirectory : ''}
-                      onChange={(e) => { setWorkingDirectory(e.target.value); setBranchChoice(null) }}
+                      value={freeFormPath}
+                      onChange={(e) => { setFreeFormPath(e.target.value); setBranchChoice(null) }}
                       placeholder="or browse path…"
                       style={{
                         flex: '1 1 160px',
@@ -1066,50 +1199,60 @@ export default function NewSessionModal(): React.JSX.Element {
           )}
 
           {/* BRANCH */}
-          {type !== 'shell' && workingDirectory.trim() && (
+          {type !== 'shell' && (selectedRepos.length > 0 || workingDirectory.trim()) && (
             <div>
-              <FieldLabel style={{ marginBottom: 6 }}>3 · Branch / worktree</FieldLabel>
-              <button
-                type="button"
-                className="branch-trigger"
-                onClick={() => setPickerOpen(true)}
-              >
-                <span className="branch-trigger__icon">
-                  {branchChoice?.worktreePath ? (
-                    <Folder size={13} style={{ color: 'var(--amber)' }} />
-                  ) : (
-                    <GitBranch size={13} style={{ color: branchChoice ? 'var(--ink-1)' : 'var(--ink-3)' }} />
-                  )}
-                </span>
-                <span className="branch-trigger__main">
-                  <span className="branch-trigger__name">
-                    {branchChoice ? (
-                      <>
-                        <span>{branchChoice.branch}</span>
-                        {branchChoice.mode === 'existing-worktree' && (
-                          <span className="bp-row__badge active" style={{ height: 14, fontSize: 8.5 }}>worktree</span>
-                        )}
-                        {(branchChoice.mode === 'existing-local' || branchChoice.mode === 'track-remote') && (
-                          <span className="bp-row__badge main" style={{ height: 14, fontSize: 8.5 }}>checkout</span>
-                        )}
-                        {branchChoice.mode === 'new-branch' && (
-                          <span className="bp-row__badge active" style={{ height: 14, fontSize: 8.5 }}>new</span>
-                        )}
-                      </>
+              <FieldLabel style={{ marginBottom: 6 }}>3 · Branch{isMulti ? '' : ' / worktree'}</FieldLabel>
+              {isMulti ? (
+                <input
+                  type="text"
+                  value={branchInput}
+                  onChange={(e) => setBranchInput(e.target.value)}
+                  placeholder="feat/refund-flow"
+                  className="branch-multi-input"
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="branch-trigger"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  <span className="branch-trigger__icon">
+                    {branchChoice?.worktreePath ? (
+                      <Folder size={13} style={{ color: 'var(--amber)' }} />
                     ) : (
-                      <span style={{ color: 'var(--ink-3)' }}>Open repo as-is — pick branch to use a worktree…</span>
+                      <GitBranch size={13} style={{ color: branchChoice ? 'var(--ink-1)' : 'var(--ink-3)' }} />
                     )}
                   </span>
-                  {branchChoice && (
-                    <span className="branch-trigger__sub">
-                      {branchPathPreview}
+                  <span className="branch-trigger__main">
+                    <span className="branch-trigger__name">
+                      {branchChoice ? (
+                        <>
+                          <span>{branchChoice.branch}</span>
+                          {branchChoice.mode === 'existing-worktree' && (
+                            <span className="bp-row__badge active" style={{ height: 14, fontSize: 8.5 }}>worktree</span>
+                          )}
+                          {(branchChoice.mode === 'existing-local' || branchChoice.mode === 'track-remote') && (
+                            <span className="bp-row__badge main" style={{ height: 14, fontSize: 8.5 }}>checkout</span>
+                          )}
+                          {branchChoice.mode === 'new-branch' && (
+                            <span className="bp-row__badge active" style={{ height: 14, fontSize: 8.5 }}>new</span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--ink-3)' }}>Open repo as-is — pick branch to use a worktree…</span>
+                      )}
                     </span>
-                  )}
-                </span>
-                <span className="branch-trigger__kbd">
-                  <ChevronDown size={12} style={{ color: 'var(--ink-3)' }} />
-                </span>
-              </button>
+                    {branchChoice && (
+                      <span className="branch-trigger__sub">
+                        {branchPathPreview}
+                      </span>
+                    )}
+                  </span>
+                  <span className="branch-trigger__kbd">
+                    <ChevronDown size={12} style={{ color: 'var(--ink-3)' }} />
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
@@ -1220,6 +1363,30 @@ export default function NewSessionModal(): React.JSX.Element {
             <p style={{ fontSize: 11, color: 'var(--s-error)' }}>{error}</p>
           )}
         </form>
+        {isMulti && (
+          <MultiRepoPreview
+            selectedRepos={selectedRepos}
+            primaryRepo={primaryRepo}
+            branch={branchInput}
+            resolutions={resolutions}
+            perRepoSessions={perRepoSessions}
+            worktreeBasePath={worktreeBasePathFromStore ?? '~/Dev/worktrees'}
+            creationErrors={creationErrors}
+            onSetPrimary={(p) => { if (!perRepoSessions) setPrimaryRepo(p) }}
+            onRemove={(p) => {
+              setSelectedRepos((prev) => prev.filter((x) => x !== p))
+              if (primaryRepo === p) setPrimaryRepo(() => {
+                const next = selectedRepos.filter((x) => x !== p)[0]
+                return next ?? null
+              })
+            }}
+            onTogglePerRepo={() => setPerRepoSessions((v) => !v)}
+            onRetry={(p) => {
+              setCreationErrors((prev) => { const n = new Map(prev); n.delete(p); return n })
+            }}
+          />
+        )}
+        </div>{/* end modal-body-wrap */}
 
         {/* Footer */}
         <div
@@ -1321,7 +1488,13 @@ export default function NewSessionModal(): React.JSX.Element {
             onMouseEnter={(e) => { if (ready && !creating) e.currentTarget.style.backgroundColor = 'var(--amber-hi)' }}
             onMouseLeave={(e) => { if (ready && !creating) e.currentTarget.style.backgroundColor = 'var(--amber)' }}
           >
-            {creating ? 'Creating…' : 'Create session'}
+            {creating ? 'Creating…' : (
+              isMulti
+                ? perRepoSessions
+                  ? `Create ${selectedRepos.length} sessions`
+                  : `Create task · ${selectedRepos.length} worktrees`
+                : 'Create session'
+            )}
             {!creating && (
               <span style={{ opacity: 0.6, fontFamily: 'var(--font-mono)', fontSize: 10 }}>⌘⏎</span>
             )}
