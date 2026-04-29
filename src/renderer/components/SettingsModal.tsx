@@ -72,8 +72,8 @@ export default function SettingsModal(): React.JSX.Element {
       <div
         className="flex overflow-hidden"
         style={{
-          width: 720,
-          height: '80vh',
+          width: 'min(820px, 92vw)',
+          height: 'min(620px, 85vh)',
           backgroundColor: 'var(--bg-1)',
           border: '1px solid var(--line)',
           borderRadius: 'var(--radius-lg)',
