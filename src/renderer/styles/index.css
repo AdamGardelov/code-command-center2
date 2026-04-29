@@ -864,12 +864,12 @@ body {
   color: var(--ink-3);
 }
 
-/* Multi-repo modal expansion */
+/* Multi-repo modal expansion. Width is set inline (isMulti ? 960 : 560);
+   this rule animates the change. */
 .modal-shell { transition: width 280ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-.modal-shell[data-multi="true"] { width: 880px; }
 .modal-shell[data-multi="true"] .modal-body-wrap {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 380px;
   overflow: hidden;
   flex: 1;
   min-height: 0;

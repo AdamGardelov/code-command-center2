@@ -892,7 +892,7 @@ export default function NewSessionModal(): React.JSX.Element {
         className="modal-shell"
         data-multi={isMulti ? 'true' : 'false'}
         style={{
-          width: 560,
+          width: isMulti ? 960 : 560,
           maxHeight: '92vh',
           backgroundColor: 'var(--bg-1)',
           border: '1px solid var(--line)',
