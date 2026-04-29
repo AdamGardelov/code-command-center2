@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import type { Session } from '../../shared/types'
 import { useTerminal } from '../hooks/useTerminal'
 
@@ -17,7 +18,13 @@ const statusColors: Record<string, string> = {
 
 export default function TerminalPanel({ session, showHeader = false }: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
-  useTerminal(containerRef, session.id)
+  const search = useTerminal(containerRef, session.id)
+  const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (search.visible) inputRef.current?.focus()
+  }, [search.visible])
 
   return (
     <div
@@ -44,7 +51,79 @@ export default function TerminalPanel({ session, showHeader = false }: TerminalP
           )}
         </div>
       )}
-      <div ref={containerRef} className="flex-1 xterm-container" />
+      <div className="relative flex-1 overflow-hidden">
+        <div ref={containerRef} className="absolute inset-0 xterm-container" />
+        {search.visible && (
+          <div
+            className="absolute flex items-center gap-1 px-2 py-1 rounded shadow-lg"
+            style={{
+              top: 8,
+              right: 16,
+              backgroundColor: 'var(--bg-2)',
+              border: '1px solid var(--line-soft)',
+              zIndex: 10
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              placeholder="Search…"
+              onChange={(e) => {
+                setQuery(e.target.value)
+                search.findNext(e.target.value)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setQuery('')
+                  search.close()
+                  return
+                }
+                if (e.key === 'Enter') {
+                  if (e.shiftKey) search.findPrevious(query)
+                  else search.findNext(query)
+                  e.preventDefault()
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--ink-0)',
+                fontSize: 12,
+                width: 180
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => search.findPrevious(query)}
+              title="Previous (Shift+Enter)"
+              style={{ color: 'var(--ink-2)', padding: 2 }}
+            >
+              <ChevronUp size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => search.findNext(query)}
+              title="Next (Enter)"
+              style={{ color: 'var(--ink-2)', padding: 2 }}
+            >
+              <ChevronDown size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('')
+                search.close()
+              }}
+              title="Close (Esc)"
+              style={{ color: 'var(--ink-2)', padding: 2 }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

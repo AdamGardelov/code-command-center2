@@ -230,6 +230,11 @@ ptyManager.setStatusChangeHandler((sessionId, status) => {
   }
 })
 
+// OSC 9 notifications get stamped onto the session for sidebar display.
+ptyManager.setNotificationHandler((sessionId, text, at) => {
+  sessionManager.recordNotification(sessionId, text, at)
+})
+
 registerSessionIpc(sessionManager)
 registerTerminalIpc(ptyManager, sessionManager, stateDetector)
 registerConfigIpc(configService, sshService)

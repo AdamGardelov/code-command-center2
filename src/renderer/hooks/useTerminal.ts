@@ -1,11 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 import { useSessionStore } from '../stores/session-store'
+
+export interface TerminalSearchController {
+  visible: boolean
+  open: () => void
+  close: () => void
+  findNext: (query: string) => void
+  findPrevious: (query: string) => void
+}
 
 function getTerminalTheme(theme: 'dark' | 'light'): Record<string, string> {
   if (theme === 'light') {
@@ -62,11 +71,13 @@ function getTerminalTheme(theme: 'dark' | 'light'): Record<string, string> {
 export function useTerminal(
   containerRef: React.RefObject<HTMLDivElement | null>,
   sessionId: string | null
-): void {
+): TerminalSearchController {
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
+  const searchRef = useRef<SearchAddon | null>(null)
   const unsubDataRef = useRef<(() => void) | null>(null)
   const theme = useSessionStore((s) => s.theme)
+  const [searchVisible, setSearchVisible] = useState(false)
 
   const handleImagePaste = async (file: File): Promise<void> => {
     try {
@@ -124,6 +135,10 @@ export function useTerminal(
       window.cccAPI.shell.openExternal(uri)
     }))
 
+    const searchAddon = new SearchAddon()
+    terminal.loadAddon(searchAddon)
+    searchRef.current = searchAddon
+
     // Set all parent backgrounds to match xterm exactly (avoids fractional pixel gaps)
     const bg = getTerminalTheme(theme).background
     container.style.backgroundColor = bg
@@ -133,15 +148,19 @@ export function useTerminal(
     termRef.current = terminal
     fitRef.current = fitAddon
 
-    // Swallow Ctrl/Cmd+V so the raw keystroke doesn't reach the pty — the
-    // browser will still fire a 'paste' event which we handle below.
+    // Swallow Ctrl/Cmd+V (handled via the paste event listener below) and
+    // Ctrl/Cmd+F (opens the in-terminal search bar) so the keystrokes don't
+    // reach the pty as raw input.
     terminal.attachCustomKeyEventHandler((event) => {
       if (event.type !== 'keydown') return true
-      const isPaste =
-        event.key.toLowerCase() === 'v' &&
-        (event.ctrlKey || event.metaKey) &&
-        !event.shiftKey
-      return !isPaste
+      const key = event.key.toLowerCase()
+      const meta = (event.ctrlKey || event.metaKey) && !event.shiftKey
+      if (key === 'v' && meta) return false
+      if (key === 'f' && meta) {
+        setSearchVisible(true)
+        return false
+      }
+      return true
     })
 
     // Intercept paste entirely — handle images ourselves, forward text to xterm.
@@ -223,6 +242,7 @@ export function useTerminal(
       terminal.dispose()
       termRef.current = null
       fitRef.current = null
+      searchRef.current = null
     }
   }, [sessionId, containerRef])
 
@@ -241,4 +261,18 @@ export function useTerminal(
       }
     }
   }, [theme, containerRef])
+
+  const open = useCallback(() => setSearchVisible(true), [])
+  const close = useCallback(() => {
+    setSearchVisible(false)
+    termRef.current?.focus()
+  }, [])
+  const findNext = useCallback((query: string) => {
+    if (query.length > 0) searchRef.current?.findNext(query)
+  }, [])
+  const findPrevious = useCallback((query: string) => {
+    if (query.length > 0) searchRef.current?.findPrevious(query)
+  }, [])
+
+  return { visible: searchVisible, open, close, findNext, findPrevious }
 }

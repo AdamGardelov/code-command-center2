@@ -20,10 +20,12 @@ const IDLE_CHAR = 0x2733 // ✳
 
 export type OscCallback = (sessionId: string, status: SessionStatus, title?: string) => void
 export type ClipboardCallback = (text: string) => void
+export type NotificationCallback = (sessionId: string, text: string, at: number) => void
 
 export class OscParser {
   private callback: OscCallback
   private clipboardCallback: ClipboardCallback | null = null
+  private notificationCallback: NotificationCallback | null = null
   // Track per-session state to avoid duplicate emissions
   private lastStatus: Map<string, SessionStatus> = new Map()
 
@@ -33,6 +35,10 @@ export class OscParser {
 
   setClipboardCallback(cb: ClipboardCallback): void {
     this.clipboardCallback = cb
+  }
+
+  setNotificationCallback(cb: NotificationCallback): void {
+    this.notificationCallback = cb
   }
 
   /**
@@ -104,7 +110,7 @@ export class OscParser {
   }
 
   private handleNotification(sessionId: string, payload: string): void {
-    // OSC 9;4;level = progress indicator → working
+    // OSC 9;4;level = progress indicator → working (no human-readable text)
     if (payload.startsWith('4;')) {
       const level = payload.split(';')[1]
       if (level === '1' || level === '2' || level === '3') {
@@ -113,8 +119,12 @@ export class OscParser {
       return
     }
 
-    // Other OSC 9 payloads are notifications — could indicate waiting
-    // Claude Code sends these when it needs permission
+    // Real notification text — surface it for sidebar display.
+    if (this.notificationCallback) {
+      this.notificationCallback(sessionId, payload, Date.now())
+    }
+
+    // Permission/approval prompts also bump us to the waiting state.
     if (payload.toLowerCase().includes('permission') || payload.toLowerCase().includes('approve')) {
       this.emitIfChanged(sessionId, 'waiting')
     }
