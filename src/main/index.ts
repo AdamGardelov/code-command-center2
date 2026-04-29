@@ -31,6 +31,7 @@ import { SessionManager } from './session-manager'
 import { PtyManager } from './pty-manager'
 import { StateDetector } from './state-detector'
 import { TmuxControl } from './tmux-control'
+import { EventSocket } from './event-socket'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerConfigIpc } from './ipc/config'
@@ -106,6 +107,15 @@ function syncRemoteControls(): void {
 }
 syncRemoteControls()
 configService.onChange(() => syncRemoteControls())
+
+const PREFIX = 'ccc-'
+const eventSocket = new EventSocket(join(process.env.HOME ?? '', '.ccc', 'events.sock'))
+eventSocket.on('event', (kind: string, sessionName: string) => {
+  // Tmux session names are `ccc-<name>`; StateDetector keys are the bare name.
+  const name = sessionName.startsWith(PREFIX) ? sessionName.slice(PREFIX.length) : sessionName
+  stateDetector.handleHookEvent(kind, name)
+})
+void eventSocket.start().catch((err) => log.error(`event socket failed: ${err}`))
 
 const isMac = process.platform === 'darwin'
 
@@ -254,5 +264,6 @@ app.on('window-all-closed', () => {
     void ctl.stop()
   }
   remoteControls.clear()
+  void eventSocket.stop()
   if (process.platform !== 'darwin') app.quit()
 })

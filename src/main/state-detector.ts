@@ -11,6 +11,12 @@ const VALID_STATES: Record<string, SessionStatus> = {
   waiting: 'waiting'
 }
 
+const HOOK_TO_STATUS: Record<string, SessionStatus | undefined> = {
+  'alert-activity': 'working',
+  'alert-silence': 'idle',
+  'pane-died': 'error'
+}
+
 export class StateDetector {
   private window: BrowserWindow | null = null
   private watcher: ReturnType<typeof watch> | null = null
@@ -46,6 +52,19 @@ export class StateDetector {
 
   getState(sessionName: string): SessionStatus {
     return this.states.get(sessionName) ?? 'idle'
+  }
+
+  /**
+   * Map a tmux server-side hook event into a session status. Called by the
+   * EventSocket consumer when tmux fires alert-activity / alert-silence /
+   * pane-died on a CCC-managed session.
+   */
+  handleHookEvent(kind: string, sessionName: string): void {
+    const status = HOOK_TO_STATUS[kind]
+    if (!status) return
+    const prev = this.states.get(sessionName)
+    this.states.set(sessionName, status)
+    if (prev !== status) this.emit(sessionName, status)
   }
 
   analyzeContent(sessionName: string, lastLine: string): void {

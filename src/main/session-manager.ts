@@ -1,9 +1,20 @@
 import { execFileSync, spawn } from 'child_process'
+import { join } from 'path'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
 import type { ContainerService } from './container-service'
 import type { TmuxControl } from './tmux-control'
 import { tmuxArgs, tmuxArgsForRemote } from './tmux-socket'
+
+const EVENT_SOCKET_PATH = join(process.env.HOME ?? '', '.ccc', 'events.sock')
+
+const HOOK_EVENTS = [
+  'alert-activity',
+  'alert-silence',
+  'alert-bell',
+  'pane-died',
+  'session-closed'
+] as const
 
 function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
   let cmd = 'claude'
@@ -177,6 +188,34 @@ export class SessionManager {
 
   invalidateCache(): void {
     this.listCacheStale = true
+  }
+
+  /**
+   * Install server-wide hooks that emit events to the unix socket. Idempotent.
+   * Tmux runs these via `run-shell -b`, which forks per event but is fast on
+   * a unix domain socket (sub-millisecond).
+   */
+  private installServerHooks(remoteHost: string | undefined): void {
+    for (const event of HOOK_EVENTS) {
+      // `nc -U <path> -w1` connects, sends one line, exits. The `|| true`
+      // prevents tmux from dropping the hook chain on any failure (e.g. nc
+      // missing or socket unbound while the app is restarting).
+      const cmd = `run-shell -b "printf '${event}:#{session_name}\\n' | nc -U ${EVENT_SOCKET_PATH} -w1 2>/dev/null || true"`
+      this.tmuxCmd(remoteHost, 'set-hook', '-g', event, cmd)
+    }
+  }
+
+  /**
+   * Configure per-session monitoring so alert-activity / alert-silence fire.
+   * Disable visual alerts in tmux itself — the hook is the only consumer.
+   */
+  private installSessionMonitors(remoteHost: string | undefined, tmuxName: string): void {
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'monitor-silence', '3')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'monitor-activity', 'on')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'visual-activity', 'off')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'visual-silence', 'off')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'activity-action', 'none')
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, 'silence-action', 'none')
   }
 
   private tmuxCmd(remoteHost: string | undefined, ...args: string[]): string | null {
@@ -450,6 +489,8 @@ export class SessionManager {
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'aggressive-resize', 'on')
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
+      this.installServerHooks(opts.remoteHost)
+      this.installSessionMonitors(opts.remoteHost, tmuxName)
 
       const check = this.tmuxCmd(opts.remoteHost, 'has-session', '-t', tmuxName)
       if (check === null) {
@@ -518,6 +559,8 @@ export class SessionManager {
       tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
       tmux('set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       tmux('set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
+      this.installServerHooks(undefined)
+      this.installSessionMonitors(undefined, tmuxName)
 
       const check = tmux('has-session', '-t', `=${tmuxName}`)
       if (check === null) {
