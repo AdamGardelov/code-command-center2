@@ -5,6 +5,7 @@ import type { SshService } from './ssh-service'
 import type { ContainerService } from './container-service'
 import type { TmuxControl } from './tmux-control'
 import { tmuxArgs, tmuxArgsForRemote } from './tmux-socket'
+import { isGitDirty } from './git-dirty'
 
 const EVENT_SOCKET_PATH = join(process.env.HOME ?? '', '.ccc', 'events.sock')
 const OUTPUT_SOCKET_PATH = join(process.env.HOME ?? '', '.ccc', 'output.sock')
@@ -147,6 +148,16 @@ export class SessionManager {
   private listCacheStale = true
   private listInFlight: Promise<Session[]> | null = null
   private onSessionsChangedCallback: (() => void) | null = null
+  private notifications: Map<string, { text: string; at: number }> = new Map()
+
+  /**
+   * Record the most recent OSC 9 notification surfaced by an attached PTY.
+   * The next list() call attaches it to the matching Session record so the
+   * sidebar can render it.
+   */
+  recordNotification(sessionId: string, text: string, at: number): void {
+    this.notifications.set(sessionId, { text, at })
+  }
 
   setConfigService(service: { get(): { sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; remoteHosts?: RemoteHost[]; dangerouslySkipPermissions: boolean; enableAutoMode: boolean; codexFullAuto: boolean; codexDangerouslyBypassApprovals: boolean; ideCommand?: string; containerSessions?: Record<string, string> }; update(p: Partial<{ sessionColors: Record<string, string>; sessionTypes: Record<string, SessionType>; containerSessions: Record<string, string> }>): void; resolveClaudeConfigDir(workingDirectory: string): string | undefined; pruneSessionName(sessionName: string): void }): void {
     this.configService = service
@@ -448,7 +459,9 @@ export class SessionManager {
         existing.workingDirectory = currentPath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
         existing.gitBranch = getGitBranch(existing.workingDirectory)
+        existing.gitDirty = isGitDirty(existing.workingDirectory)
         existing.repoPath = getRepoRoot(existing.workingDirectory)
+        existing.lastNotification = this.notifications.get(existing.id)
         if (existing.status === 'error') existing.status = 'idle'
         if (containerSessions[existing.name]) {
           existing.isContainer = true
@@ -474,6 +487,7 @@ export class SessionManager {
           isContainer: !!containerName,
           containerName,
           gitBranch: getGitBranch(currentPath || '~'),
+          gitDirty: isGitDirty(currentPath || '~'),
           repoPath: getRepoRoot(currentPath || '~'),
           createdAt: created,
           lastActiveAt: Date.now()

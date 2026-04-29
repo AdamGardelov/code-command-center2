@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X, Server } from 'lucide-react'
+import { GitBranch, Trash2, Folder, Zap, Bot, Box, Grid2x2X, Server, Bell } from 'lucide-react'
 import type { Session, ContainerConfig } from '../../shared/types'
 import { useSessionStore } from '../stores/session-store'
 import GroupContextMenu from './GroupContextMenu'
@@ -312,6 +312,14 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
                 ))}
               </span>
             )}
+            {session.lastNotification && Date.now() - session.lastNotification.at < 5 * 60 * 1000 && (
+              <span
+                title={`Notification: ${session.lastNotification.text}`}
+                style={{ color: 'var(--amber)', flexShrink: 0 }}
+              >
+                <Bell size={10} />
+              </span>
+            )}
             {session.isExcluded && !session.isArchived && (
               <span title="Excluded from grid" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
                 <Grid2x2X size={10} />
@@ -340,6 +348,18 @@ export default function SessionCard({ session, isActive, onClick }: SessionCardP
                     <GitBranch size={9} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
                     <span className="truncate" style={{ flex: '1 1 auto', minWidth: 0 }}>
                       {session.gitBranch}
+                      {session.gitDirty && (
+                        <span
+                          title="Uncommitted changes"
+                          style={{
+                            color: 'var(--amber)',
+                            marginLeft: 3,
+                            fontWeight: 700
+                          }}
+                        >
+                          *
+                        </span>
+                      )}
                     </span>
                   </>
                 ) : hasDir ? (

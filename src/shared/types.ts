@@ -13,6 +13,7 @@ export interface Session {
   color: string
   remoteHost?: string
   gitBranch?: string
+  gitDirty?: boolean
   repoPath?: string
   createdAt: number
   lastActiveAt: number
@@ -25,6 +26,7 @@ export interface Session {
   displayName?: string
   isContainer?: boolean
   containerName?: string
+  lastNotification?: { text: string; at: number }
 }
 
 export interface SessionCreate {

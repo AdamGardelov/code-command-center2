@@ -4,6 +4,7 @@ import { join } from 'path'
 import { clipboard, type BrowserWindow } from 'electron'
 import type { SessionStatus } from '../shared/types'
 import { OscParser } from './osc-parser'
+import { PtyCoalescer } from './pty-coalescer'
 import { TMUX_SOCKET_NAME, tmuxArgs } from './tmux-socket'
 
 interface ActivePty {
@@ -15,7 +16,9 @@ export class PtyManager {
   private ptys: Map<string, ActivePty> = new Map()
   private window: BrowserWindow | null = null
   private oscParser: OscParser
+  private coalescer: PtyCoalescer
   private onStatusChange: ((sessionId: string, status: SessionStatus) => void) | null = null
+  private onNotification: ((sessionId: string, text: string, at: number) => void) | null = null
 
   constructor() {
     this.oscParser = new OscParser((sessionId, status) => {
@@ -29,6 +32,19 @@ export class PtyManager {
     this.oscParser.setClipboardCallback((text) => {
       clipboard.writeText(text)
     })
+    this.oscParser.setNotificationCallback((sessionId, text, at) => {
+      if (this.onNotification) this.onNotification(sessionId, text, at)
+      if (this.window && !this.window.isDestroyed()) {
+        this.window.webContents.send('session:notification', sessionId, text, at)
+      }
+    })
+    this.coalescer = new PtyCoalescer({
+      send: (sessionId, data) => {
+        if (this.window && !this.window.isDestroyed()) {
+          this.window.webContents.send('terminal:data', sessionId, data)
+        }
+      }
+    })
   }
 
   setWindow(win: BrowserWindow): void {
@@ -37,6 +53,10 @@ export class PtyManager {
 
   setStatusChangeHandler(handler: (sessionId: string, status: SessionStatus) => void): void {
     this.onStatusChange = handler
+  }
+
+  setNotificationHandler(handler: (sessionId: string, text: string, at: number) => void): void {
+    this.onNotification = handler
   }
 
   attach(sessionId: string, tmuxSessionName: string, remoteHost?: string, cols?: number, rows?: number): void {
@@ -99,13 +119,15 @@ export class PtyManager {
       // Parse OSC sequences inline (fast — no copying, no delay)
       this.oscParser.parse(sessionId, data)
 
-      // Forward data to renderer unchanged
-      if (this.window && !this.window.isDestroyed()) {
-        this.window.webContents.send('terminal:data', sessionId, data)
-      }
+      // Coalesce ~16 ms of pane output into a single IPC send. structured-clone
+      // across the main↔renderer boundary is the actual bottleneck during
+      // heavy bursts (long agent streams, build output), not xterm.js render.
+      this.coalescer.push(sessionId, data)
     })
 
     ptyProcess.onExit(() => {
+      this.coalescer.flush(sessionId)
+      this.coalescer.clear(sessionId)
       this.oscParser.clear(sessionId)
       this.ptys.delete(sessionId)
       if (this.window && !this.window.isDestroyed()) {
@@ -124,6 +146,8 @@ export class PtyManager {
     } catch {
       // Process may already be dead
     }
+    this.coalescer.flush(sessionId)
+    this.coalescer.clear(sessionId)
     this.oscParser.clear(sessionId)
     this.ptys.delete(sessionId)
   }
