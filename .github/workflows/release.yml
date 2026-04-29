@@ -76,7 +76,7 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.tag || github.ref }}
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 9
 
@@ -85,7 +85,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -95,7 +95,7 @@ jobs:
         run: ${{ matrix.build }}
 
       - name: Publish to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ matrix.artifact }}
           tag_name: ${{ needs.version.outputs.tag || github.ref_name }}
