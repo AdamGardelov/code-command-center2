@@ -49,4 +49,27 @@ describe('GitService.resolveBranchAcrossRepos', () => {
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({ repoPath: repo, ok: true, mode: 'new-branch' })
   })
+
+  it('returns "existing-local" when branch exists locally', () => {
+    const repo = makeRepo(scratch, 'a', { localBranches: ['feat/x'] })
+    const results = svc.resolveBranchAcrossRepos([repo], 'feat/x')
+    expect(results[0]).toMatchObject({ repoPath: repo, ok: true, mode: 'existing-local' })
+  })
+
+  it('returns "track-remote" when branch exists only on origin', () => {
+    const repo = makeRepo(scratch, 'a', { remoteBranches: ['feat/y'] })
+    const results = svc.resolveBranchAcrossRepos([repo], 'feat/y')
+    expect(results[0]).toMatchObject({ repoPath: repo, ok: true, mode: 'track-remote' })
+  })
+
+  it('handles mixed states across repos in one call', () => {
+    const repoA = makeRepo(scratch, 'a', { localBranches: ['feat/z'] })
+    const repoB = makeRepo(scratch, 'b')
+    const repoC = makeRepo(scratch, 'c', { remoteBranches: ['feat/z'] })
+    const results = svc.resolveBranchAcrossRepos([repoA, repoB, repoC], 'feat/z')
+    expect(results).toHaveLength(3)
+    expect(results.find((r) => r.repoPath === repoA)).toMatchObject({ mode: 'existing-local' })
+    expect(results.find((r) => r.repoPath === repoB)).toMatchObject({ mode: 'new-branch' })
+    expect(results.find((r) => r.repoPath === repoC)).toMatchObject({ mode: 'track-remote' })
+  })
 })
