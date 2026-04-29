@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { GitService } from '../git-service'
-import type { WorktreeCreateMode } from '../../shared/types'
+import type { WorktreeCreateMode, BatchWorktreeRequest } from '../../shared/types'
 
 export function registerGitIpc(gitService: GitService): void {
   ipcMain.handle('git:list-worktrees', async (_event, repoPath: string, remoteHost?: string, containerName?: string) => {
@@ -38,4 +38,26 @@ export function registerGitIpc(gitService: GitService): void {
   ipcMain.handle('git:branch-metadata', async (_event, repoPath: string, remoteHost?: string, containerName?: string) => {
     return gitService.getBranchMetadata(repoPath, remoteHost, containerName)
   })
+
+  ipcMain.handle(
+    'git:resolve-branch-batch',
+    async (
+      _event,
+      repoPaths: string[],
+      branch: string,
+      remoteHost?: string,
+      containerName?: string
+    ) => {
+      return gitService.resolveBranchAcrossRepos(repoPaths, branch, remoteHost, containerName)
+    }
+  )
+
+  ipcMain.handle(
+    'git:add-worktree-batch',
+    async (_event, request: BatchWorktreeRequest) => {
+      return gitService.addWorktreeBatch(request, (repoPath) =>
+        gitService.resolveWorktreePath(repoPath, request.branch, request.remoteHost, request.containerName)
+      )
+    }
+  )
 }
