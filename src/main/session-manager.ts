@@ -2,6 +2,7 @@ import { execFileSync, spawn } from 'child_process'
 import type { Session, SessionCreate, SessionType, RemoteHost } from '../shared/types'
 import type { SshService } from './ssh-service'
 import type { ContainerService } from './container-service'
+import { tmuxArgs, tmuxArgsForRemote } from './tmux-socket'
 
 function buildClaudeCmd(skipPerms: boolean, autoMode: boolean): string {
   let cmd = 'claude'
@@ -35,7 +36,7 @@ const SESSION_COLORS = [
 
 function tmux(...args: string[]): string | null {
   try {
-    return execFileSync('tmux', args, { encoding: 'utf-8', timeout: 5000 }).trim()
+    return execFileSync('tmux', tmuxArgs(...args), { encoding: 'utf-8', timeout: 5000 }).trim()
   } catch {
     return null
   }
@@ -130,9 +131,7 @@ export class SessionManager {
     if (remoteHost && this.sshService) {
       const hostConfig = this.configService?.get().remoteHosts?.find(h => h.name === remoteHost)
       const sshHost = hostConfig?.host ?? remoteHost
-      // Shell-escape each argument for remote execution
-      const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')
-      return this.sshService.exec(sshHost, `tmux ${escaped}`)
+      return this.sshService.exec(sshHost, tmuxArgsForRemote(...args))
     }
     return tmux(...args)
   }
@@ -161,7 +160,11 @@ export class SessionManager {
     if (!this.sshService) return []
     const output = this.sshService.exec(
       sshHost,
-      `tmux list-sessions -F "#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}"`
+      tmuxArgsForRemote(
+        'list-sessions',
+        '-F',
+        `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}`
+      )
     )
     if (!output) return []
 
