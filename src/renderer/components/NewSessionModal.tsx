@@ -716,7 +716,7 @@ export default function NewSessionModal(): React.JSX.Element {
           const createdIds: string[] = []
           for (const [repoPath, wtPath] of oks) {
             const sessionName = `${branchInput.trim()} · ${repoLeaf(repoPath)}`
-            const session = await window.cccAPI.session.create({
+            const session = await createSession({
               name: sessionName,
               workingDirectory: wtPath,
               type: sessionType,
