@@ -49,6 +49,29 @@ import { PrService } from './pr-service'
 import { ContainerService } from './container-service'
 import { initUpdater } from './updater'
 import { log, readLogs, getLogPath } from './log-service'
+import { existsSync, readdirSync } from 'fs'
+
+function warnIfLegacyStateFiles(): void {
+  const dir = join(process.env.HOME ?? '', '.ccc', 'states')
+  if (!existsSync(dir)) return
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return
+  }
+  if (entries.length === 0) return
+  const sock = join(process.env.HOME ?? '', '.ccc', 'events.sock')
+  log.warn(
+    `${entries.length} legacy state file(s) found in ${dir}. ` +
+      `CCC no longer reads them — update your tool's hook config (Claude Code, ` +
+      `Codex, Gemini, or any TUI you have wired into CCC) to write to the unix ` +
+      `socket instead. Replace commands like ` +
+      `\`echo working > ~/.ccc/states/$CCC_SESSION_NAME\` with ` +
+      `\`printf 'agent-working:%s\\n' "$CCC_SESSION_NAME" | nc -U ${sock} -w1\`. ` +
+      `See scripts/migrate-legacy-state-hooks.sh for an example migration.`
+  )
+}
 
 const configService = new ConfigService()
 configService.load()
@@ -228,8 +251,10 @@ ipcMain.handle('app:logs', (_event, lines?: number) => readLogs(lines))
 
 ipcMain.handle('app:log-path', () => getLogPath())
 
-// Hook-based detection as secondary source (overrides OSC if configured)
-stateDetector.start()
+// State now arrives via the unix socket (tmux hooks + Claude hooks).
+// If the legacy ~/.ccc/states/ directory still has files, the user has
+// not yet migrated their Claude hook config — surface a clear hint.
+warnIfLegacyStateFiles()
 
 app.whenReady().then(() => {
   log.info(`CCC starting on ${process.platform} (${process.arch})`)
@@ -256,7 +281,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   sshService.stopMonitoring()
-  stateDetector.stop()
   ptyManager.detachAll()
   prService.stop()
   void localControl.stop()
