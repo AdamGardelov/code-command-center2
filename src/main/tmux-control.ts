@@ -194,23 +194,26 @@ export class TmuxControl extends EventEmitter {
   }
 
   private ensureControlSession(socket: string): void {
-    const args = ['-L', socket, 'new-session', '-d', '-s', CONTROL_SESSION_NAME]
+    // -A makes new-session attach if the session already exists, or create it
+    // otherwise. Combined with -d (detached) this is the cleanest "ensure
+    // exists, don't disturb anything" primitive — replaces the old try/catch.
+    const args = ['-L', socket, 'new-session', '-A', '-d', '-s', CONTROL_SESSION_NAME]
     if (this.opts.sshPrefix && this.opts.sshPrefix.length > 0) {
-      const remoteCmd = `tmux -L ${socket} new-session -d -s ${CONTROL_SESSION_NAME} 2>/dev/null || true`
+      const remoteCmd = `tmux -L ${socket} new-session -A -d -s ${CONTROL_SESSION_NAME} 2>/dev/null`
       try {
         execFileSync(this.opts.sshPrefix[0], [...this.opts.sshPrefix.slice(1), remoteCmd], {
           timeout: 5000,
           stdio: ['pipe', 'pipe', 'pipe']
         })
       } catch {
-        // Hook will fail loudly later if attach can't connect.
+        // Connection-level failure (host down, auth) — attach will surface it.
       }
       return
     }
     try {
       execFileSync('tmux', args, { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
     } catch {
-      // Already exists or server start raced with us — attach will tell us.
+      // Server start raced with us; attach will tell us.
     }
   }
 
