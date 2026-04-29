@@ -610,6 +610,34 @@ export class SessionManager {
     return session
   }
 
+  /**
+   * Snapshot recent pane content for sidebar previews of unattached sessions.
+   * Returns "" if the session is unknown or capture-pane fails.
+   */
+  async capturePane(id: string, lines: number = 100): Promise<string> {
+    const session = this.sessions.get(id)
+    if (!session) return ''
+    const tmuxName = tmuxSessionName(session.name)
+    const safeLines = Math.max(1, Math.min(lines, 5000))
+    // capture-pane is a pane-target command; `=name:` selects the active pane
+    // of the exactly-matching session (without the trailing colon, '=' looks
+    // for a literal pane name and never matches a session).
+    const out = this.tmuxCmd(
+      session.remoteHost,
+      'capture-pane',
+      '-p',
+      '-t',
+      `=${tmuxName}:`,
+      '-S',
+      `-${safeLines}`
+    )
+    return out ?? ''
+  }
+
+  private setUserOption(remoteHost: string | undefined, tmuxName: string, key: string, value: string): void {
+    this.tmuxCmd(remoteHost, 'set-option', '-t', tmuxName, key, value)
+  }
+
   async kill(id: string): Promise<void> {
     const session = this.sessions.get(id)
     if (!session) return
@@ -635,6 +663,7 @@ export class SessionManager {
     for (const session of this.sessions.values()) {
       if (session.name === sessionName) {
         session.status = status
+        this.setUserOption(session.remoteHost, tmuxSessionName(session.name), '@ccc-state', status)
         break
       }
     }

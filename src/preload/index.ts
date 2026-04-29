@@ -35,6 +35,8 @@ const api: CccAPI = {
     detach: (id: string) => ipcRenderer.send('session:detach', id),
     openInIde: (id: string): Promise<void> => ipcRenderer.invoke('session:open-ide', id),
     openFolder: (id: string): Promise<void> => ipcRenderer.invoke('session:open-folder', id),
+    capturePane: (id: string, lines?: number): Promise<string> =>
+      ipcRenderer.invoke('session:capture-pane', id, lines),
     onListChanged: (callback: () => void) => {
       const handler = (): void => callback()
       ipcRenderer.on('session:list-changed', handler)

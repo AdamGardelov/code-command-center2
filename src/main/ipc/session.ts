@@ -36,4 +36,8 @@ export function registerSessionIpc(sessionManager: SessionManager): void {
       await shell.openPath(dir)
     }
   })
+
+  ipcMain.handle('session:capture-pane', async (_event, id: string, lines?: number) => {
+    return sessionManager.capturePane(id, lines)
+  })
 }
