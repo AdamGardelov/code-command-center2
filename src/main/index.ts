@@ -32,6 +32,7 @@ import { PtyManager } from './pty-manager'
 import { StateDetector } from './state-detector'
 import { TmuxControl } from './tmux-control'
 import { EventSocket } from './event-socket'
+import { OutputStream } from './output-stream'
 import { registerSessionIpc } from './ipc/session'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerConfigIpc } from './ipc/config'
@@ -139,6 +140,16 @@ eventSocket.on('event', (kind: string, sessionName: string) => {
   stateDetector.handleHookEvent(kind, name)
 })
 void eventSocket.start().catch((err) => log.error(`event socket failed: ${err}`))
+
+const outputStream = new OutputStream(join(process.env.HOME ?? '', '.ccc', 'output.sock'))
+outputStream.on('output', (tmuxName: string, data: Buffer) => {
+  const id = sessionManager.findIdByLocalTmuxName(tmuxName)
+  if (!id) return
+  ptyManager.parseOutput(id, data.toString('utf-8'))
+})
+void outputStream.start()
+  .then(() => sessionManager.enableOutputStreamingForExistingSessions())
+  .catch((err) => log.error(`output stream failed: ${err}`))
 
 const isMac = process.platform === 'darwin'
 
@@ -289,5 +300,6 @@ app.on('window-all-closed', () => {
   }
   remoteControls.clear()
   void eventSocket.stop()
+  void outputStream.stop()
   if (process.platform !== 'darwin') app.quit()
 })
