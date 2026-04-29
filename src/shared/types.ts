@@ -116,6 +116,26 @@ export interface BranchMetadata {
 
 export type WorktreeCreateMode = 'existing-local' | 'track-remote' | 'new-branch'
 
+export interface BatchWorktreeRepoRequest {
+  repoPath: string
+  mode: WorktreeCreateMode
+}
+
+export interface BatchWorktreeRequest {
+  repos: BatchWorktreeRepoRequest[]
+  branch: string
+  remoteHost?: string
+  containerName?: string
+}
+
+export type BatchWorktreeResult =
+  | { repoPath: string; ok: true; worktree: Worktree }
+  | { repoPath: string; ok: false; error: string }
+
+export type BranchResolution =
+  | { repoPath: string; ok: true; mode: WorktreeCreateMode; existingWorktreePath?: string }
+  | { repoPath: string; ok: false; error: string }
+
 export interface PrReviewer {
   login: string
   state: 'pending' | 'approved' | 'changes_requested'
