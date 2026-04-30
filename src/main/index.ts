@@ -1,5 +1,15 @@
 import { app, BrowserWindow, ipcMain, shell, nativeImage } from 'electron'
 
+// CLI version probe — print the version to stdout and exit before any window
+// is constructed. install.sh runs `code-command-center --version` to decide
+// whether the on-disk install matches the release tag; without this early
+// return the binary launches the full GUI instead, the script hangs on the
+// `$(...)` capture, and the auto-update flow appears to "do nothing".
+if (process.argv.slice(1).some((a) => a === '--version' || a === '-v')) {
+  process.stdout.write(`${app.getVersion()}\n`)
+  app.exit(0)
+}
+
 // macOS GUI apps don't inherit shell PATH — add common Homebrew paths
 if (process.platform === 'darwin') {
   const extra = ['/opt/homebrew/bin', '/opt/homebrew/sbin', '/usr/local/bin']
