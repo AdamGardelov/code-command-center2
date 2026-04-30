@@ -61,17 +61,34 @@ if [ -z "$ASSET_URL" ]; then
   exit 1
 fi
 
-if command -v code-command-center &>/dev/null; then
-  CURRENT=$(code-command-center --version 2>/dev/null || echo "")
-  TAG_STRIPPED="${TAG#v}"
-  if [ "$CURRENT" = "$TAG_STRIPPED" ]; then
-    echo "Already on version $TAG — nothing to do."
-    if [ "$RELAUNCH" = "1" ]; then
-      echo "Relaunching anyway (--relaunch)…"
-      nohup code-command-center >/dev/null 2>&1 &
+# Determine the installed version without invoking the binary itself —
+# Electron apps don't honour `--version` unless the main process explicitly
+# handles it, and pre-1.0.78 builds launch the GUI instead, which hangs the
+# `$(...)` capture and makes the auto-update flow appear to no-op.
+CURRENT=""
+if [ "$PLATFORM" = "linux" ] && command -v dpkg &>/dev/null; then
+  CURRENT=$(dpkg -l code-command-center 2>/dev/null | awk '/^ii/ {print $3; exit}')
+elif [ "$PLATFORM" = "mac" ]; then
+  for APP_PATH in "/Applications/Code Command Center.app" "$HOME/Applications/Code Command Center.app"; do
+    if [ -d "$APP_PATH" ]; then
+      CURRENT=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "")
+      [ -n "$CURRENT" ] && break
     fi
-    exit 0
+  done
+fi
+
+TAG_STRIPPED="${TAG#v}"
+if [ -n "$CURRENT" ] && [ "$CURRENT" = "$TAG_STRIPPED" ]; then
+  echo "Already on version $TAG — nothing to do."
+  if [ "$RELAUNCH" = "1" ]; then
+    echo "Relaunching anyway (--relaunch)…"
+    if [ "$PLATFORM" = "linux" ]; then
+      nohup code-command-center >/dev/null 2>&1 &
+    else
+      open -a "Code Command Center"
+    fi
   fi
+  exit 0
 fi
 
 TMP_DIR=$(mktemp -d)
