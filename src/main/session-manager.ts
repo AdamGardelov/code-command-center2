@@ -117,7 +117,7 @@ const PREFIX = 'ccc-'
 /** Separator used in tmux list-sessions format strings — must not appear in session names or paths */
 const SEP = '|||'
 
-const LIST_FMT = `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}${SEP}#{@ccc-state}${SEP}#{@ccc-type}`
+const LIST_FMT = `#{session_name}${SEP}#{session_created}${SEP}#{pane_current_path}${SEP}#{@ccc-state}${SEP}#{@ccc-type}${SEP}#{@ccc-cwd}`
 
 const VALID_STATUSES = new Set<Session['status']>(['idle', 'working', 'waiting', 'stopped', 'error'])
 const VALID_TYPES = new Set<SessionType>(['claude', 'gemini', 'shell', 'codex'])
@@ -376,7 +376,7 @@ export class SessionManager {
 
     const sessions: Session[] = []
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath, cccState, cccType] = line.split(SEP)
+      const [name, createdStr, currentPath, cccState, cccType, cccCwd] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       const sessionName = name.slice(PREFIX.length)
@@ -385,11 +385,15 @@ export class SessionManager {
       // Check if we already track this remote session
       const existing = this.findByTmuxNameAndHost(sessionName, hostName)
       const containerSessions = this.configService?.get().containerSessions ?? {}
+      // For container sessions pane_current_path reflects the *host* tmux pane,
+      // not the container's interactive shell — prefer the @ccc-cwd we stamped
+      // on creation so the sidebar shows /repos/... instead of /home/<user>.
+      const containerName = containerSessions[sessionName]
+      const effectivePath = containerName ? (cccCwd || existing?.workingDirectory || currentPath) : currentPath
       if (existing) {
-        existing.workingDirectory = currentPath || existing.workingDirectory
+        existing.workingDirectory = effectivePath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
         if (existing.status === 'error') existing.status = 'idle'
-        const containerName = containerSessions[existing.name]
         if (containerName) {
           existing.isContainer = true
           existing.containerName = containerName
@@ -401,17 +405,16 @@ export class SessionManager {
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
         const color = this.getColorForSession(sessionName)
-        const remoteContainerName = containerSessions[sessionName]
         const session: Session = {
           id: generateId(),
           name: sessionName,
-          workingDirectory: currentPath || '~',
+          workingDirectory: effectivePath || '~',
           status: restoredStatus ?? 'idle',
           type: restoredType ?? this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           remoteHost: hostName,
-          isContainer: !!remoteContainerName,
-          containerName: remoteContainerName,
+          isContainer: !!containerName,
+          containerName,
           createdAt: created,
           lastActiveAt: Date.now()
         }
@@ -446,7 +449,7 @@ export class SessionManager {
     const tmuxSessions = new Set<string>()
 
     for (const line of output.split('\n')) {
-      const [name, createdStr, currentPath, cccState, cccType] = line.split(SEP)
+      const [name, createdStr, currentPath, cccState, cccType, cccCwd] = line.split(SEP)
       if (!name?.startsWith(PREFIX)) continue
 
       tmuxSessions.add(name)
@@ -455,40 +458,48 @@ export class SessionManager {
       const restoredType = parseType(cccType)
 
       const containerSessions = this.configService?.get().containerSessions ?? {}
+      const sessionName = name.slice(PREFIX.length)
+      const containerName = containerSessions[sessionName]
+      // pane_current_path is the host-side tmux pane CWD, which for container
+      // sessions sits at $HOME because the docker exec is the foreground
+      // process. @ccc-cwd is stamped on creation to preserve the container
+      // path; fall back to the existing record only when the option is empty.
+      const effectivePath = containerName ? (cccCwd || existing?.workingDirectory || currentPath) : currentPath
+      // Skip host-side git probes for container sessions — the path doesn't
+      // resolve on the host, so the calls are guaranteed to fail.
+      const probeDir = containerName ? null : (effectivePath || '~')
       if (existing) {
-        existing.workingDirectory = currentPath || existing.workingDirectory
+        existing.workingDirectory = effectivePath || existing.workingDirectory
         existing.lastActiveAt = Date.now()
-        existing.gitBranch = getGitBranch(existing.workingDirectory)
-        existing.gitDirty = isGitDirty(existing.workingDirectory)
-        existing.repoPath = getRepoRoot(existing.workingDirectory)
+        existing.gitBranch = probeDir ? getGitBranch(probeDir) : undefined
+        existing.gitDirty = probeDir ? isGitDirty(probeDir) : undefined
+        existing.repoPath = probeDir ? getRepoRoot(probeDir) : undefined
         existing.lastNotification = this.notifications.get(existing.id)
         if (existing.status === 'error') existing.status = 'idle'
-        if (containerSessions[existing.name]) {
+        if (containerName) {
           existing.isContainer = true
-          existing.containerName = containerSessions[existing.name]
+          existing.containerName = containerName
         } else {
           existing.isContainer = false
           existing.containerName = undefined
         }
       } else {
         const created = createdStr ? parseInt(createdStr) * 1000 : Date.now()
-        const sessionName = name.slice(PREFIX.length)
         const color = this.getColorForSession(sessionName)
         this.applyTmuxColor(name, color)
         this.configService?.update({ sessionColors: { [sessionName]: color } })
-        const containerName = containerSessions[sessionName]
         const session: Session = {
           id: generateId(),
           name: sessionName,
-          workingDirectory: currentPath || '~',
+          workingDirectory: effectivePath || '~',
           status: restoredStatus ?? 'idle',
           type: restoredType ?? this.configService?.get().sessionTypes[sessionName] ?? 'claude',
           color,
           isContainer: !!containerName,
           containerName,
-          gitBranch: getGitBranch(currentPath || '~'),
-          gitDirty: isGitDirty(currentPath || '~'),
-          repoPath: getRepoRoot(currentPath || '~'),
+          gitBranch: probeDir ? getGitBranch(probeDir) : undefined,
+          gitDirty: probeDir ? isGitDirty(probeDir) : undefined,
+          repoPath: probeDir ? getRepoRoot(probeDir) : undefined,
           createdAt: created,
           lastActiveAt: Date.now()
         }
@@ -607,6 +618,9 @@ export class SessionManager {
       this.tmuxCmd(opts.remoteHost, 'set-option', '-t', tmuxName, 'aggressive-resize', 'on')
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       this.tmuxCmd(opts.remoteHost, 'set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
+      if (opts.containerName) {
+        this.setUserOption(opts.remoteHost, tmuxName, '@ccc-cwd', opts.workingDirectory)
+      }
       this.installServerHooks(opts.remoteHost)
       this.installServerOptions(opts.remoteHost)
       this.installSessionMonitors(opts.remoteHost, tmuxName)
@@ -680,6 +694,9 @@ export class SessionManager {
       tmux('set-option', '-t', tmuxName, 'aggressive-resize', 'on')
       tmux('set-environment', '-t', tmuxName, 'COLORTERM', 'truecolor')
       tmux('set-environment', '-t', tmuxName, 'TERM', 'xterm-256color')
+      if (opts.containerName) {
+        this.setUserOption(undefined, tmuxName, '@ccc-cwd', opts.workingDirectory)
+      }
       this.installServerHooks(undefined)
       this.installServerOptions(undefined)
       this.installSessionMonitors(undefined, tmuxName)
