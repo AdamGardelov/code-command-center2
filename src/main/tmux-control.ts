@@ -1,4 +1,4 @@
-import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from 'child_process'
+import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { EventEmitter } from 'events'
 import { TMUX_SOCKET_NAME } from './tmux-socket'
 
@@ -72,7 +72,7 @@ export class TmuxControl extends EventEmitter {
 
     // Ensure the dedicated control session exists; tmux -C attach without a
     // target dies when the most-recently-used session is killed.
-    this.ensureControlSession(socket)
+    await this.ensureControlSession(socket)
 
     const tmuxCmd = `tmux -L ${socket} -C attach -t ${CONTROL_SESSION_NAME}`
 
@@ -193,28 +193,47 @@ export class TmuxControl extends EventEmitter {
       .filter((s) => s.name !== CONTROL_SESSION_NAME)
   }
 
-  private ensureControlSession(socket: string): void {
+  private ensureControlSession(socket: string): Promise<void> {
     // -A makes new-session attach if the session already exists, or create it
     // otherwise. Combined with -d (detached) this is the cleanest "ensure
     // exists, don't disturb anything" primitive — replaces the old try/catch.
-    const args = ['-L', socket, 'new-session', '-A', '-d', '-s', CONTROL_SESSION_NAME]
+    //
+    // Async spawn (not execFileSync) is mandatory here: this runs on the
+    // Electron main process during boot, and a sync probe over SSH (5 s
+    // worst-case per host) would freeze the IPC channel and trip the
+    // window manager's "not responding" dialog before the UI can render.
+    let cmd: string
+    let argv: string[]
+    let timeoutMs: number
     if (this.opts.sshPrefix && this.opts.sshPrefix.length > 0) {
       const remoteCmd = `tmux -L ${socket} new-session -A -d -s ${CONTROL_SESSION_NAME} 2>/dev/null`
-      try {
-        execFileSync(this.opts.sshPrefix[0], [...this.opts.sshPrefix.slice(1), remoteCmd], {
-          timeout: 5000,
-          stdio: ['pipe', 'pipe', 'pipe']
-        })
-      } catch {
-        // Connection-level failure (host down, auth) — attach will surface it.
+      cmd = this.opts.sshPrefix[0]
+      argv = [...this.opts.sshPrefix.slice(1), remoteCmd]
+      timeoutMs = 5000
+    } else {
+      cmd = 'tmux'
+      argv = ['-L', socket, 'new-session', '-A', '-d', '-s', CONTROL_SESSION_NAME]
+      timeoutMs = 3000
+    }
+    return new Promise((resolve) => {
+      const proc = spawn(cmd, argv, { stdio: ['ignore', 'ignore', 'ignore'] })
+      const timer = setTimeout(() => {
+        try {
+          proc.kill('SIGKILL')
+        } catch {
+          // ignore
+        }
+      }, timeoutMs)
+      const done = (): void => {
+        clearTimeout(timer)
+        resolve()
       }
-      return
-    }
-    try {
-      execFileSync('tmux', args, { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] })
-    } catch {
-      // Server start raced with us; attach will tell us.
-    }
+      // Resolve regardless of exit code or error — the subsequent
+      // `tmux -C attach` is the authoritative probe and surfaces any
+      // real failure (no server, ssh down, auth) to the caller of start().
+      proc.once('exit', done)
+      proc.once('error', done)
+    })
   }
 
   private onStdout(chunk: string): void {
