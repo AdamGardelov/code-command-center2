@@ -594,9 +594,18 @@ export default function NewSessionModal(): React.JSX.Element {
     setBunkerReposLoading(true)
     window.cccAPI.container
       .listRepos(activeContainer.name, activeContainer.remoteHost)
-      .then((repos) => setBunkerRepos(repos))
+      .then((repos) => {
+        // /repos/ contains both the actual checkouts and the worktree base
+        // directory; treating the latter as a repo makes BranchPicker run
+        // `git fetch` against a non-repo and surface "offline — cached".
+        const baseDir = activeContainer.worktreeBaseDir
+        const baseName = baseDir
+          ? baseDir.replace(/^\/repos\//, '').replace(/\/.*$/, '').replace(/\/+$/, '')
+          : null
+        setBunkerRepos(baseName ? repos.filter((r) => r !== baseName) : repos)
+      })
       .finally(() => setBunkerReposLoading(false))
-  }, [isBunkerContainer, activeContainer?.name, activeContainer?.remoteHost])
+  }, [isBunkerContainer, activeContainer?.name, activeContainer?.remoteHost, activeContainer?.worktreeBaseDir])
 
   // Debounced branch resolution for multi-repo mode
   useEffect(() => {
