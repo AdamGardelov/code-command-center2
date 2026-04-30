@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import type { CccAPI } from '../shared/types'
 
 declare module '*.png' {
