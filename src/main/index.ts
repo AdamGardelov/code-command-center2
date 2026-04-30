@@ -98,7 +98,6 @@ sessionManager.setContainerService(containerService)
 
 const localControl = new TmuxControl()
 sessionManager.setLocalControl(localControl)
-void localControl.start().catch((err) => log.error(`local tmux control failed: ${err}`))
 
 const remoteControls = new Map<string, TmuxControl>()
 function syncRemoteControls(): void {
@@ -129,7 +128,6 @@ function syncRemoteControls(): void {
     }
   }
 }
-syncRemoteControls()
 configService.onChange(() => syncRemoteControls())
 
 const PREFIX = 'ccc-'
@@ -139,7 +137,6 @@ eventSocket.on('event', (kind: string, sessionName: string) => {
   const name = sessionName.startsWith(PREFIX) ? sessionName.slice(PREFIX.length) : sessionName
   stateDetector.handleHookEvent(kind, name)
 })
-void eventSocket.start().catch((err) => log.error(`event socket failed: ${err}`))
 
 const outputStream = new OutputStream(join(process.env.HOME ?? '', '.ccc', 'output.sock'))
 outputStream.on('output', (tmuxName: string, data: Buffer) => {
@@ -147,9 +144,12 @@ outputStream.on('output', (tmuxName: string, data: Buffer) => {
   if (!id) return
   ptyManager.parseOutput(id, data.toString('utf-8'))
 })
-void outputStream.start()
-  .then(() => sessionManager.enableOutputStreamingForExistingSessions())
-  .catch((err) => log.error(`output stream failed: ${err}`))
+
+// Boot-time service .start() calls are deferred into app.whenReady() — see
+// the whenReady block below. TmuxControl.start() runs an `execFileSync`
+// (local tmux) or `ssh execFileSync` (per remote host, 5 s timeout each)
+// before its first `await`, which would otherwise block the main thread
+// before the window can render and trip Mutter's "wait or force quit".
 
 const isMac = process.platform === 'darwin'
 
@@ -285,6 +285,18 @@ app.whenReady().then(() => {
   }
 
   createWindow()
+
+  // Kick off backend services after the window is on screen so the OS sees a
+  // responsive process. TmuxControl.start() blocks the main thread on
+  // execFileSync (local) and ssh execFileSync (5 s/host) — running those
+  // pre-whenReady was making CCC trip the WM "not responding" dialog with
+  // multiple remote hosts configured.
+  void localControl.start().catch((err) => log.error(`local tmux control failed: ${err}`))
+  syncRemoteControls()
+  void eventSocket.start().catch((err) => log.error(`event socket failed: ${err}`))
+  void outputStream.start()
+    .then(() => sessionManager.enableOutputStreamingForExistingSessions())
+    .catch((err) => log.error(`output stream failed: ${err}`))
 
   if (!is.dev) {
     initUpdater()
